@@ -1,0 +1,9 @@
+[submodule "thrid_party/fastvalidate-utf-8"]
+	path = thrid_party/fastvalidate-utf-8
+	url = git@github.com:haskell-Z/fastvalidate-utf-8.git
+[submodule "third_party/fastvalidate-utf-8"]
+	path = third_party/fastvalidate-utf-8
+	url = git@github.com:haskell-Z/fastvalidate-utf-8.git
+[submodule "third_party/utf8rewind"]
+	path = third_party/utf8rewind
+	url = git@github.com:haskell-Z/utf8rewind.git
