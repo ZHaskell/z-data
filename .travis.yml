@@ -24,7 +24,12 @@ before_install:
     - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
     - export EXTRA_OPT="--extra-lib-dirs=/usr/local/include --extra-lib-dirs=/usr/local/lib"
 
+# Handle git submodules yourself
+git:
+    submodules: false
+
 install:
+    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init
     - cabal --version
     - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
