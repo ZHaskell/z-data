@@ -44,10 +44,12 @@ module Z.Data.CBytes
   , pack
   , unpack
   , null , length
-  , empty, append, concat
-  , toBytes, fromBytes, fromText
+  , empty, append, concat, intercalate, intercalateElem
+  , toBytes, fromBytes, toText, toTextMaybe, fromText
   , fromCStringMaybe, fromCString, fromCStringN
   , withCBytes
+  -- helpers re-export
+  , V.w2c, V.c2w
   -- * exception
   , NullPointerException(..)
   ) where
@@ -203,8 +205,9 @@ concat bss = case pre 0 0 bss of
     pre :: Int -> Int -> [CBytes] -> (Int, Int)
     pre !nacc !lacc [] = (nacc, lacc)
     pre !nacc !lacc (b:bs)
-        | length b <= 0 = pre nacc lacc bs
-        | otherwise     = pre (nacc+1) (length b + lacc) bs
+        | l <= 0 = pre nacc lacc bs
+        | otherwise     = pre (nacc+1) (l + lacc) bs
+      where !l = length b
 
     copy :: [CBytes] -> Int -> MutablePrimArray s Word8 -> ST s ()
     copy [] !_ !_       = return ()
@@ -216,6 +219,48 @@ concat bss = case pre 0 0 bss of
             CBytesLiteral p ->
                 copyPtrToMutablePrimArray mba i (castPtr p) l)
         copy bs (i+l) mba
+
+-- | /O(n)/ The 'intercalate' function takes a 'CBytes' and a list of
+-- 'CBytes' s and concatenates the list after interspersing the first
+-- argument between each element of the list.
+--
+-- Note: 'intercalate' will force the entire 'CBytes' list.
+--
+intercalate :: CBytes -> [CBytes] -> CBytes
+{-# INLINE intercalate #-}
+intercalate s = concat . List.intersperse s
+
+
+-- | /O(n)/ An efficient way to join 'CByte' s with a byte.
+--
+intercalateElem :: Word8 -> [CBytes] -> CBytes
+{-# INLINABLE intercalateElem #-}
+intercalateElem w8 bss = case len bss 0 of
+    0 -> empty
+    l -> runST $ do
+        buf <- newPinnedPrimArray (l+1)
+        copy bss 0 buf
+        writePrimArray buf l 0 -- the \NUL terminator
+        CBytesOnHeap <$> unsafeFreezePrimArray buf
+  where
+    len []     !acc = acc
+    len [b]    !acc = length b + acc
+    len (b:bs) !acc = len bs (acc + length b + 1)
+    copy :: [CBytes] -> Int -> MutablePrimArray s Word8 -> ST s ()
+    -- bss must not be empty, which is checked by len above
+    copy (b:bs) !i !mba = do
+        let l = length b
+        when (l /= 0) (case b of
+            CBytesOnHeap ba ->
+                copyPrimArray mba i ba 0 l
+            CBytesLiteral p ->
+                copyPtrToMutablePrimArray mba i (castPtr p) l)
+        case bs of
+            [] -> return () -- last one
+            _  -> do
+                let i' = i + l
+                writePrimArray mba i' w8
+                copy bs (i'+1) mba
 
 instance IsString CBytes where
     {-# INLINE fromString #-}
@@ -302,6 +347,20 @@ fromBytes (V.Vec arr s l) =  runST (do
         writePrimArray mpa l 0     -- the \NUL terminator
         pa <- unsafeFreezePrimArray mpa
         return (CBytesOnHeap pa))
+
+-- | /O(n)/, convert to 'T.Text' using UTF8 encoding assumption.
+--
+-- Throw 'T.InvalidUTF8Exception' in case of invalid codepoint.
+toText :: CBytes -> T.Text
+{-# INLINABLE toText #-}
+toText = T.validate . toBytes
+
+-- | /O(n)/, convert to 'T.Text' using UTF8 encoding assumption.
+--
+-- Return 'Nothing' in case of invalid codepoint.
+toTextMaybe :: CBytes -> Maybe T.Text
+{-# INLINABLE toTextMaybe #-}
+toTextMaybe = T.validateMaybe . toBytes
 
 -- | /O(n)/, convert from 'T.Text', allocate pinned memory and
 -- add the '\NUL' ternimator

@@ -121,7 +121,6 @@ library
                           , scientific              == 0.3.*
                           , hashable                == 1.3.*
                           , case-insensitive        == 1.2.*
-                          , time                    >= 1.8 && < 2.0
                           , deepseq                 >= 1.4 && < 1.5
                           , QuickCheck              >= 2.10
                           , template-haskell        == 2.16.*
@@ -190,7 +189,7 @@ test-suite z-data-test
                             Z.Data.JSON.ValueSpec
                             Z.Data.Parser.BaseSpec
                             Z.Data.Parser.NumericSpec
-                            Z.Data.PrimArray.UnalignedAccessSpec
+                            Z.Data.Array.UnalignedAccessSpec
                             Z.Data.Text.BaseSpec
                             Z.Data.Text.BuilderSpec
                             Z.Data.Text.ExtraSpec

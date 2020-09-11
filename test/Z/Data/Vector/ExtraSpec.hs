@@ -369,8 +369,8 @@ spec =  describe "vector-extras" $ do
                 (V.pack (List.map V.c2w . List.unwords $ List.map V.w2c <$> xs))
 
     describe "vector unlines == List.unlines" $ do
-        prop "vector unlines === List.unlines" $ \ xs ->
-            (V.unlines $ V.pack @V.PrimVector @Word8 <$> xs)  ===
+        prop "vector unlines === List.unlines" $ \ (NonEmpty xs) ->
+            ((V.unlines $ V.pack @V.PrimVector @Word8 <$> xs) <> V.singleton 10) ===
                 (V.pack (List.map V.c2w . List.unlines $ List.map V.w2c <$> xs))
 
     describe "vector padLeft n x xs = if l >= n then xs else replicate (n-l) x ++ xs" $ do

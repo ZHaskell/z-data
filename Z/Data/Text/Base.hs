@@ -25,6 +25,7 @@ module Z.Data.Text.Base (
     Text(..)
   -- * Building text
   , validate
+  , InvalidUTF8Exception(..)
   , validateMaybe
   , replicate
   , cycleN
@@ -119,6 +120,7 @@ module Z.Data.Text.Base (
  ) where
 
 import           Control.DeepSeq
+import           Control.Exception
 import           Control.Monad.ST
 import           Control.Monad
 import           Data.Bits
@@ -274,14 +276,14 @@ charByteIndexR (Text (V.PrimVector ba s l)) n
 
 -- | /O(n)/ Validate a sequence of bytes is UTF-8 encoded.
 --
--- Throw error in case of invalid codepoint.
+-- Throw 'InvalidUTF8Exception' in case of invalid codepoint.
 --
 validate :: HasCallStack => Bytes -> Text
 {-# INLINE validate #-}
 validate bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
     | l == 0 = Text bs
     | c_utf8_validate_ba ba# s# l# > 0 = Text bs
-    | otherwise = error "invalid UTF8 bytes"
+    | otherwise = throw (InvalidUTF8Exception callStack)
 
 validateMaybe :: Bytes -> Maybe Text
 {-# INLINE validateMaybe #-}
@@ -294,6 +296,10 @@ foreign import ccall unsafe "text.h utf8_validate"
     c_utf8_validate_ba :: ByteArray# -> Int# -> Int# -> Int
 foreign import ccall unsafe "text.h utf8_validate_addr"
     c_utf8_validate_addr :: Addr# -> Int -> IO Int
+
+data InvalidUTF8Exception = InvalidUTF8Exception CallStack
+                    deriving (Show, Typeable)
+instance Exception InvalidUTF8Exception
 
 --------------------------------------------------------------------------------
 

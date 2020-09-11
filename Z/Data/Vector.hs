@@ -30,12 +30,13 @@ The API is similar to bytestring and vector. If you find missing functions, plea
 Performance consideration:
 
   * Use 'PrimVector' for 'Prim' types, it stores content in packed memory, and it's
-    strict on its elements (following strictness consideration are mainly for lifted
-    'Vector' type), many functions DO NOT NEED the result vectors's type to be same
-    with the source one, e.g. @map :: (Vec v a, Vec u b) => (a -> b) -> v a -> u b@.
+    strict on its elements
 
-  * There're some specialized function which only works on 'Bytes', which is enabled
-    with rewrite rules, if you want to use specialized versions directly, import
+  * Many functions DO NOT NEED result vectors's type to be the same
+    with source one, e.g. @map :: (Vec v a, Vec u b) => (a -> b) -> v a -> u b@.
+
+  * There're some specialized functions only works on 'Bytes', which is enabled
+    by rewrite rules, if you want to use specialized versions directly, import
     "Z.Data.Vector.Base" and "Std.Data.Vector.Extra" module. Doing so will also
     enable vector internals, which is useful for working on the underlying arrays.
 

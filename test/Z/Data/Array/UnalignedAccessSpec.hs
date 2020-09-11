@@ -2,7 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Z.Data.PrimArray.UnalignedAccessSpec where
+module Z.Data.Array.UnalignedAccessSpec where
 
 import qualified Data.List                as L
 import           Data.Int

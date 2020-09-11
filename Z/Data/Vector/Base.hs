@@ -47,7 +47,7 @@ module Z.Data.Vector.Base (
   -- ** Word8 vector
   , Bytes, packASCII
   , w2c, c2w
-  -- * Basic creating
+  -- * Creating utilities
   , create, create', creating, creating', createN, createN2
   , empty, singleton, copy
   -- * Conversion between list
@@ -514,6 +514,7 @@ instance CI.FoldCase Bytes where
             216 <= w && w <= 222 = w + 32
           | otherwise            = w
 
+-- | /O(n)/, pack an ASCII 'String', multi-bytes char WILL BE CHOPPED!
 packASCII :: String -> Bytes
 {-# INLINE CONLIKE [0] packASCII #-}
 {-# RULES
@@ -1247,7 +1248,7 @@ elemIndexBytes w (PrimVector (PrimArray ba#) s l) =
 
 --------------------------------------------------------------------------------
 
--- | Index pair type to help GHC unpack in some loops, useful when write fast folds.
+-- | Pair type to help GHC unpack in some loops, useful when write fast folds.
 data IPair a = IPair { ifst :: {-# UNPACK #-}!Int, isnd :: a } deriving (Show, Eq, Ord)
 
 instance (Arbitrary v) => Arbitrary (IPair v) where

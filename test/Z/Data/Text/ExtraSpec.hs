@@ -165,7 +165,7 @@ spec = describe "text-extra" $ do
             (T.unwords $ List.map T.pack xs)  === (T.pack $ List.unwords xs)
 
     describe "T.unlines" $ do
-        prop "T.unlines === List.unlines" $ \ xs ->
+        prop "T.unlines === List.unlines" $ \ (NonEmpty xs) ->
             (T.unlines $ List.map T.pack xs) <> (T.pack "\n") === (T.pack $ List.unlines xs)
 
     describe "T.padLeft" $ do
