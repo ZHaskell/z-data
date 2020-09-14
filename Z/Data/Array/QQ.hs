@@ -1,10 +1,35 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE MagicHash       #-}
+{-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections   #-}
 
+#ifdef HADDOCK_LANG_CN
+{-|
+Module      : Z.Data.Array.QQ
+Description : 书写 PrimArray 字面量的QQ，以及帮助函数
+Copyright   : (c) Dong Han, 2017-2019
+License     : BSD
+Maintainer  : winterland1989@gmail.com
+Stability   : experimental
+Portability : non-portable
+
+这个模块提供了一些书写 'PrimArray' 的 QQ，以及一些帮助函数，例如：
+
+@
+> :set -XQuasiQuotes
+> :t [arrASCII|asdfg|]
+[arrASCII|asdfg|] :: PrimArray GHC.Word.Word8
+> [arrASCII|asdfg|]
+fromListN 5 [97,115,100,102,103]
+> :t [arrI16|1,2,3,4,5|]
+[arrI16|1,2,3,4,5|] :: PrimArray GHC.Int.Int16
+> [arrI16|1,2,3,4,5|]
+fromListN 5 [1,2,3,4,5]
+@
+
+-}
+#else
 {-|
 Module      : Z.Data.Array.QQ
 Description : Extra stuff for PrimArray related literals
@@ -16,7 +41,20 @@ Portability : non-portable
 
 This module provides functions for writing 'PrimArray' related literals 'QuasiQuote'.
 
+@
+> :set -XQuasiQuotes
+> :t [arrASCII|asdfg|]
+[arrASCII|asdfg|] :: PrimArray GHC.Word.Word8
+> [arrASCII|asdfg|]
+fromListN 5 [97,115,100,102,103]
+> :t [arrI16|1,2,3,4,5|]
+[arrI16|1,2,3,4,5|] :: PrimArray GHC.Int.Int16
+> [arrI16|1,2,3,4,5|]
+fromListN 5 [1,2,3,4,5]
+@
+
 -}
+#endif
 
 module Z.Data.Array.QQ
   ( -- * PrimArray literal quoters
@@ -26,6 +64,7 @@ module Z.Data.Array.QQ
    -- * quoter helpers
   , asciiLiteral
   , utf8Literal
+  , arrayLiteral
   , word8Literal
   , word16Literal
   , word32Literal
@@ -63,10 +102,7 @@ import           Language.Haskell.TH.Quote
 import           Z.Data.Array
 import           Control.Monad.ST
 
--- | Construct data with ASCII encoded literals.
---
--- Example usage:
---
+-- $asciiLiteralExample
 -- @
 -- arrASCII :: QuasiQuoter
 -- arrASCII = QuasiQuoter
@@ -80,7 +116,19 @@ import           Control.Monad.ST
 --     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
 --     unsafeFreezePrimArray mba
 -- @
+#ifdef HADDOCK_LANG_CN
+-- | 解析 ASCII 编码字面量来构造表达式.
 --
+-- 你需要提供一个打包的函数，例如:
+--
+-- $asciiLiteralExample
+#else
+-- | Construct data with ASCII encoded literals.
+--
+-- Provide a packing function, return a packing expression. Example usage:
+--
+-- $asciiLiteralExample
+#endif
 asciiLiteral :: (ExpQ -> ExpQ -> ExpQ) -- ^ Construction function which receive a byte
                                        --   length 'Int' and a 'Addr#' 'LitE' expression.
              -> String                 -- ^ Quoter input
@@ -96,6 +144,8 @@ asciiLiteral k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
         cs' <- check cs
         return (fromIntegral (ord c):cs')
 
+
+-- | @[arrASCII|asdfg|] :: PrimArray Word8@
 arrASCII :: QuasiQuoter
 arrASCII = QuasiQuoter
     (asciiLiteral $ \ len addr -> [| word8ArrayFromAddr $(len) $(addr) |])
@@ -113,10 +163,15 @@ word8ArrayFromAddr l addr# = runST $ do
 int8ArrayFromAddr :: Int -> Addr# -> PrimArray Int8
 int8ArrayFromAddr l addr# = castArray (word8ArrayFromAddr l addr#)
 
--- | Construct data with UTF-8 encoded literals.
+#ifdef HADDOCK_LANG_CN
+-- | 解析 UTF8 编码字面量来构造表达式.
 --
--- Smiliar to 'asciIILiteral', the
+-- 使用方法和 'asciiLiteral' 类似
+#else
+-- | Construct data with UTF8 encoded literals.
 --
+-- See 'asciiLiteral'
+#endif
 utf8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
 utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
                       ((LitE . StringPrimL) `fmap` check str)
@@ -158,9 +213,15 @@ utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
             | otherwise ->
                 fail $ "character '" ++ [c] ++ "' is have out of range in UTF-8 literal:" ++ str
 
-
-vectorLiteral :: ([Integer] -> Q [Word8]) -> (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-vectorLiteral f k str = do
+#ifdef HADDOCK_LANG_CN
+-- | 解析数组字面量@e.g. 1,2,3@来构造表达式.
+#else
+-- | Construct data with array literals @e.g. 1,2,3@.
+#endif
+arrayLiteral :: ([Integer] -> Q [Word8])
+              -> (ExpQ -> ExpQ -> ExpQ)
+              -> String -> ExpQ
+arrayLiteral f k str = do
     (len, ws) <- parse str
     k (return . LitE  . IntegerL .fromIntegral $ len) $ (return . LitE . StringPrimL) ws
   where
@@ -173,8 +234,17 @@ vectorLiteral f k str = do
 
 --------------------------------------------------------------------------------
 
+#ifdef HADDOCK_LANG_CN
+#define ARRAY_LITERAL_DOC(T)  \
+-- | 解析数组字面量@e.g. 1,2,3@来构造 'PrimArray' 'T' 表达式. 使用方法和 'asciiLiteral' 类似
+#else
+#define ARRAY_LITERAL_DOC(T)  \
+-- | Construct 'PrimArray' 'T' with array literals @e.g. 1,2,3@. See 'asciiLiteral'
+#endif
+
+ARRAY_LITERAL_DOC(Word8)
 word8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-word8Literal k str = vectorLiteral checkW8 k str
+word8Literal k str = arrayLiteral checkW8 k str
   where
     checkW8 :: [Integer] -> Q [Word8]
     checkW8 [] = return []
@@ -185,6 +255,7 @@ word8Literal k str = vectorLiteral checkW8 k str
         let w = fromIntegral (i .&. 0xFF)
         return (w:ws)
 
+-- | @[arrW8|1,2,3,4,5|] :: PrimArray Word8@
 arrW8 :: QuasiQuoter
 arrW8 = QuasiQuoter
     (word8Literal $ \ len addr -> [| word8ArrayFromAddr $(len) $(addr) |])
@@ -192,8 +263,9 @@ arrW8 = QuasiQuoter
     (error "Cannot use arrW8 as a type")
     (error "Cannot use arrW8 as a dec")
 
+ARRAY_LITERAL_DOC(Int8)
 int8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-int8Literal k str = vectorLiteral checkI8 k str
+int8Literal k str = arrayLiteral checkI8 k str
   where
     checkI8 :: [Integer] -> Q [Word8]
     checkI8 [] = return []
@@ -204,6 +276,7 @@ int8Literal k str = vectorLiteral checkI8 k str
         let w = fromIntegral (i .&. 0xFF)
         return (w:ws)
 
+-- | @[arrW8|1,2,3,4,5|] :: PrimArray Int8@
 arrI8 :: QuasiQuoter
 arrI8 = QuasiQuoter
     (int8Literal $ \ len addr -> [| int8ArrayFromAddr $(len) $(addr) |])
@@ -213,8 +286,9 @@ arrI8 = QuasiQuoter
 
 --------------------------------------------------------------------------------
 
+ARRAY_LITERAL_DOC(Word16)
 word16Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-word16Literal k str = vectorLiteral checkW16 k str
+word16Literal k str = arrayLiteral checkW16 k str
   where
     checkW16 :: [Integer] -> Q [Word8]
     checkW16 [] = return []
@@ -230,6 +304,7 @@ word16Literal k str = vectorLiteral checkW16 k str
         return (w1:w2:ws)
 #endif
 
+-- | @[arrW16|1,2,3,4,5|] :: PrimArray Word16@
 arrW16 :: QuasiQuoter
 arrW16 = QuasiQuoter
     (word16Literal $ \ len addr -> [| word16ArrayFromAddr $(len) $(addr) |])
@@ -247,8 +322,9 @@ word16ArrayFromAddr l addr# = runST $ do
 int16ArrayFromAddr :: Int -> Addr# -> PrimArray Int16
 int16ArrayFromAddr l addr# = castArray (word16ArrayFromAddr l addr#)
 
+ARRAY_LITERAL_DOC(Int16)
 int16Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-int16Literal k str = vectorLiteral checkI16 k str
+int16Literal k str = arrayLiteral checkI16 k str
   where
     checkI16 :: [Integer] -> Q [Word8]
     checkI16 [] = return []
@@ -264,6 +340,7 @@ int16Literal k str = vectorLiteral checkI16 k str
         return (w1:w2:ws)
 #endif
 
+-- | @[arrI16|1,2,3,4,5|] :: PrimArray Int16@
 arrI16 :: QuasiQuoter
 arrI16 = QuasiQuoter
     (word16Literal $ \ len addr -> [| int16ArrayFromAddr $(len) $(addr) |])
@@ -272,8 +349,9 @@ arrI16 = QuasiQuoter
     (error "Cannot use arrI16 as a dec")
 --------------------------------------------------------------------------------
 
+ARRAY_LITERAL_DOC(Word32)
 word32Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-word32Literal k str = vectorLiteral checkW32 k str
+word32Literal k str = arrayLiteral checkW32 k str
   where
     checkW32 :: [Integer] -> Q [Word8]
     checkW32 [] = return []
@@ -291,6 +369,7 @@ word32Literal k str = vectorLiteral checkW32 k str
         return (w1:w2:w3:w4:ws)
 #endif
 
+-- | @[arrW32|1,2,3,4,5|] :: PrimArray Word32@
 arrW32 :: QuasiQuoter
 arrW32 = QuasiQuoter
     (word32Literal $ \ len addr -> [| word32ArrayFromAddr $(len) $(addr) |])
@@ -308,8 +387,9 @@ word32ArrayFromAddr l addr# = runST $ do
 int32ArrayFromAddr :: Int -> Addr# -> PrimArray Int32
 int32ArrayFromAddr l addr# = castArray (word32ArrayFromAddr l addr#)
 
+ARRAY_LITERAL_DOC(Int32)
 int32Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-int32Literal k str = vectorLiteral checkI32 k str
+int32Literal k str = arrayLiteral checkI32 k str
   where
     checkI32 :: [Integer] -> Q [Word8]
     checkI32 [] = return []
@@ -327,6 +407,7 @@ int32Literal k str = vectorLiteral checkI32 k str
         return (w1:w2:w3:w4:ws)
 #endif
 
+-- | @[arrI32|1,2,3,4,5|] :: PrimArray Int32@
 arrI32 :: QuasiQuoter
 arrI32 = QuasiQuoter
     (int32Literal $ \ len addr -> [| int32ArrayFromAddr $(len) $(addr) |])
@@ -336,8 +417,9 @@ arrI32 = QuasiQuoter
 
 --------------------------------------------------------------------------------
 
+ARRAY_LITERAL_DOC(Word64)
 word64Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-word64Literal k str = vectorLiteral checkW64 k str
+word64Literal k str = arrayLiteral checkW64 k str
   where
     checkW64 :: [Integer] -> Q [Word8]
     checkW64 [] = return []
@@ -359,6 +441,7 @@ word64Literal k str = vectorLiteral checkW64 k str
         return (w1:w2:w3:w4:w5:w6:w7:w8:ws)
 #endif
 
+-- | @[arrW64|1,2,3,4,5|] :: PrimArray Word64@
 arrW64 :: QuasiQuoter
 arrW64 = QuasiQuoter
     (word64Literal $ \ len addr -> [| word64ArrayFromAddr $(len) $(addr) |])
@@ -376,8 +459,9 @@ word64ArrayFromAddr l addr# = runST $ do
 int64ArrayFromAddr :: Int -> Addr# -> PrimArray Int64
 int64ArrayFromAddr l addr# = castArray (word64ArrayFromAddr l addr#)
 
+ARRAY_LITERAL_DOC(Int64)
 int64Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
-int64Literal k str = vectorLiteral checkI64 k str
+int64Literal k str = arrayLiteral checkI64 k str
   where
     checkI64 :: [Integer] -> Q [Word8]
     checkI64 [] = return []
@@ -399,6 +483,7 @@ int64Literal k str = vectorLiteral checkI64 k str
         return (w1:w2:w3:w4:w5:w6:w7:w8:ws)
 #endif
 
+-- | @[arrI64|1,2,3,4,5|] :: PrimArray Int64@
 arrI64 :: QuasiQuoter
 arrI64 = QuasiQuoter
     (int64Literal $ \ len addr -> [| int64ArrayFromAddr $(len) $(addr) |])
@@ -424,6 +509,7 @@ intArrayFromAddr l addr# =
     unsafeCoerce# (int32ArrayFromAddr l addr#)
 #endif
 
+ARRAY_LITERAL_DOC(Word)
 wordLiteral :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
 wordLiteral =
 #if SIZEOF_HSWORD == 8
@@ -432,6 +518,7 @@ wordLiteral =
     word32Literal
 #endif
 
+ARRAY_LITERAL_DOC(Int)
 intLiteral :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
 intLiteral =
 #if SIZEOF_HSWORD == 8
@@ -440,6 +527,7 @@ intLiteral =
     int32Literal
 #endif
 
+-- | @[arrWord|1,2,3,4,5|] :: PrimArray Word@
 arrWord :: QuasiQuoter
 arrWord = QuasiQuoter
     (wordLiteral $ \ len addr -> [| wordArrayFromAddr $(len) $(addr) |])
@@ -447,6 +535,7 @@ arrWord = QuasiQuoter
     (error "Cannot use arrWord as a type")
     (error "Cannot use arrWord as a dec")
 
+-- | @[arrInt|1,2,3,4,5|] :: PrimArray Int@
 arrInt :: QuasiQuoter
 arrInt = QuasiQuoter
     (intLiteral $ \ len addr -> [| intArrayFromAddr $(len) $(addr) |])

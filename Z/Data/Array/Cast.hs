@@ -5,6 +5,23 @@
 {-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+#ifdef HADDOCK_LANG_CN
+{-|
+Module      : Z.Data.Array.Cast
+Description : 底层类型数组的cast操作
+Copyright   : (c) Dong Han, 2017
+License     : BSD
+Maintainer  : winterland1989@gmail.com
+Stability   : experimental
+Portability : non-portable
+
+'Cast'类型类定义了一些字节占用相同（因此可以互相cast）的类型，你可以使用 'cast' 来完成 C++ 里的 @reinterpret_cast@ 的功能，对于某些类型来说（例如从 'Int64' cast 到 'Double'）并不是没有操作的（因为 CPU 里用来储存在 'Double' 的寄存器可能无法用来储存 'Int64'）。
+
+'Cast' 也可以用来规范可以相互转换的数组类型，例如从 @PrimArray Int@ 'cast' 到 @PrimArray Word@，'cast' 本身不改变数据的二进制表示，因此对于数组来说是没有额外操作的，详见 'Z.Data.Array.castArray'。
+
+'Coercible' 约束的类型也可以进行 'cast'。
+-}
+#else
 {-|
 Module      : Z.Data.Array.Cast
 Description : Primitive casting
@@ -17,6 +34,7 @@ Portability : non-portable
 This module is borrowed from basement's Cast module with conditional instances removed. The purpose of 'Cast' is to provide primitive types which share the same byte size, so that arrays and vectors parameterized by them can be safely coerced without breaking the index bounds. You can also use it to directly cast primitives just like @reinterpret_cast@. A 'Coercible' based instance is also provide for convenience.
 
 -}
+#endif
 
 #include "MachDeps.h"
 
@@ -34,7 +52,11 @@ import           GHC.IntWord64
 import           GHC.Float
 
 
+#ifdef HADDOCK_LANG_CN
+-- | 一些可以互相转换的，内存尺寸相同的底层类型
+#else
 -- | `Cast` between primitive types of the same size.
+#endif
 --
 class Cast source destination where
     cast :: source -> destination

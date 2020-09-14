@@ -1,4 +1,4 @@
-name:                       z-data
+name:                       Z-Data
 version:                    0.1.0.0
 synopsis:                   array, slice and text
 description:                This package provides array, slice and text operations
@@ -175,7 +175,7 @@ library
                             -Wno-incomplete-patterns
                             -- ploymorphic pattern synonym messed exhaustiveness checker
 
-test-suite z-data-test
+test-suite Z-Data-Test
     type:                   exitcode-stdio-1.0
     hs-source-dirs:         test/
     main-is:                Spec.hs
@@ -200,7 +200,7 @@ test-suite z-data-test
                             Z.Data.Vector.SortSpec
                             Z.Data.Vector.FlatMapSpec
                             Z.Data.Vector.FlatSetSpec
-    build-depends:          z-data
+    build-depends:          Z-Data
                           , base
                           , hspec                   >= 2.5.4
                           , hashable
