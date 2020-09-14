@@ -10,7 +10,7 @@
 
 {-|
 Module      : Z.Data.Vector.FlatIntSet
-Description : Fast map based on sorted vector
+Description : Fast int set based on sorted vector
 Copyright   : (c) Dong Han, 2017-2019
               (c) Tao He, 2018-2019
 License     : BSD

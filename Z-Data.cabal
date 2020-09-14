@@ -61,11 +61,6 @@ flag integer-simple
     default: False
     manual: False
 
-flag haddock-lang-cn
-    description: Use chinese version haddock
-    default: False
-    manual: True
-
 library
     exposed-modules:        Z.Data.Array
                             Z.Data.Array.Cast
@@ -134,8 +129,6 @@ library
         cpp-options:        -DINTEGER_GMP
         build-depends:      integer-gmp >= 0.2 && < 1.1
 
-    if flag(haddock-lang-cn)
-        cpp-options:        -DHADDOCK_LANG_CN
 
     include-dirs:           include
                             third_party/utf8rewind/include/utf8rewind

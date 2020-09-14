@@ -4,6 +4,8 @@
 
 ## Z-Data
 
+[![Linux Build Status](https://img.shields.io/travis/haskell-z/z-data/master.svg?label=Linux%20build)](https://travis-ci.org/haskell-z/z-data)
+
 This package provides basic data structures and functions:
 本库提供一些基本数据结构和操作:
 

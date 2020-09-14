@@ -4,32 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections   #-}
 
-#ifdef HADDOCK_LANG_CN
-{-|
-Module      : Z.Data.Array.QQ
-Description : 书写 PrimArray 字面量的QQ，以及帮助函数
-Copyright   : (c) Dong Han, 2017-2019
-License     : BSD
-Maintainer  : winterland1989@gmail.com
-Stability   : experimental
-Portability : non-portable
 
-这个模块提供了一些书写 'PrimArray' 的 QQ，以及一些帮助函数，例如：
-
-@
-> :set -XQuasiQuotes
-> :t [arrASCII|asdfg|]
-[arrASCII|asdfg|] :: PrimArray GHC.Word.Word8
-> [arrASCII|asdfg|]
-fromListN 5 [97,115,100,102,103]
-> :t [arrI16|1,2,3,4,5|]
-[arrI16|1,2,3,4,5|] :: PrimArray GHC.Int.Int16
-> [arrI16|1,2,3,4,5|]
-fromListN 5 [1,2,3,4,5]
-@
-
--}
-#else
 {-|
 Module      : Z.Data.Array.QQ
 Description : Extra stuff for PrimArray related literals
@@ -54,7 +29,6 @@ fromListN 5 [1,2,3,4,5]
 @
 
 -}
-#endif
 
 module Z.Data.Array.QQ
   ( -- * PrimArray literal quoters
@@ -116,19 +90,12 @@ import           Control.Monad.ST
 --     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
 --     unsafeFreezePrimArray mba
 -- @
-#ifdef HADDOCK_LANG_CN
--- | 解析 ASCII 编码字面量来构造表达式.
---
--- 你需要提供一个打包的函数，例如:
---
--- $asciiLiteralExample
-#else
+
 -- | Construct data with ASCII encoded literals.
 --
 -- Provide a packing function, return a packing expression. Example usage:
 --
 -- $asciiLiteralExample
-#endif
 asciiLiteral :: (ExpQ -> ExpQ -> ExpQ) -- ^ Construction function which receive a byte
                                        --   length 'Int' and a 'Addr#' 'LitE' expression.
              -> String                 -- ^ Quoter input
@@ -163,15 +130,10 @@ word8ArrayFromAddr l addr# = runST $ do
 int8ArrayFromAddr :: Int -> Addr# -> PrimArray Int8
 int8ArrayFromAddr l addr# = castArray (word8ArrayFromAddr l addr#)
 
-#ifdef HADDOCK_LANG_CN
--- | 解析 UTF8 编码字面量来构造表达式.
---
--- 使用方法和 'asciiLiteral' 类似
-#else
+
 -- | Construct data with UTF8 encoded literals.
 --
 -- See 'asciiLiteral'
-#endif
 utf8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
 utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
                       ((LitE . StringPrimL) `fmap` check str)
@@ -213,11 +175,8 @@ utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
             | otherwise ->
                 fail $ "character '" ++ [c] ++ "' is have out of range in UTF-8 literal:" ++ str
 
-#ifdef HADDOCK_LANG_CN
--- | 解析数组字面量@e.g. 1,2,3@来构造表达式.
-#else
+
 -- | Construct data with array literals @e.g. 1,2,3@.
-#endif
 arrayLiteral :: ([Integer] -> Q [Word8])
               -> (ExpQ -> ExpQ -> ExpQ)
               -> String -> ExpQ
@@ -234,13 +193,8 @@ arrayLiteral f k str = do
 
 --------------------------------------------------------------------------------
 
-#ifdef HADDOCK_LANG_CN
-#define ARRAY_LITERAL_DOC(T)  \
--- | 解析数组字面量@e.g. 1,2,3@来构造 'PrimArray' 'T' 表达式. 使用方法和 'asciiLiteral' 类似
-#else
 #define ARRAY_LITERAL_DOC(T)  \
 -- | Construct 'PrimArray' 'T' with array literals @e.g. 1,2,3@. See 'asciiLiteral'
-#endif
 
 ARRAY_LITERAL_DOC(Word8)
 word8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ

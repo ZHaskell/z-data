@@ -12,19 +12,7 @@
 {-# LANGUAGE UnboxedTuples          #-}
 {-# LANGUAGE UnliftedFFITypes       #-}
 
-#ifdef HADDOCK_LANG_CN
-{-|
-Module      : Z.Data.Array
-Description : Fast boxed and unboxed arrays
-Copyright   : (c) Dong Han, 2017
-License     : BSD
-Maintainer  : winterland1989@gmail.com
-Stability   : experimental
-Portability : non-portable
 
-提供统一的unboxed/boxed数组API.
--}
-#else
 {-|
 Module      : Z.Data.Array
 Description : Fast boxed and unboxed arrays
@@ -49,7 +37,6 @@ Some mnemonics:
   * The order of arguements of 'copyArr', 'copyMutableArr' and 'moveArr' are always target and its offset
     come first, and source and source offset follow, copying length comes last.
 -}
-#endif
 
 module Z.Data.Array (
   -- * Arr typeclass
@@ -94,12 +81,13 @@ import           GHC.Types
 import           Z.Data.Array.Cast
 import           Z.Data.Array.UnliftedArray
 
+
 -- | Bottom value (@throw ('UndefinedElement' "Data.Array.uninitialized")@)
 -- for initialize new boxed array('Array', 'SmallArray'..).
 --
--- NOTE: These functions may segfault when used with indices which are out of bounds.
 uninitialized :: a
 uninitialized = throw (UndefinedElement "Data.Array.uninitialized")
+
 
 -- | A typeclass to unify box & unboxed, mutable & immutable array operations.
 --
@@ -113,7 +101,12 @@ uninitialized = throw (UndefinedElement "Data.Array.uninitialized")
 -- They are used across this package and perform identical to their monomophric counterpart.
 --
 class Arr (arr :: * -> * ) a where
+
+
+    -- | Mutable version of this array type.
+    --
     type MArr arr = (mar :: * -> * -> *) | mar -> arr
+
 
     -- | Make a new array with given size.
     --
@@ -121,77 +114,117 @@ class Arr (arr :: * -> * ) a where
     -- For primitive array, elements are just random garbage.
     newArr :: (PrimMonad m, PrimState m ~ s) => Int -> m (MArr arr s a)
 
+
     -- | Make a new array and fill it with an initial value.
     newArrWith :: (PrimMonad m, PrimState m ~ s) => Int -> a -> m (MArr arr s a)
+
 
     -- | Index mutable array in a primitive monad.
     readArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m a
 
+
     -- | Write mutable array in a primitive monad.
     writeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> a -> m ()
 
+
     -- | Fill mutable array with a given value.
     setArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> a -> m ()
+
 
     -- | Index immutable array, which is a pure operation. This operation often
     -- result in an indexing thunk for lifted arrays, use 'indexArr\'' or 'indexArrM'
     -- if that's not desired.
     indexArr :: arr a -> Int -> a
 
+
     -- | Index immutable array, pattern match on the unboxed unit tuple to force
     -- indexing (without forcing the element).
     indexArr' :: arr a -> Int -> (# a #)
+
 
     -- | Index immutable array in a primitive monad, this helps in situations that
     -- you want your indexing result is not a thunk referencing whole array.
     indexArrM :: (Monad m) => arr a -> Int -> m a
 
+
     -- | Safely freeze mutable array by make a immutable copy of its slice.
     freezeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> m (arr a)
 
+
     -- | Safely thaw immutable array by make a mutable copy of its slice.
     thawArr :: (PrimMonad m, PrimState m ~ s) => arr a -> Int -> Int -> m (MArr arr s a)
+
 
     -- | In place freeze a mutable array, the original mutable array can not be used
     -- anymore.
     unsafeFreezeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> m (arr a)
 
+
     -- | In place thaw a immutable array, the original immutable array can not be used
     -- anymore.
     unsafeThawArr :: (PrimMonad m, PrimState m ~ s) => arr a -> m (MArr arr s a)
 
+
     -- | Copy a slice of immutable array to mutable array at given offset.
-    copyArr ::  (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> arr a -> Int -> Int -> m ()
+    copyArr ::  (PrimMonad m, PrimState m ~ s)
+            => MArr arr s a -- ^ target
+            -> Int          -- ^ target offset
+            -> arr a        -- ^ source
+            -> Int          -- ^ source offset
+            -> Int          -- ^ source length
+            -> m ()
+
 
     -- | Copy a slice of mutable array to mutable array at given offset.
     -- The two mutable arrays shall no be the same one.
-    copyMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> MArr arr s a -> Int -> Int -> m ()
+    copyMutableArr :: (PrimMonad m, PrimState m ~ s)
+                   => MArr arr s a  -- ^ target
+                   -> Int           -- ^ target offset
+                   -> MArr arr s a  -- ^ source
+                   -> Int           -- ^ source offset
+                   -> Int           -- ^ source length
+                   -> m ()
+
 
     -- | Copy a slice of mutable array to mutable array at given offset.
     -- The two mutable arrays may be the same one.
-    moveArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> MArr arr s a -> Int -> Int -> m ()
+    moveArr :: (PrimMonad m, PrimState m ~ s)
+            => MArr arr s a  -- ^ target
+            -> Int           -- ^ target offset
+            -> MArr arr s a  -- ^ source
+            -> Int           -- ^ source offset
+            -> Int           -- ^ source length
+            -> m ()
+
 
     -- | Create immutable copy.
     cloneArr :: arr a -> Int -> Int -> arr a
 
+
     -- | Create mutable copy.
     cloneMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> m (MArr arr s a)
+
 
     -- | Resize mutable array to given size.
     resizeMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m (MArr arr s a)
 
+
     -- | Shrink mutable array to given size. This operation only works on primitive arrays.
-    -- For boxed array, this is a no-op, e.g. 'sizeOfMutableArr' will not change.
+    -- For some array types, this is a no-op, e.g. 'sizeOfMutableArr' will not change.
     shrinkMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m ()
+
 
     -- | Is two mutable array are reference equal.
     sameMutableArr :: MArr arr s a -> MArr arr s a -> Bool
 
+
     -- | Size of immutable array.
     sizeofArr :: arr a -> Int
 
+
     -- | Size of mutable array.
     sizeofMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> m Int
+
 
     -- | Is two immutable array are referencing the same one.
     --
@@ -556,10 +589,12 @@ withMutablePrimArrayContents (MutablePrimArray mba#) f = do
     primitive_ (touch# mba#)
     return b
 
+
 -- | Cast between arrays
---
 castArray :: (Arr arr a, Cast a b) => arr a -> arr b
 castArray = unsafeCoerce#
 
+
+-- | Cast between arrays
 castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#

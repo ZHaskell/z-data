@@ -2,20 +2,6 @@
 {-# LANGUAGE TypeFamilies  #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-#ifdef HADDOCK_LANG_CN
-{-|
-Module      : Z.Data.Array.Checked
-Description : 带边界检查的数组API
-Copyright   : (c) Dong Han, 2017-2019
-License     : BSD
-Maintainer  : winterland1989@gmail.com
-Stability   : experimental
-Portability : non-portable
-
-这个模块提供的函数和 "Z.Data.Array" 一样，但是在访问越界时会抛出 'IndexOutOfBounds' 异常（用来 debug 内存越界访问）。
-
--}
-#else
 {-|
 Module      : Z.Data.Array.Checked
 Description : Bounded checked boxed and unboxed arrays
@@ -31,7 +17,6 @@ module with "Z.Data.Array", segmentation faults caused by out bound access will 
 with more informations.
 
 -}
-#endif
 module Z.Data.Array.Checked
   ( -- * Arr typeclass re-export
     A.Arr
