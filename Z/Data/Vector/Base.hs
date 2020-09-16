@@ -134,6 +134,12 @@ import           Z.Data.Array
 --
 -- Instead of providing a generalized vector with polymorphric array field, we use this typeclass
 -- so that instances use concrete array type can unpack their array payload.
+--
+-- Vector types, e.g. 'Vector','PrimVector'... are obivious instances, with O(1) 'toArr' and
+-- 'fromArr', which convert slices to (array, offset, length) tuple back and forth.
+--
+-- Array types can also be instances of this class, e.g. 'Array', 'PrimArray'..., in this case
+-- 'toArr' will always return offset 0 and whole array length, and 'fromArr' is O(n) 'copyArr'.
 class (Arr (IArray v) a) => Vec v a where
     -- | Vector's immutable array type
     type IArray v :: * -> *

@@ -1,6 +1,6 @@
 name:                       Z-Data
 version:                    0.1.0.0
-synopsis:                   array, slice and text
+synopsis:                   array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD3
 license-file:               LICENSE
@@ -110,7 +110,7 @@ library
 
                             Z.Foreign
 
-    build-depends:          base                    >=4.12 && <5.0
+    build-depends:          base                    >= 4.12 && <5.0
                           , ghc-prim                >= 0.6.1 && < 0.6.2
                           , primitive               >= 0.7.1 && < 0.7.2
                           , scientific              == 0.3.*

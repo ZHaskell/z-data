@@ -692,10 +692,6 @@ The result of the check will be YES if the string is stable and MAYBE or NO
 if it is unstable. If the result is MAYBE, the string does not necessarily
 have to be normalized.
 
-If the result is unstable, the offset parameter is set to the offset for the
-first unstable code point. If the string is stable, the offset is equivalent
-to the length of the string in bytes.
-
 For more information, please review [Unicode Standard Annex #15 - Unicode
 Normalization Forms](http://www.unicode.org/reports/tr15/).
 -}

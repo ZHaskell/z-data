@@ -7,7 +7,6 @@
 [![Linux Build Status](https://img.shields.io/travis/haskell-z/z-data/master.svg?label=Linux%20build)](https://travis-ci.org/haskell-z/z-data)
 
 This package provides basic data structures and functions:
-本库提供一些基本数据结构和操作:
 
 * Array, vector(array slice)
 * Text based UTF-8, basic unicode manipulating
@@ -15,7 +14,7 @@ This package provides basic data structures and functions:
 * Parsing and building monad
 * JSON encoding and decoding
 
-## dev guide/开发指南
+## dev guide
 
 + GHC(>=8.10.2) 
 + cabal-install(>=3.4)
@@ -32,6 +31,4 @@ cabal run Z-Data-Test
 cabal install
 # generate document
 cabal haddock
-# generate chinese version document
-cabal haddock -f haddock-lang-cn
 ```
