@@ -47,7 +47,7 @@ module Z.Data.CBytes
   , empty, append, concat, intercalate, intercalateElem
   , toBytes, fromBytes, toText, toTextMaybe, fromText
   , fromCString, fromCString', fromCStringN
-  , withCBytes
+  , withCBytes, allocCBytes
   -- helpers re-export
   , V.w2c, V.c2w
   -- * exception
@@ -101,20 +101,34 @@ data CBytes
 
 -- | Create a 'CBytes' with IO action.
 --
+--
 -- User only have to do content initialization and return the content length,
--- 'create' takes the responsibility to add the '\NUL' ternimator.
+-- 'create' takes the responsibility to add the @\NUL@ ternimator. If the
+-- initialize function write @\NUL@ terminator(most FFI functions for example),
+-- you should use 'allocCBytes'.
+--
+-- If (<=0) capacity is provided, a 'nullPtr' is passed to initialize function and
+-- 'empty' will be returned. other than that, if length returned is larger than (capacity-1),
+-- a 'NULLTerminatorNotFound' will be thrown.
 create :: HasCallStack
-       => Int  -- ^ capacity n, including the '\NUL' terminator
-       -> (CString -> IO Int)  -- ^ initialization function,
+       => Int  -- ^ capacity n, including the @\NUL@ terminator
+       -> (CString -> IO Int)  -- ^ initialize function
                                -- write the pointer, return the length (<= n-1)
        -> IO CBytes
 {-# INLINE create #-}
-create n fill = do
+create n fill | n <= 0 = fill nullPtr >> return empty
+              | otherwise = do
     mba <- newPinnedPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     l <- withMutablePrimArrayContents mba (fill . castPtr)
-    writePrimArray mba l 0 -- the '\NUL' ternimator
+    when (l+1>n) (throwIO (NULLTerminatorNotFound callStack))
+    writePrimArray mba l 0 -- the @\NUL@ ternimator
     shrinkMutablePrimArray mba (l+1)
     CBytesOnHeap <$> unsafeFreezePrimArray mba
+
+-- | All exception can be throw by using 'CBytes'.
+data CBytesException = NULLTerminatorNotFound CallStack
+                    deriving (Show, Typeable)
+instance Exception CBytesException
 
 instance Show CBytes where
     show = unpack
@@ -280,7 +294,7 @@ instance IsString CBytes where
 
 -- | Pack a 'String' into null-terminated 'CBytes'.
 --
--- '\NUL' is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
+-- @\NUL@ is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
 pack :: String -> CBytes
 {-# INLINE CONLIKE [1] pack #-}
 pack s = runST $ do
@@ -330,7 +344,7 @@ length (CBytesLiteral p) = fromIntegral $ unsafeDupablePerformIO (c_strlen p)
 -- | /O(1)/, (/O(n)/ in case of literal), convert to 'V.Bytes', which can be
 -- processed by vector combinators.
 --
--- NOTE: the '\NUL' ternimator is not included.
+-- NOTE: the @\NUL@ ternimator is not included.
 toBytes :: CBytes -> V.Bytes
 {-# INLINABLE toBytes #-}
 toBytes cbytes@(CBytesOnHeap pa) = V.PrimVector pa 0 l
@@ -341,7 +355,7 @@ toBytes cbytes@(CBytesLiteral p) = V.create (l+1) (\ mpa -> do
   where l = length cbytes
 
 -- | /O(n)/, convert from 'V.Bytes', allocate pinned memory and
--- add the '\NUL' ternimator
+-- add the @\NUL@ ternimator
 fromBytes :: V.Bytes -> CBytes
 {-# INLINABLE fromBytes #-}
 fromBytes (V.Vec arr s l) =  runST (do
@@ -366,7 +380,7 @@ toTextMaybe :: CBytes -> Maybe T.Text
 toTextMaybe = T.validateMaybe . toBytes
 
 -- | /O(n)/, convert from 'T.Text', allocate pinned memory and
--- add the '\NUL' ternimator
+-- add the @\NUL@ ternimator
 fromText :: T.Text -> CBytes
 {-# INLINABLE fromText #-}
 fromText = fromBytes . T.getUTF8Bytes
@@ -407,7 +421,7 @@ fromCString' cstring =
 
 -- | Same with 'fromCString', but only take N bytes (and append a null byte as terminator).
 --
-fromCStringN :: => CString -> Int -> IO CBytes
+fromCStringN :: CString -> Int -> IO CBytes
 {-# INLINABLE fromCStringN #-}
 fromCStringN cstring len = do
     if cstring == nullPtr || len == 0
@@ -429,6 +443,26 @@ withCBytes :: CBytes -> (CString -> IO a) -> IO a
 {-# INLINABLE withCBytes #-}
 withCBytes (CBytesOnHeap pa) f = withPrimArrayContents pa (f . castPtr)
 withCBytes (CBytesLiteral ptr) f = f ptr
+
+-- | Create a 'CBytes' with IO action.
+--
+-- If (<=0) capacity is provided, a 'nullPtr' is passed to initialize function and
+-- 'empty' will be returned. Other than that, User have to make sure a @\NUL@ ternimated
+-- string will be written, otherwise a 'NULLTerminatorNotFound' will be thrown.
+allocCBytes :: HasCallStack
+       => Int  -- ^ capacity n, including the @\NUL@ terminator
+       -> (CString -> IO a)  -- ^ initialization function,
+       -> IO (CBytes, a)
+{-# INLINABLE allocCBytes #-}
+allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
+                   | otherwise = do
+    mba <- newPinnedPrimArray n :: IO (MutablePrimArray RealWorld Word8)
+    a <- withMutablePrimArrayContents mba (fill . castPtr)
+    l <- fromIntegral <$> withMutablePrimArrayContents mba (c_strlen . castPtr)
+    when (l+1>n) (throwIO (NULLTerminatorNotFound callStack))
+    shrinkMutablePrimArray mba (l+1)
+    bs <- unsafeFreezePrimArray mba
+    return (CBytesOnHeap bs, a)
 
 --------------------------------------------------------------------------------
 

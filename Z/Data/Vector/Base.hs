@@ -1305,6 +1305,7 @@ defaultInitSize :: Int
 {-# INLINE defaultInitSize #-}
 defaultInitSize = 30
 
+-- | All exception can be throw by using 'Vec'.
 data VectorException = IndexOutOfVectorRange {-# UNPACK #-} !Int CallStack
                      | EmptyVector CallStack
                     deriving (Show, Typeable)
