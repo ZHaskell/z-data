@@ -46,7 +46,7 @@ module Z.Data.CBytes
   , null , length
   , empty, append, concat, intercalate, intercalateElem
   , toBytes, fromBytes, toText, toTextMaybe, fromText
-  , fromCStringMaybe, fromCString, fromCStringN
+  , fromCString, fromCString', fromCStringN
   , withCBytes
   -- helpers re-export
   , V.w2c, V.c2w
@@ -185,6 +185,9 @@ append strA strB
     lenA = length strA
     lenB = length strB
 
+-- | 'empty' 'CBytes'
+--
+-- Passing 'empty' to C FFI is equivalent to passing a @NULL@ pointer.
 empty :: CBytes
 {-# NOINLINE empty #-}
 empty = CBytesLiteral (Ptr "\0"#)
@@ -370,33 +373,15 @@ fromText = fromBytes . T.getUTF8Bytes
 
 --------------------------------------------------------------------------------
 
--- | Copy a 'CString' type into a 'CBytes', return Nothing if the pointer is NULL.
+
+-- | Copy a 'CString' type into a 'CBytes', return 'empty' if the pointer is NULL.
 --
 --  After copying you're free to free the 'CString' 's memory.
---
-fromCStringMaybe :: HasCallStack => CString -> IO (Maybe CBytes)
-{-# INLINABLE fromCStringMaybe #-}
-fromCStringMaybe cstring =
-    if cstring == nullPtr
-    then return Nothing
-    else do
-        len <- fromIntegral <$> c_strlen cstring
-        mpa <- newPinnedPrimArray (len+1)
-        copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
-        writePrimArray mpa len 0     -- the \NUL terminator
-        pa <- unsafeFreezePrimArray mpa
-        return (Just (CBytesOnHeap pa))
-
-
--- | Same with 'fromCStringMaybe', but throw 'NullPointerException' when meet a null pointer.
---
-fromCString :: HasCallStack
-            => CString
-            -> IO CBytes
+fromCString :: CString -> IO CBytes
 {-# INLINABLE fromCString #-}
 fromCString cstring = do
     if cstring == nullPtr
-    then throwIO (NullPointerException callStack)
+    then return empty
     else do
         len <- fromIntegral <$> c_strlen cstring
         mpa <- newPinnedPrimArray (len+1)
@@ -405,16 +390,28 @@ fromCString cstring = do
         pa <- unsafeFreezePrimArray mpa
         return (CBytesOnHeap pa)
 
--- | Same with 'fromCString', but only take N bytes (and append a null byte as terminator).
+-- | Same with 'fromCString', but throw 'NullPointerException' when meet a null pointer.
 --
-fromCStringN :: HasCallStack
-            => CString
-            -> Int
-            -> IO CBytes
-{-# INLINABLE fromCStringN #-}
-fromCStringN cstring len = do
+fromCString' :: HasCallStack => CString -> IO (Maybe CBytes)
+{-# INLINABLE fromCString' #-}
+fromCString' cstring =
     if cstring == nullPtr
     then throwIO (NullPointerException callStack)
+    else do
+        len <- fromIntegral <$> c_strlen cstring
+        mpa <- newPinnedPrimArray (len+1)
+        copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
+        writePrimArray mpa len 0     -- the \NUL terminator
+        pa <- unsafeFreezePrimArray mpa
+        return (Just (CBytesOnHeap pa))
+
+-- | Same with 'fromCString', but only take N bytes (and append a null byte as terminator).
+--
+fromCStringN :: => CString -> Int -> IO CBytes
+{-# INLINABLE fromCStringN #-}
+fromCStringN cstring len = do
+    if cstring == nullPtr || len == 0
+    then return empty
     else do
         mpa <- newPinnedPrimArray (len+1)
         copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
