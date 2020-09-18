@@ -330,10 +330,17 @@ intercalateList (TextBuilder s) f = TextBuilder . B.intercalateList s (getBuilde
 --------------------------------------------------------------------------------
 -- | Newtype wrapper for @[Char]@ to provide textual instances.
 --
--- To encourage using 'Text' as the textual representation, we didn't provide special
--- treatment to differentiate instances between @[a]@ and @[Char]@ in various places.
+-- We didn't provide special treatment to differentiate instances between @[a]@ and @[Char]@
+-- in various classes, e.g. 'Z.Data.JSON.ToJSON'.
+--
 -- This newtype is therefore to provide instances similar to @T.Text@, in case you really
 -- need to wrap a 'String'.
+--
+-- >>> Z.Data.JSON.encodeText ("abc" :: String)
+-- > "[\"a\",\"b\",\"c\"]"   -- Just like any other [a]'s instance
+-- >>> Z.Data.JSON.encodeText . Str $ ("abc" :: String)
+-- > "\"abc\""
+--
 newtype Str = Str { chrs :: [Char] } deriving stock (Eq, Ord, Data, Typeable, Generic)
 
 instance Show Str where show = show . chrs
