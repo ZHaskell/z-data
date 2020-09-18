@@ -52,6 +52,8 @@ module Z.Data.CBytes
   , V.w2c, V.c2w
   -- * exception
   , NullPointerException(..)
+  -- re-export
+  , CString
   ) where
 
 import           Control.DeepSeq

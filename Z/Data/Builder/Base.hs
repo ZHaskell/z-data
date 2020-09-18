@@ -76,7 +76,6 @@ import           Control.Monad.Primitive
 import           Control.Monad.ST
 import           Control.Monad.ST.Unsafe            (unsafeInterleaveST)
 import           Data.Bits                          (shiftL, shiftR, (.&.))
-import           Data.Primitive.PrimArray           (MutablePrimArray (..))
 import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
 import           Data.String                        (IsString (..))
 import           Data.Word
@@ -84,7 +83,6 @@ import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
 import           GHC.Prim
 import           GHC.Ptr
-import           GHC.Types
 import qualified Z.Data.Array                     as A
 import           Z.Data.Array.UnalignedAccess
 import qualified Z.Data.Text.Base                 as T
@@ -396,9 +394,9 @@ encodePrim :: forall a. UnalignedAccess a => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrim :: Int8 -> Builder () #-}
 encodePrim x = do
     ensureN n
-    Builder (\ _  k (Buffer (MutablePrimArray mba#) i@(I# i#)) -> do
-        primitive_ (writeWord8ArrayAs mba# i# x)
-        k () (Buffer (MutablePrimArray mba#) (i + n)))
+    Builder (\ _  k (Buffer mpa i) -> do
+        writePrimWord8ArrayAs mpa i x
+        k () (Buffer mpa (i + n)))
   where
     n = (getUnalignedSize (unalignedSize :: UnalignedSize a))
 
@@ -498,10 +496,10 @@ char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
 char7 chr = do
     ensureN 1
-    Builder (\ _  k (Buffer mba@(MutablePrimArray mba#) i@(I# i#)) -> do
+    Builder (\ _  k (Buffer mpa i) -> do
         let x = V.c2w chr .&. 0x7F
-        primitive_ (writeWord8ArrayAs mba# i# x)
-        k () (Buffer mba (i+1)))
+        writePrimWord8ArrayAs mpa i x
+        k () (Buffer mpa (i+1)))
 
 -- | Turn 'String' into 'Builder' with ASCII8 encoding
 --
@@ -521,10 +519,10 @@ char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
 char8 chr = do
     ensureN 1
-    Builder (\ _  k (Buffer mba@(MutablePrimArray mba#) i@(I# i#)) -> do
+    Builder (\ _  k (Buffer mpa i) -> do
         let x = V.c2w chr
-        primitive_ (writeWord8ArrayAs mba# i# x)
-        k () (Buffer mba (i+1)))
+        writePrimWord8ArrayAs mpa i x
+        k () (Buffer mpa (i+1)))
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --

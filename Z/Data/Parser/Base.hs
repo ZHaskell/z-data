@@ -3,7 +3,6 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -303,9 +302,9 @@ decodePrim :: forall a. (UnalignedAccess a) => Parser a
 {-# SPECIALIZE INLINE decodePrim :: Parser Int8  #-}
 decodePrim = do
     ensureN n ["Z.Data.Parser.Base.decodePrim: not enough bytes"]
-    Parser (\ _ k (V.PrimVector (A.PrimArray ba#) i@(I# i#) len) ->
-        let !r = indexWord8ArrayAs ba# i#
-        in k r (V.PrimVector (A.PrimArray ba#) (i+n) (len-n)))
+    Parser (\ _ k (V.PrimVector ba i len) ->
+        let !r = indexPrimWord8ArrayAs ba i
+        in k r (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize :: UnalignedSize a)
 
@@ -321,9 +320,9 @@ decodePrimLE :: forall a. (UnalignedAccess (LE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Int16 #-}
 decodePrimLE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimLE: not enough bytes"]
-    Parser (\ _ k (V.PrimVector (A.PrimArray ba#) i@(I# i#) len) ->
-        let !r = indexWord8ArrayAs ba# i#
-        in k (getLE r) (V.PrimVector (A.PrimArray ba#) (i+n) (len-n)))
+    Parser (\ _ k (V.PrimVector ba i len) ->
+        let !r = indexPrimWord8ArrayAs ba i
+        in k (getLE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize :: UnalignedSize (LE a))
 
@@ -339,9 +338,9 @@ decodePrimBE :: forall a. (UnalignedAccess (BE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Int16 #-}
 decodePrimBE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimBE: not enough bytes"]
-    Parser (\ _ k (V.PrimVector (A.PrimArray ba#) i@(I# i#) len) ->
-        let !r = indexWord8ArrayAs ba# i#
-        in k (getBE r) (V.PrimVector (A.PrimArray ba#) (i+n) (len-n)))
+    Parser (\ _ k (V.PrimVector ba i len) ->
+        let !r = indexPrimWord8ArrayAs ba i
+        in k (getBE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize :: UnalignedSize (BE a))
 
