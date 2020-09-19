@@ -153,28 +153,33 @@ instance Vec Array a where
     {-# INLINE toArr #-}
     toArr arr = (arr, 0, sizeofArr arr)
     {-# INLINE fromArr #-}
-    fromArr = cloneArr
+    fromArr = fromArray
 
 instance Vec SmallArray a where
     type IArray SmallArray = SmallArray
     {-# INLINE toArr #-}
     toArr arr = (arr, 0, sizeofArr arr)
     {-# INLINE fromArr #-}
-    fromArr = cloneArr
+    fromArr = fromArray
 
 instance Prim a => Vec PrimArray a where
     type IArray PrimArray = PrimArray
     {-# INLINE toArr #-}
     toArr arr = (arr, 0, sizeofArr arr)
     {-# INLINE fromArr #-}
-    fromArr = cloneArr
+    fromArr = fromArray
 
 instance PrimUnlifted a => Vec UnliftedArray a where
     type IArray UnliftedArray = UnliftedArray
     {-# INLINE toArr #-}
     toArr arr = (arr, 0, sizeofArr arr)
     {-# INLINE fromArr #-}
-    fromArr = cloneArr
+    fromArr = fromArray
+
+fromArray :: Arr arr a => arr a -> Int -> Int -> arr a
+{-# INLINE fromArray #-}
+fromArray arr offset len | offset == 0 && sizeofArr arr == len = arr
+                         | otherwise = cloneArr arr offset len
 
 -- | A pattern synonyms for matching the underline array, offset and length.
 --

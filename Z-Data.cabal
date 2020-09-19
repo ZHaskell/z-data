@@ -1,6 +1,6 @@
 name:                       Z-Data
-version:                    0.1.1.0
-synopsis:                   array, vector and text
+version:                    0.1.2.0
+synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD3
 license-file:               LICENSE

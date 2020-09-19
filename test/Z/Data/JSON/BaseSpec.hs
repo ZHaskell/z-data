@@ -29,6 +29,8 @@ data T a
              , testTwo   :: Maybe Bool
              , testThree :: Maybe a
              }
+
+    | RecordII { testFour   :: Double }
     | List [a]
    deriving (Show, Eq, Generic, FromValue, ToValue, EncodeJSON)
 
@@ -51,6 +53,10 @@ spec = describe "JSON Base instances" $ do
                 \\"testOne\":0.123456,\
                 \\"testTwo\":null,\
                 \\"testThree\":123456}}"
+
+    it "Record are encoded as key values(single field)" $
+        JSON.encodeText (RecordII 0.123456 :: T Integer) ===
+            "{\"RecordII\":{\"testFour\":0.123456}}"
 
     it "List are encode as array" $
         JSON.encodeText (List [Nullary

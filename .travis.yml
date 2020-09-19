@@ -40,6 +40,6 @@ install:
 script:
     - if [ -f configure.ac ]; then autoreconf -i; fi
     - cabal build   
-    - cabal run z-data-test
+    - cabal test --test-show-details=direct
     - cabal check
     - cabal sdist   # tests that a source-distribution can be generated

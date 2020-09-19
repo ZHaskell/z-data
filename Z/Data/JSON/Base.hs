@@ -701,11 +701,19 @@ instance (Constructor c) => GConstrEncodeJSON (C1 c U1) where
         B.text . constrFmt s $ conName (undefined :: t c U1 a)
 
 -- | Constructor with a single payload
-instance (Constructor c, GEncodeJSON (S1 sc f)) => GConstrEncodeJSON (C1 c (S1 sc f)) where
+instance (Constructor c, GEncodeJSON (S1 (MetaSel Nothing u ss ds) f))
+    => GConstrEncodeJSON (C1 c (S1 (MetaSel Nothing u ss ds) f)) where
     {-# INLINE gConstrEncodeJSON #-}
     gConstrEncodeJSON False s (M1 x) = gEncodeJSON s x
     gConstrEncodeJSON True s (M1 x) = B.curly $ do
         (constrFmt s $ conName @c undefined) `JB.kv` gEncodeJSON s x
+
+instance (Constructor c, GEncodeJSON (S1 (MetaSel (Just l) u ss ds) f))
+    => GConstrEncodeJSON (C1 c (S1 (MetaSel (Just l) u ss ds) f)) where
+    {-# INLINE gConstrEncodeJSON #-}
+    gConstrEncodeJSON False s (M1 x) = B.curly (gEncodeJSON s x)
+    gConstrEncodeJSON True s (M1 x) = B.curly $ do
+        (constrFmt s $ conName @c undefined) `JB.kv` B.curly (gEncodeJSON s x)
 
 -- | Constructor with multiple payloads
 instance (GEncodeJSON (a :*: b), GAddPunctuation (a :*: b), Constructor c)
