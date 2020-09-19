@@ -16,7 +16,7 @@ This package provides basic data structures and functions:
 
 ## Example usage
 
-```
+```haskell
 > import qualified Z.Data.Vector as V
 > import qualified Z.Data.Array as A
 >
