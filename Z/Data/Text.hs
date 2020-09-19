@@ -20,7 +20,10 @@ A 'Text' simply wraps a 'Bytes' that are UTF-8 encoded codepoints, you can use '
 module Z.Data.Text (
   -- * Text type
     Text, getUTF8Bytes
-  , validate, validateMaybe
+  , validate
+  , InvalidUTF8Exception(..)
+  , validateMaybe
+  , indexMaybe, indexMaybeR
   -- * Basic creating
   , empty, singleton, copy
   -- * Building text

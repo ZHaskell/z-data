@@ -78,11 +78,12 @@ specialized these functions, it should be regarded as a bug either in this libra
 module Z.Data.Vector (
   -- * The Vec typeclass
     Vec(IArray)
+  , indexMaybe
   -- * Boxed and unboxed vector type
   , Vector
   , PrimVector
   -- ** Word8 vector
-  , Bytes, packASCII
+  , Bytes, packASCII, w2c, c2w
   -- * Basic creating
   , empty, singleton, copy
   -- * Conversion between list

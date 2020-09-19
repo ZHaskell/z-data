@@ -27,11 +27,10 @@ module Z.Data.Text.Base (
   , validate
   , InvalidUTF8Exception(..)
   , validateMaybe
-  , replicate
-  , cycleN
   , indexMaybe, charByteIndex, indexMaybeR, charByteIndexR
   -- * Basic creating
   , empty, singleton, copy
+  , replicate , cycleN
   -- * Conversion between list
   , pack, packN, packR, packRN
   , unpack, unpackR
