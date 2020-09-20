@@ -19,14 +19,13 @@ A 'Text' simply wraps a 'Bytes' that are UTF-8 encoded codepoints, you can use '
 
 module Z.Data.Text (
   -- * Text type
-    Text, getUTF8Bytes
+    Text(..)
   , validate
   , InvalidUTF8Exception(..)
   , validateMaybe
-  , indexMaybe, indexMaybeR
+  , index, indexMaybe, indexR, indexMaybeR
   -- * Basic creating
   , empty, singleton, copy
-  -- * Building text
   , replicate, cycleN
   -- * Conversion between list
   , pack, packN, packR, packRN
@@ -44,8 +43,6 @@ module Z.Data.Text (
   , concat, concatMap
     -- ** Special folds
   , count, all, any
-  -- * Searching by equality
-  , elem, notElem
   -- * Slice manipulation
   , cons, snoc
   , uncons, unsnoc
@@ -72,6 +69,8 @@ module Z.Data.Text (
   , intercalateElem
   , transpose
   -- * Search
+  -- ** searching by equality
+  , elem, notElem
   -- ** element-wise search
   , find, findR
   , filter, partition

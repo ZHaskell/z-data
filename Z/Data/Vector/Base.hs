@@ -45,8 +45,7 @@ module Z.Data.Vector.Base (
   , Vector(..)
   , PrimVector(..)
   -- ** Word8 vector
-  , Bytes, packASCII
-  , w2c, c2w
+  , Bytes, packASCII, w2c, c2w
   -- * Creating utilities
   , create, create', creating, creating', createN, createN2
   , empty, singleton, copy
@@ -62,8 +61,7 @@ module Z.Data.Vector.Base (
   , foldr', ifoldr', foldr1', foldr1Maybe'
     -- ** Special folds
   , concat, concatMap
-  , maximum, minimum
-  , maximumMaybe, minimumMaybe
+  , maximum, minimum, maximumMaybe, minimumMaybe
   , sum
   , count
   , product, product'

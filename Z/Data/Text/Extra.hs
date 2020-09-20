@@ -30,8 +30,7 @@ module Z.Data.Text.Extra (
   , splitAt
   , takeWhile, takeWhileR, dropWhile, dropWhileR, dropAround
   , break, span
-  , breakR, spanR, breakOn
-  , breakOnAll, breakOnAllOverlapping
+  , breakR, spanR, breakOn, breakOnAll
   , group, groupBy
   , stripPrefix, stripSuffix
   , split, splitWith, splitOn
@@ -305,14 +304,6 @@ breakOnAll :: Text  -- ^ needle to search for
 {-# INLINE breakOnAll #-}
 breakOnAll (Text needle) (Text haystack@(V.PrimVector arr s l)) =
     List.map breaker (V.indices needle haystack False)
-  where
-    breaker i = (Text (V.PrimVector arr s (i-s)), Text (V.PrimVector arr i (s+l-i)))
-
--- | Overlapping version of 'breakOnAll'.
-breakOnAllOverlapping :: Text -> Text -> [(Text, Text)]
-{-# INLINE breakOnAllOverlapping #-}
-breakOnAllOverlapping (Text needle) (Text haystack@(V.PrimVector arr s l)) =
-    List.map breaker (V.indicesOverlapping needle haystack False)
   where
     breaker i = (Text (V.PrimVector arr s (i-s)), Text (V.PrimVector arr i (s+l-i)))
 

@@ -27,7 +27,7 @@ module Z.Data.Text.Base (
   , validate
   , InvalidUTF8Exception(..)
   , validateMaybe
-  , indexMaybe, charByteIndex, indexMaybeR, charByteIndexR
+  , index, indexMaybe, charByteIndex, indexR, indexMaybeR, charByteIndexR
   -- * Basic creating
   , empty, singleton, copy
   , replicate , cycleN
@@ -214,6 +214,14 @@ packUTF8Addr addr0# = validateAndCopy addr0#
             arr <- unsafeFreezePrimArray marr
             return $ Text (PrimVector arr 0 len)
 
+-- | /O(n)/ Get the nth codepoint from 'Text', throw @V.IndexOutOfVectorRange n callStack@
+-- when out of bound.
+index :: HasCallstack => Text -> Int -> Maybe Char
+{-# INLINABLE index #-}
+index t n = case t `indexMaybe` n of Nothing -> throw (IndexOutOfVectorRange n callStack)
+                                     Just x  -> x
+
+
 -- | /O(n)/ Get the nth codepoint from 'Text'.
 indexMaybe :: Text -> Int -> Maybe Char
 {-# INLINABLE indexMaybe #-}
@@ -242,6 +250,13 @@ charByteIndex (Text (V.PrimVector ba s l)) n
         | i >= end = i
         | j >= n = i
         | otherwise = let l' = decodeCharLen ba i in go (i+l') (j+1)
+
+-- | /O(n)/ Get the nth codepoint from 'Text' counting from the end,
+-- throw @V.IndexOutOfVectorRange n callStack@ when out of bound.
+indexR :: HasCallstack => Text -> Int -> Maybe Char
+{-# INLINABLE indexR #-}
+indexR t n = case t `indexMaybeR` n of Nothing -> throw (IndexOutOfVectorRange n callStack)
+                                       Just x  -> x
 
 -- | /O(n)/ Get the nth codepoint from 'Text' counting from the end.
 indexMaybeR :: Text -> Int -> Maybe Char

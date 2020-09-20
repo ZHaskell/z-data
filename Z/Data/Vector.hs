@@ -78,7 +78,7 @@ specialized these functions, it should be regarded as a bug either in this libra
 module Z.Data.Vector (
   -- * The Vec typeclass
     Vec(IArray)
-  , indexMaybe
+  , indexMaybe, index, indexM
   -- * Boxed and unboxed vector type
   , Vector
   , PrimVector
@@ -98,7 +98,7 @@ module Z.Data.Vector (
   , foldr', ifoldr', foldr1', foldr1Maybe'
     -- ** Special folds
   , concat, concatMap
-  , maximumMaybe, minimumMaybe
+  , maximum, minimum, maximumMaybe, minimumMaybe
   , sum
   , count
   , product, product'
@@ -112,8 +112,6 @@ module Z.Data.Vector (
   , cycleN
   , unfoldr
   , unfoldrN
-  -- * Searching by equality
-  , elem, notElem, elemIndex
   -- * Slice manipulation
   , cons, snoc
   , uncons, unsnoc
@@ -144,6 +142,8 @@ module Z.Data.Vector (
   , scanl', scanl1'
   , scanr', scanr1'
   -- * Search
+  -- ** searching by equality
+  , elem, notElem, elemIndex
   -- ** element-wise search
   , find, findR
   , findIndices, elemIndices
