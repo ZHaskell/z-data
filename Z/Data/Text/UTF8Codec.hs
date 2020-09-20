@@ -167,6 +167,7 @@ decodeChar# ba# idx# = case indexWord8Array# ba# idx# of
                 w4# = indexWord8Array# ba# (idx# +# 3#)
             in (# chr4# w1# w2# w3# w4#, 4# #)
 
+
 -- | Decode a codepoint's length in bytes
 --
 -- This function assumed all bytes are UTF-8 encoded, and the index param point to the
@@ -182,7 +183,7 @@ decodeCharLen (PrimArray ba#) (I# idx#) =
 -- This function is marked as @NOINLINE@ to reduce code size, and stop messing up simplifier
 -- due to too much branches.
 decodeCharLen# :: ByteArray# -> Int# -> Int#
-{-# INLINE decodeCharLen# #-} -- This branchy code make GHC impossible to fuse, DON'T inline
+{-# INLINE decodeCharLen# #-}
 decodeCharLen# ba# idx# = case indexWord8Array# ba# idx# of
     w1#
         | isTrue# (w1# `leWord#` 0x7F##) -> 1#
