@@ -61,10 +61,10 @@ module Z.Foreign
   ( -- ** Unsafe FFI
     withPrimArrayUnsafe
   , withMutablePrimArrayUnsafe
-  , allocMutableByteArrayUnsafe
   , withPrimVectorUnsafe
   , withPrimUnsafe
   , allocPrimUnsafe
+  , allocBytesUnsafe
     -- ** Safe FFI
   , withPrimArraySafe
   , withMutablePrimArraySafe
@@ -72,6 +72,7 @@ module Z.Foreign
   , withPrimVectorSafe
   , withPrimSafe
   , allocPrimSafe
+  , allocBytesSafe
     -- ** Pointer helpers
   , BA#, MBA#
   , clearPtr
@@ -85,6 +86,7 @@ import           Data.Primitive
 import           Data.Primitive.Ptr
 import           Foreign.C.Types
 import           GHC.Ptr
+import           GHC.Prim
 import           Z.Data.Array
 import           Z.Data.Vector.Base
 
@@ -145,10 +147,10 @@ withMutablePrimArrayUnsafe :: (Prim a) => MutablePrimArray RealWorld a
 withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
     getSizeofMutablePrimArray mpa >>= f mba#
 
-allocMutableByteArrayUnsafe :: Int      -- ^ In bytes not element
-                            -> (MBA# a -> IO b) -> IO b
-{-# INLINE allocMutableByteArrayUnsafe #-}
-allocMutableByteArrayUnsafe len f = do
+allocBytesUnsafe :: Int      -- ^ In bytes not element
+                  -> (MBA# a -> IO b) -> IO b
+{-# INLINE allocBytesUnsafe #-}
+allocBytesUnsafe len f = do
     (MutableByteArray mba#) <- newByteArray len
     f mba#
 
@@ -237,6 +239,15 @@ allocMutablePrimArraySafe :: (Prim a) => Int -- ^ in number of elements not byte
 allocMutablePrimArraySafe siz f = do
     buf <- newPinnedPrimArray siz
     withMutablePrimArrayContents buf f
+
+allocBytesSafe :: Int -- ^ in number of bytes
+               -> (Ptr a -> IO b) -> IO b
+{-# INLINE allocBytesSafe #-}
+allocBytesSafe siz f = do
+    (MutableByteArray buf#) <- newPinnedByteArray siz
+    r <- f (Ptr (byteArrayContents# (unsafeCoerce# buf#)))
+    primitive_ (touch# buf#)
+    return r
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --

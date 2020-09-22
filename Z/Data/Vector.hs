@@ -168,7 +168,11 @@ module Z.Data.Vector (
   , vecW8, vecW16, vecW32, vecW64, vecWord
   , vecI8, vecI16, vecI32, vecI64, vecInt
   -- * Misc
-  , IPair(..)
+  , IPair(..), mapIPair'
+  , defaultInitSize
+  , chunkOverhead
+  , defaultChunkSize
+  , smallChunkSize
   , VectorException(..)
   , castVector
  ) where
