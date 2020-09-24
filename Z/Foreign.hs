@@ -74,7 +74,7 @@ module Z.Foreign
   , allocPrimSafe
     -- ** Pointer helpers
   , BA#, MBA#
-  , clearMBA, peekMBA, pokeMBA
+  , clearMBA
   , clearPtr
   , castPtr
   -- ** re-export
@@ -90,7 +90,6 @@ import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
 import           Foreign.C.Types
 import           GHC.Ptr
-import           GHC.Prim
 import           Z.Data.Array
 import           Z.Data.Array.UnalignedAccess
 import           Z.Data.Vector.Base
@@ -121,19 +120,11 @@ type BA# a = ByteArray#
 -- A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type MBA# a = MutableByteArray# RealWorld
 
--- | Read field from 'MBA#' with offset.
-peekMBA :: (UnalignedAccess x) => MBA# a -> Int -> IO x
-peekMBA mba# =  readWord8ArrayAs (MutableByteArray mba#)
-
--- | Write field to 'MBA#' ith offst.
-pokeMBA :: (UnalignedAccess x) => MBA# a -> Int -> x -> IO()
-pokeMBA mba# =  writeWord8ArrayAs (MutableByteArray mba#)
-
-clearMBA :: MBA# a -> IO ()
-clearMBA mba# = do
+-- | Clear 'MBA#' with given length to zero.
+clearMBA :: MBA# a -> Int -> IO ()
+clearMBA mba# len = do
     let mba = (MutableByteArray mba#)
-    siz <- getSizeofMutableByteArray mba
-    setByteArray mba 0 siz (0 :: Word8)
+    setByteArray mba 0 len (0 :: Word8)
 
 -- | Pass primitive array to unsafe FFI as pointer.
 --
@@ -172,15 +163,15 @@ withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
 -- This function allocate some unpinned bytes and pass to FFI as MBA#, example usage with hsc2hs:
 --
 -- @
---      allocMutableByteArrayUnsafe (#size c_struct) $ \ p ->
+--      allocMutableByteArrayUnsafe (#size c_struct) $ \ p -> do
 --
---          pokeMBA# p (#offset c_struct c_field1) field1
---          pokeMBA# p (#offset c_struct c_field2) field2
+--          pokeMBA p (#offset c_struct c_field1) field1
+--          pokeMBA p (#offset c_struct c_field2) field2
 --
 --          c_ffi p ....
 --
---          field1' <- peekMBA# p (#offset c_struct c_field1)
---          field2' <- peekMBA# p (#offset c_struct c_field2)
+--          field1' <- peekMBA p (#offset c_struct c_field1)
+--          field2' <- peekMBA p (#offset c_struct c_field2)
 --          ...
 --          return (CStruct field1' field2')
 -- @

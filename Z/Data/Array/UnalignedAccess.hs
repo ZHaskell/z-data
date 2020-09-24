@@ -5,6 +5,7 @@
 {-# LANGUAGE UnboxedTuples     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 
 {-|
@@ -41,11 +42,60 @@ newtype UnalignedSize a = UnalignedSize { getUnalignedSize :: Int } deriving (Sh
 
 -- | Primitive types which can be unaligned accessed
 --
+-- It can also be used as a lightweight method to peek\/poke value from\/to C structs
+-- when you pass 'MutableByteArray#' to FFI as struct pointer, e.g.
+--
+-- @
+--  -- | note the .hsc syntax
+--  peekSocketAddrMBA :: HasCallStack => MBA## SocketAddr -> IO SocketAddr
+--  peekSocketAddrMBA p = do
+--      family <- peekMBA p (#offset struct sockaddr, sa_family)
+--      case family :: CSaFamily of
+--          (#const AF_INET) -> do
+--              addr <- peekMBA p (#offset struct sockaddr_in, sin_addr)
+--              port <- peekMBA p (#offset struct sockaddr_in, sin_port)
+--              return (SocketAddrInet (PortNumber port) addr)
+--          ....
+-- @
+--
 class UnalignedAccess a where
+    {-# MINIMAL unalignedSize, indexWord8ArrayAs#, writeWord8ArrayAs#, readWord8ArrayAs# |
+        unalignedSize, indexBA, peekMBA, pokeMBA #-}
+    -- | byte size
     unalignedSize :: UnalignedSize a
-    writeWord8ArrayAs# :: MutableByteArray# s -> Int# -> a -> State# s -> State# s
-    readWord8ArrayAs#  :: MutableByteArray# s -> Int# -> State# s -> (# State# s, a #)
+
+    -- | index element off byte array with offset in bytes(maybe unaligned)
     indexWord8ArrayAs# :: ByteArray# -> Int# -> a
+    {-# INLINE indexWord8ArrayAs# #-}
+    indexWord8ArrayAs# ba# i# = indexBA ba# (I# i#)
+
+    -- | read element from byte array with offset in bytes(maybe unaligned)
+    readWord8ArrayAs#  :: MutableByteArray# s -> Int# -> State# s -> (# State# s, a #)
+    {-# INLINE  readWord8ArrayAs# #-}
+    readWord8ArrayAs# mba# i# s# =
+        (unsafeCoerce# (peekMBA (unsafeCoerce# mba#) (I# i#) :: IO a)) s#
+
+    -- | write element to byte array with offset in bytes(maybe unaligned)
+    writeWord8ArrayAs# :: MutableByteArray# s -> Int# -> a -> State# s -> State# s
+    {-# INLINE  writeWord8ArrayAs# #-}
+    writeWord8ArrayAs# mba# i# x s# =
+        unsafeCoerce# (pokeMBA (unsafeCoerce# mba#) (I# i#) x) s#
+
+    -- | IO version of 'writeWord8ArrayAs#' but more convenient to write manually.
+    peekMBA :: MutableByteArray# RealWorld -> Int -> IO a
+    {-# INLINE peekMBA #-}
+    peekMBA mba# (I# i#) = primitive (readWord8ArrayAs# mba# i#)
+
+    -- | IO version of 'readWord8ArrayAs#' but more convenient to write manually.
+    pokeMBA  :: MutableByteArray# RealWorld -> Int -> a -> IO ()
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# (I# i#) x = primitive_ (writeWord8ArrayAs# mba# i# x)
+
+    -- | index element off byte array with offset in bytes(maybe unaligned)
+    indexBA :: ByteArray# -> Int -> a
+    {-# INLINE indexBA #-}
+    indexBA ba# (I# i#) = indexWord8ArrayAs# ba# i#
+
 
 -- | Lifted version of 'writeWord8ArrayAs#'
 writeWord8ArrayAs :: (PrimMonad m, UnalignedAccess a) => MutableByteArray (PrimState m) -> Int -> a -> m ()

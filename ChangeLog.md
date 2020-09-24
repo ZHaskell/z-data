@@ -1,6 +1,11 @@
 # Revision history for Z-Data
 
-## 0.1.3.0  -- 2020-09-19
+## 0.1.3.1  -- 2020-09-24
+
+* Change `clearMBA` 's type to match `clearPtr`.
+* Move `peekMBA`, `pokeMBA` to `UnalignedAccess` class.
+
+## 0.1.3.0  -- 2020-09-20
 
 * Add indexing funtion to `Z.Data.Vector` and `Z.Data.Text`.
 * Add `peekMBA`, `pokeMBA` and `clearMBA` to `Z.Foreign`.
