@@ -80,12 +80,13 @@ module Z.Foreign
   -- ** re-export
   , module Data.Primitive.ByteArray
   , module Data.Primitive.Ptr
-  , module Z.Array.UnalignedAccess
+  , module Z.Data.Array.UnalignedAccess
   ) where
 
 import           Control.Monad.Primitive
 import           Data.Primitive
 import           Data.Primitive.Ptr
+import           Data.Primitive.ByteArray
 import           Foreign.C.Types
 import           GHC.Ptr
 import           GHC.Prim
