@@ -78,7 +78,9 @@ module Z.Foreign
   , clearPtr
   , castPtr
   -- ** re-export
+  , module Data.Primitive.ByteArray
   , module Data.Primitive.Ptr
+  , module Z.Array.UnalignedAccess
   ) where
 
 import           Control.Monad.Primitive
