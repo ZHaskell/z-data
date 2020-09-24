@@ -709,7 +709,7 @@ foreign import ccall unsafe "static grisu3" c_grisu3
 grisu3 :: Double -> ([Int], Int)
 {-# INLINE grisu3 #-}
 grisu3 d = unsafePerformIO $
-    allocBytesUnsafe GRISU3_DOUBLE_BUF_LEN $ \ pBuf -> do
+    allocMutableByteArrayUnsafe GRISU3_DOUBLE_BUF_LEN $ \ pBuf -> do
         (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
             allocPrimUnsafe $ \ pE ->
                 c_grisu3 (realToFrac d) pBuf pLen pE
@@ -733,7 +733,7 @@ foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
 grisu3_sp :: Float -> ([Int], Int)
 {-# INLINE grisu3_sp #-}
 grisu3_sp d = unsafePerformIO $
-    allocBytesUnsafe GRISU3_SINGLE_BUF_LEN $ \ pBuf -> do
+    allocMutableByteArrayUnsafe GRISU3_SINGLE_BUF_LEN $ \ pBuf -> do
         (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
             allocPrimUnsafe $ \ pE ->
                 c_grisu3_sp (realToFrac d) pBuf pLen pE

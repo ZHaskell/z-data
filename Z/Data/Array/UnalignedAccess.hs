@@ -3,6 +3,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash         #-}
 {-# LANGUAGE UnboxedTuples     #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds #-}
 
 {-|
 Module      : Z.Data.Array.UnalignedAccess
@@ -18,14 +21,15 @@ This module implements unaligned element access with ghc primitives (> 8.6).
 
 module Z.Data.Array.UnalignedAccess where
 
+import           Control.Monad.Primitive
+import           Data.Primitive.ByteArray
+import           Data.Primitive.PrimArray
 import           GHC.Int
 import           GHC.Prim
 import           GHC.Types
 import           GHC.Word
 import           GHC.Float (stgFloatToWord32, stgWord32ToFloat, stgWord64ToDouble, stgDoubleToWord64)
-import           Control.Monad.Primitive
-import           Data.Primitive.ByteArray
-import           Data.Primitive.PrimArray
+import           Foreign.C.Types
 
 -- toggle these defs to test different implements
 #define USE_BSWAP
@@ -789,6 +793,7 @@ instance UnalignedAccess (BE Double) where
 
 --------------------------------------------------------------------------------
 
+-- | Char's instance use 31bit wide char prim-op.
 instance UnalignedAccess Char where
     {-# INLINE unalignedSize #-}
     unalignedSize = UnalignedSize 4
@@ -838,3 +843,32 @@ instance UnalignedAccess (BE Char) where
         in BE (C# (chr# x#))
 #endif
 
+--------------------------------------------------------------------------------
+
+-- Prim instances for newtypes in Foreign.C.Types
+deriving instance UnalignedAccess CChar
+deriving instance UnalignedAccess CSChar
+deriving instance UnalignedAccess CUChar
+deriving instance UnalignedAccess CShort
+deriving instance UnalignedAccess CUShort
+deriving instance UnalignedAccess CInt
+deriving instance UnalignedAccess CUInt
+deriving instance UnalignedAccess CLong
+deriving instance UnalignedAccess CULong
+deriving instance UnalignedAccess CPtrdiff
+deriving instance UnalignedAccess CSize
+deriving instance UnalignedAccess CWchar
+deriving instance UnalignedAccess CSigAtomic
+deriving instance UnalignedAccess CLLong
+deriving instance UnalignedAccess CULLong
+deriving instance UnalignedAccess CBool
+deriving instance UnalignedAccess CIntPtr
+deriving instance UnalignedAccess CUIntPtr
+deriving instance UnalignedAccess CIntMax
+deriving instance UnalignedAccess CUIntMax
+deriving instance UnalignedAccess CClock
+deriving instance UnalignedAccess CTime
+deriving instance UnalignedAccess CUSeconds
+deriving instance UnalignedAccess CSUSeconds
+deriving instance UnalignedAccess CFloat
+deriving instance UnalignedAccess CDouble

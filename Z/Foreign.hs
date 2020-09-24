@@ -62,9 +62,10 @@ module Z.Foreign
     withPrimArrayUnsafe
   , withMutablePrimArrayUnsafe
   , withPrimVectorUnsafe
+  , allocMutableByteArrayUnsafe
+  , peekMBA, pokeMBA
   , withPrimUnsafe
   , allocPrimUnsafe
-  , allocBytesUnsafe
     -- ** Safe FFI
   , withPrimArraySafe
   , withMutablePrimArraySafe
@@ -72,7 +73,6 @@ module Z.Foreign
   , withPrimVectorSafe
   , withPrimSafe
   , allocPrimSafe
-  , allocBytesSafe
     -- ** Pointer helpers
   , BA#, MBA#
   , clearPtr
@@ -88,6 +88,7 @@ import           Foreign.C.Types
 import           GHC.Ptr
 import           GHC.Prim
 import           Z.Data.Array
+import           Z.Data.Array.UnalignedAccess
 import           Z.Data.Vector.Base
 
 -- | Type alias for 'ByteArray#'.
@@ -147,12 +148,40 @@ withMutablePrimArrayUnsafe :: (Prim a) => MutablePrimArray RealWorld a
 withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
     getSizeofMutablePrimArray mpa >>= f mba#
 
-allocBytesUnsafe :: Int      -- ^ In bytes not element
+
+-- | Allocate some bytes and pass to FFI as pointer.
+--
+-- This function allocate some unpinned bytes and pass to FFI as MBA#, example usage with hsc2hs:
+--
+-- @
+--      allocMutableByteArrayUnsafe (#size c_struct) $ \ p ->
+--
+--          pokeMBA# p (#offset c_struct c_field1) field1
+--          pokeMBA# p (#offset c_struct c_field2) field2
+--
+--          c_ffi p ....
+--
+--          field1' <- peekMBA# p (#offset c_struct c_field1)
+--          field2' <- peekMBA# p (#offset c_struct c_field2)
+--          ...
+--          return (CStruct field1' field2')
+-- @
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
+allocMutableByteArrayUnsafe :: Int      -- ^ number of bytes
                   -> (MBA# a -> IO b) -> IO b
-{-# INLINE allocBytesUnsafe #-}
-allocBytesUnsafe len f = do
+{-# INLINE allocMutableByteArrayUnsafe #-}
+allocMutableByteArrayUnsafe len f = do
     (MutableByteArray mba#) <- newByteArray len
     f mba#
+
+-- | Read field from 'MBA#' with offset.
+peekMBA :: (UnalignedAccess x) => MBA# a -> Int -> IO x
+peekMBA mba# =  readWord8ArrayAs (MutableByteArray mba#)
+
+-- | Write field to 'MBA#' ith offst.
+pokeMBA :: (UnalignedAccess x) => MBA# a -> Int -> x -> IO()
+pokeMBA mba# =  writeWord8ArrayAs (MutableByteArray mba#)
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
@@ -185,6 +214,7 @@ withPrimUnsafe v f = do
     !a <- readPrimArray mpa 0
     return (a, b)
 
+-- | like 'withPrimUnsafe', but don't write initial value.
 allocPrimUnsafe :: (Prim a) => (MBA# a -> IO b) -> IO (a, b)
 {-# INLINE allocPrimUnsafe #-}
 allocPrimUnsafe f = do
@@ -198,7 +228,7 @@ allocPrimUnsafe f = do
 -- | Pass primitive array to safe FFI as pointer.
 --
 -- Use proper pointer type and @CSize/CSsize@ to marshall @Ptr a@ and @Int@ arguments on C side.
--- The memory pointed by 'Ptr a' will not moved.
+-- The memory pointed by 'Ptr a' will not moved during call. After call returned, pointer is no longer valid.
 --
 -- The second 'Int' arguement is the element size not the bytes size.
 --
@@ -218,7 +248,7 @@ withPrimArraySafe arr f
 
 -- | Pass mutable primitive array to unsafe FFI as pointer.
 --
--- The mutable version of 'withPrimArraySafe'.
+-- The mutable version of 'withPrimArraySafe'. After call returned, pointer is no longer valid.
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withMutablePrimArraySafe :: (Prim a) => MutablePrimArray RealWorld a -> (Ptr a -> Int -> IO b) -> IO b
@@ -233,6 +263,9 @@ withMutablePrimArraySafe marr f
         copyMutablePrimArray buf 0 marr 0 siz
         withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
 
+-- | Allocate a primitive array and pass to FFI as pointer.
+--
+-- After call returned, pointer is no longer valid.
 allocMutablePrimArraySafe :: (Prim a) => Int -- ^ in number of elements not bytes
                           -> (Ptr a -> IO b) -> IO b
 {-# INLINE allocMutablePrimArraySafe #-}
@@ -240,19 +273,10 @@ allocMutablePrimArraySafe siz f = do
     buf <- newPinnedPrimArray siz
     withMutablePrimArrayContents buf f
 
-allocBytesSafe :: Int -- ^ in number of bytes
-               -> (Ptr a -> IO b) -> IO b
-{-# INLINE allocBytesSafe #-}
-allocBytesSafe siz f = do
-    (MutableByteArray buf#) <- newPinnedByteArray siz
-    r <- f (Ptr (byteArrayContents# (unsafeCoerce# buf#)))
-    primitive_ (touch# buf#)
-    return r
-
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
 -- The 'PrimVector' version of 'withPrimArraySafe'. The 'Ptr' is already pointed
--- to the first element, thus no offset is provided.
+-- to the first element, thus no offset is provided. After call returned, pointer is no longer valid.
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withPrimVectorSafe :: forall a b. Prim a => PrimVector a -> (Ptr a -> Int -> IO b) -> IO b
@@ -280,6 +304,7 @@ withPrimSafe v f = do
     !a <- readPrimArray buf 0
     return (a, b)
 
+-- | like 'withPrimSafe', but don't write initial value.
 allocPrimSafe :: forall a b. Prim a => (Ptr a -> IO b) -> IO (a, b)
 {-# INLINE allocPrimSafe #-}
 allocPrimSafe f = do
