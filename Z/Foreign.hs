@@ -63,7 +63,6 @@ module Z.Foreign
   , withMutablePrimArrayUnsafe
   , withPrimVectorUnsafe
   , allocMutableByteArrayUnsafe
-  , peekMBA, pokeMBA
   , withPrimUnsafe
   , allocPrimUnsafe
     -- ** Safe FFI
@@ -75,6 +74,7 @@ module Z.Foreign
   , allocPrimSafe
     -- ** Pointer helpers
   , BA#, MBA#
+  , clearMBA, peekMBA, pokeMBA
   , clearPtr
   , castPtr
   -- ** re-export
@@ -85,6 +85,7 @@ module Z.Foreign
 
 import           Control.Monad.Primitive
 import           Data.Primitive
+import           Data.Word
 import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
 import           Foreign.C.Types
@@ -119,6 +120,20 @@ type BA# a = ByteArray#
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY.
 -- A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type MBA# a = MutableByteArray# RealWorld
+
+-- | Read field from 'MBA#' with offset.
+peekMBA :: (UnalignedAccess x) => MBA# a -> Int -> IO x
+peekMBA mba# =  readWord8ArrayAs (MutableByteArray mba#)
+
+-- | Write field to 'MBA#' ith offst.
+pokeMBA :: (UnalignedAccess x) => MBA# a -> Int -> x -> IO()
+pokeMBA mba# =  writeWord8ArrayAs (MutableByteArray mba#)
+
+clearMBA :: MBA# a -> IO ()
+clearMBA mba# = do
+    let mba = (MutableByteArray mba#)
+    siz <- getSizeofMutableByteArray mba
+    setByteArray mba 0 siz (0 :: Word8)
 
 -- | Pass primitive array to unsafe FFI as pointer.
 --
@@ -177,14 +192,6 @@ allocMutableByteArrayUnsafe :: Int      -- ^ number of bytes
 allocMutableByteArrayUnsafe len f = do
     (MutableByteArray mba#) <- newByteArray len
     f mba#
-
--- | Read field from 'MBA#' with offset.
-peekMBA :: (UnalignedAccess x) => MBA# a -> Int -> IO x
-peekMBA mba# =  readWord8ArrayAs (MutableByteArray mba#)
-
--- | Write field to 'MBA#' ith offst.
-pokeMBA :: (UnalignedAccess x) => MBA# a -> Int -> x -> IO()
-pokeMBA mba# =  writeWord8ArrayAs (MutableByteArray mba#)
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
