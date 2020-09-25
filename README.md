@@ -6,7 +6,7 @@
 
 [![Linux Build Status](https://github.com/haskell-Z/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
 
-[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/oxs-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
+[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
 
 This package provides basic data structures and functions:
 
