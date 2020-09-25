@@ -4,7 +4,9 @@
 
 ## Z-Data
 
-[![Linux Build Status](https://img.shields.io/travis/haskell-z/z-data/master.svg?label=Linux%20build)](https://travis-ci.org/haskell-z/z-data)
+[![Linux Build Status](https://github.com/haskell-Z/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
+
+[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/oxs-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
 
 This package provides basic data structures and functions:
 
@@ -13,6 +15,12 @@ This package provides basic data structures and functions:
 * FFI utilties
 * Parsing and building monad
 * JSON encoding and decoding
+
+## Requirements
+
+* A working haskell compiler system, GHC(>=8.10.2), cabal-install(>=3.4).
+
+* Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 
 ## Example usage
 

@@ -79,6 +79,7 @@ module Z.Foreign
   , castPtr
   -- ** re-export
   , module Data.Primitive.ByteArray
+  , module Foreign.C.Types
   , module Data.Primitive.Ptr
   , module Z.Data.Array.UnalignedAccess
   ) where
@@ -160,7 +161,11 @@ withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
 
 -- | Allocate some bytes and pass to FFI as pointer.
 --
--- This function allocate some unpinned bytes and pass to FFI as MBA#, example usage with hsc2hs:
+-- This function allocate some unpinned bytes and pass to FFI as MBA#, you should prefer
+-- use this function (together with 'UalignedAccess') if no safe FFI is needed, since
+-- this unpinned byte array can be easily collected.
+--
+-- example usage with hsc2hs:
 --
 -- @
 --      allocMutableByteArrayUnsafe (#size c_struct) $ \ p -> do
@@ -177,7 +182,7 @@ withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
 -- @
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocMutableByteArrayUnsafe :: Int      -- ^ number of bytes
+allocMutableByteArrayUnsafe :: Int              -- ^ number of bytes
                   -> (MBA# a -> IO b) -> IO b
 {-# INLINE allocMutableByteArrayUnsafe #-}
 allocMutableByteArrayUnsafe len f = do
