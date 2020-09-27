@@ -81,9 +81,6 @@ Object [("foo",Number 1.0e-2)]
 
 ## Dev guide
 
-+ GHC(>=8.10.2) 
-+ cabal-install(>=3.4)
-
 ```bash
 # get code
 git clone --recursive git@github.com:haskell-Z/z-data.git 

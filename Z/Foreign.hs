@@ -72,6 +72,8 @@ module Z.Foreign
   , withPrimVectorSafe
   , withPrimSafe
   , allocPrimSafe
+  , pinPrimArray
+  , pinPrimVector
     -- ** Pointer helpers
   , BA#, MBA#
   , clearMBA
@@ -279,7 +281,7 @@ allocMutablePrimArraySafe siz f = do
     buf <- newPinnedPrimArray siz
     withMutablePrimArrayContents buf f
 
--- | Pass 'PrimVector' to unsafe FFI as pointer
+-- | Pass 'PrimVector' to safe FFI as pointer
 --
 -- The 'PrimVector' version of 'withPrimArraySafe'. The 'Ptr' is already pointed
 -- to the first element, thus no offset is provided. After call returned, pointer is no longer valid.
@@ -318,6 +320,29 @@ allocPrimSafe f = do
     !b <- withMutablePrimArrayContents buf $ \ ptr -> f ptr
     !a <- readPrimArray buf 0
     return (a, b)
+
+-- | Convert a 'PrimArray' to a pinned one(memory won't moved by GC) if necessary.
+pinPrimArray :: Prim a => PrimArray a -> IO (PrimArray a)
+{-# INLINE pinPrimArray #-}
+pinPrimArray arr
+    | isPrimArrayPinned arr = return arr
+    | otherwise = do
+        let l = sizeofPrimArray arr
+        buf <- newPinnedPrimArray l
+        copyPrimArray buf 0 arr 0 l
+        arr' <- unsafeFreezePrimArray buf
+        return arr'
+
+-- | Convert a 'PrimVector' to a pinned one(memory won't moved by GC) if necessary.
+pinPrimVector :: Prim a => PrimVector a -> IO (PrimVector a)
+{-# INLINE pinPrimVector #-}
+pinPrimVector v@(PrimVector pa s l)
+    | isPrimArrayPinned pa = return v
+    | otherwise = do
+        buf <- newPinnedPrimArray l
+        copyPrimArray buf 0 pa s l
+        pa' <- unsafeFreezePrimArray buf
+        return (PrimVector pa' 0 l)
 
 --------------------------------------------------------------------------------
 
