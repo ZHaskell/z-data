@@ -182,7 +182,7 @@ value = "Z.Data.JSON.Value.value" <?> do
         C_t             -> P.bytes "true" $> (Bool True)
         C_n             -> P.bytes "null" $> Null
         _   | w >= 48 && w <= 57 || w == MINUS -> Number <$> P.scientific'
-            | otherwise -> fail "Z.Data.JSON.Value.value: not a valid json value"
+            | otherwise -> P.fail' "Z.Data.JSON.Value.value: not a valid json value"
 
 -- | parse json array with leading OPEN_SQUARE.
 array :: P.Parser (V.Vector Value)
@@ -262,7 +262,7 @@ string_ = do
             _ -> T.validateMaybe bs
     case mt of
         Just t -> P.skipWord8 $> t
-        _  -> fail "Z.Data.JSON.Value.string_: utf8 validation or unescaping failed"
+        _  -> P.fail' "Z.Data.JSON.Value.string_: utf8 validation or unescaping failed"
   where
     go :: Word32 -> V.Bytes -> Either Word32 (V.Bytes, V.Bytes, Word32)
     go !state v =

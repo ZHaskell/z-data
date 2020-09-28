@@ -346,7 +346,7 @@ scientificallyInternal' h = do
     !sign <- P.peek
     when (sign == MINUS) (P.skipWord8) -- no leading plus is allowed
     !intPart <- P.takeWhile1 isDigit
-    when (V.length intPart > 1 && V.head intPart == C_0) (fail "leading zeros are not allowed")
+    when (V.length intPart > 1 && V.head intPart == C_0) (P.fail' "leading zeros are not allowed")
     mdot <- P.peekMaybe
     !sci <- case mdot of
         Just DOT -> do
