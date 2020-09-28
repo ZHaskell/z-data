@@ -161,7 +161,7 @@ library
                             third_party/utf8rewind/source/utf8rewind.c
 
     default-language:       Haskell2010
-    build-tools:            hsc2hs, hspec-discover
+    build-tool-depends:     hsc2hs:hsc2hs, hspec-discover:hspec-discover
     cc-options:             -march=native
     ghc-options:            -Wall 
                             -Wno-unticked-promoted-constructors
