@@ -44,6 +44,9 @@ jobs:
             export PATH=$HOME/.cabal/bin:$PATH
 
       - run: cabal v2-build $CONFIG
-      - run: cabal v2-test --test-show-details=direct
+      - if: matrix.cabal == 2.4.1.0
+        run: cabal v2-test 
+      - if: matrix.cabal == 3.4.0.0
+        run: cabal v2-test --test-show-details=direct
       - run: cabal v2-haddock
       - run: cabal v2-sdist
