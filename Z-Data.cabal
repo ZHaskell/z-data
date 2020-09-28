@@ -168,7 +168,7 @@ library
                             -Wno-incomplete-patterns
                             -- ploymorphic pattern synonym messed exhaustiveness checker
     if os(windows)
-        extra-libraries:        ucrt    -- _get_current_locale
+        cc-options:         -D_UCRT
 
 test-suite Z-Data-Test
     type:                   exitcode-stdio-1.0
