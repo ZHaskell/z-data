@@ -53,7 +53,7 @@ module Z.Data.Parser
   , scientific'
   , scientifically'
     -- * Misc
-  , isSpace, isHexDigit, isDigit
+  , isSpace, isHexDigit, isDigit, fail'
   ) where
 
 import           Z.Data.Parser.Base

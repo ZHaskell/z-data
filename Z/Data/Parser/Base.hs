@@ -50,6 +50,7 @@ module Z.Data.Parser.Base
   , text
     -- * Misc
   , isSpace
+  , fail'
   ) where
 
 import           Control.Applicative
@@ -485,7 +486,7 @@ endOfLine = do
     case w of
         10 -> return ()
         13 -> word8 10
-        _  -> fail "Z.Data.Parser.Base.endOfLine: mismatch byte"
+        _  -> fail' "Z.Data.Parser.Base.endOfLine: mismatch byte"
 
 --------------------------------------------------------------------------------
 
@@ -627,7 +628,7 @@ takeWhile1 :: (Word8 -> Bool) -> Parser V.Bytes
 takeWhile1 p = do
     bs <- takeWhile p
     if V.null bs
-    then fail "Z.Data.Parser.Base.takeWhile1: no satisfied byte"
+    then fail' "Z.Data.Parser.Base.takeWhile1: no satisfied byte"
     else return bs
 
 -- | @bytes s@ parses a sequence of bytes that identically match @s@.
