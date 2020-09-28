@@ -77,12 +77,10 @@ import           Control.Monad.ST
 import           Control.Monad.ST.Unsafe            (unsafeInterleaveST)
 import           Data.Bits                          (shiftL, shiftR, (.&.))
 import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
-import           Data.String                        (IsString (..))
 import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
-import           GHC.Prim
-import           GHC.Ptr
+import           GHC.Exts
 import qualified Z.Data.Array                     as A
 import           Z.Data.Array.UnalignedAccess
 import qualified Z.Data.Text.Base                 as T

@@ -1,7 +1,8 @@
 # Revision history for Z-Data
 
-## 0.1.3.2  -- 2020-09-24
+## 0.1.4.0  -- 2020-09-24
 
+* Make library works with GHC 8.6 and 8.8 again.
 * Add `pinPrimVector` and `pinPrimArray` to `Z.Foreign`.
 
 ## 0.1.3.1  -- 2020-09-24

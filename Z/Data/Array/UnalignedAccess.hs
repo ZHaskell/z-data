@@ -7,6 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
 
 {-|
 Module      : Z.Data.Array.UnalignedAccess
@@ -26,8 +27,7 @@ import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
 import           GHC.Int
-import           GHC.Prim
-import           GHC.Types
+import           GHC.Exts
 import           GHC.Word
 import           GHC.Float (stgFloatToWord32, stgWord32ToFloat, stgWord64ToDouble, stgDoubleToWord64)
 import           Foreign.C.Types

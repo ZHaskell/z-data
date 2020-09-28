@@ -67,8 +67,7 @@ import           Control.Monad
 import           Data.Bits
 import           Data.Char                 (ord)
 import           Data.Primitive.PrimArray
-import           GHC.Prim
-import           GHC.Ptr
+import           GHC.Exts
 import           Data.Word
 import           Data.Int
 import           Language.Haskell.TH

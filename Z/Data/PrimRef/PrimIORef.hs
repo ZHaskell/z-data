@@ -53,9 +53,8 @@ module Z.Data.PrimRef.PrimIORef
 
 import Data.Primitive.Types
 import Data.Primitive.ByteArray
-import GHC.Prim
-import GHC.Types
-import GHC.IO(stToIO)
+import GHC.Exts
+import GHC.IO
 import Z.Data.PrimRef.PrimSTRef
 
 -- | A mutable variable in the IO monad which can hold an instance of 'Prim'.

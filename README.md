@@ -18,7 +18,7 @@ This package provides basic data structures and functions:
 
 ## Requirements
 
-* A working haskell compiler system, GHC(>=8.10.2), cabal-install(>=3.4).
+* A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
 
 * Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 

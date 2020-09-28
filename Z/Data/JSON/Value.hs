@@ -58,7 +58,6 @@ import qualified Z.Data.Parser          as P
 import           Z.Data.Parser          ((<?>))
 import qualified Z.Data.Text            as T
 import           Z.Data.Text.Builder    (ToText)
-import qualified Z.Data.Text.Base       as T
 import           Z.Data.Vector.Base     as V
 import           Z.Data.Vector.Extra    as V
 import           Z.Foreign

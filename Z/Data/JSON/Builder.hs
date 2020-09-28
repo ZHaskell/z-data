@@ -41,7 +41,6 @@ import           GHC.Prim                 (unsafeCoerce#)
 import qualified Z.Data.Builder              as B
 import qualified Z.Data.Builder.Base         as B
 import qualified Z.Data.Text            as T
-import qualified Z.Data.Text.Base       as T
 import           Z.Data.Vector.Base     as V
 import           Z.Foreign
 import           Z.Data.JSON.Value      (Value(..))

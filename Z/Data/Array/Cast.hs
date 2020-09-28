@@ -24,8 +24,7 @@ module Z.Data.Array.Cast
     ( Cast(..)
     ) where
 
-import           GHC.Prim
-import           GHC.Types
+import           GHC.Exts
 import           GHC.Int
 import           GHC.Word
 #if WORD_SIZE_IN_BITS < 64

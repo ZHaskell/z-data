@@ -114,9 +114,9 @@ import           Data.Primitive
 import           Data.Primitive.Ptr
 import qualified Data.Traversable              as T
 import           Foreign.C
-import           GHC.CString
 import           GHC.Exts
 import           GHC.Stack
+import           GHC.CString
 import           GHC.Word
 import           Prelude                       hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,

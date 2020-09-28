@@ -25,7 +25,7 @@ module Z.Data.PrimRef.PrimSTRef
 import Data.Primitive.Types
 import Data.Primitive.ByteArray
 import GHC.ST
-import GHC.Types
+import GHC.Exts
 
 -- | A mutable variable in the ST monad which can hold an instance of 'Prim'.
 --

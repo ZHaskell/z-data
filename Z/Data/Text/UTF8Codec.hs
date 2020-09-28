@@ -20,9 +20,8 @@ module Z.Data.Text.UTF8Codec where
 import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
-import           GHC.Prim
+import           GHC.Exts
 import           GHC.ST
-import           GHC.Types
 import           GHC.Word
 
 -- | Return a codepoint's encoded length in bytes
