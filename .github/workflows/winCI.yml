@@ -8,6 +8,9 @@ jobs:
         ghc: ['8.6.5', '8.8.4']     #8.10.2 have linker problem
         cabal: ['2.4.1.0', '3.2.0.0']  
         exclude:
+          # GHC 8.6.5 and cabal 2.4.1.0 have linker issues
+          - ghc: 8.6.5
+            cabal: 2.4.1.0
           # GHC 8.8+ only works with cabal v3+
           - ghc: 8.8.4
             cabal: 2.4.1.0
