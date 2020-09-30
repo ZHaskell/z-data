@@ -20,7 +20,7 @@ Stability   : experimental
 Portability : non-portable
 
 A 'Builder' records a buffer writing function, which can be 'mappend' in O(1) via composition.
-In stdio a 'Builder' are designed to deal with different 'AllocateStrategy', it affects how
+In Z-Data a 'Builder' are designed to deal with different 'AllocateStrategy', it affects how
 'Builder' react when writing across buffer boundaries:
 
   * When building a short strict 'Bytes' with 'buildBytes/buildByteswith',

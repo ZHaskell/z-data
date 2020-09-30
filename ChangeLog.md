@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.1.4.1  -- 2020-09-29
+
+* Add `fromNullTerminated` to `Z.Foreign`(and `Z.Data.Vector.Base`).
+* Change `Category` and `Locale`(`Z.Data.Text`) to use pattern synonyms, add `envLocale` to `Z.Data.Text`.
+* Some document improvements.
+
 ## 0.1.4.0  -- 2020-09-24
 
 * Make library works with GHC 8.6 and 8.8 again.

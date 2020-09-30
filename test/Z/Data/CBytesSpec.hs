@@ -4,11 +4,13 @@
 
 module Z.Data.CBytesSpec where
 
-import qualified Data.List                as List
+import qualified Data.List                  as List
 import           Data.Word
-import           Data.Hashable            (hashWithSalt, hash)
-import qualified Z.Data.CBytes          as CB
-import qualified Z.Data.Vector.Base     as V
+import           Data.Hashable              (hashWithSalt, hash)
+import qualified Z.Data.CBytes              as CB
+import           Z.Foreign                  (fromNullTerminated)
+import qualified Z.Data.Vector.Base         as V
+import           System.IO.Unsafe
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
@@ -47,3 +49,8 @@ spec = describe "CBytes-base" $ do
     describe "CBytes append == List.(++)" $ do
         prop "CBytes eq === List.eq" $ \ xs ys ->
             (CB.pack xs `CB.append` CB.pack ys) === CB.pack (xs ++ ys)
+
+    describe "withCBytes fromNullTerminated  == toBytes" $ do
+        prop "CBytes eq === List.eq" $ \ xs ->
+            CB.toBytes (CB.pack xs) ===
+                (unsafeDupablePerformIO $ CB.withCBytes (CB.pack xs) fromNullTerminated)
