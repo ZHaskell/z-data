@@ -7,13 +7,16 @@
 {-|
 Module      : Z.Data.Text
 Description : Unicode text processing
-Copyright   : (c) Dong Han, 2017-2018
+Copyright   : (c) Dong Han, 2017-2020
 License     : BSD
 Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-A 'Text' simply wraps a 'Bytes' that are UTF-8 encoded codepoints, you can use 'validate' \/ 'validateMaybe' to construct a 'Text'.
+A 'Text' wrap a 'Bytes' which will be interpreted using UTF-8 encoding. User should always use 'validate' \/ 'validateMaybe' to construt a 'Text' (instead of using construtor directly or coercing), otherwise illegal UTF-8 encoded codepoints will cause undefined behaviours.
+
+This library also provide simple unicode processing based on <https://github.com/haskell-Z/utf8rewind/ utf8rewind>,
+see 'normalize', 'caseFold' (current using unicode 13 databases).
 
 -}
 
@@ -80,67 +83,12 @@ module Z.Data.Text (
   , isNormalized, isNormalizedTo, normalize, normalizeTo
     -- ** Case conversion
     -- $case
-  , Locale, localeDefault, localeLithuanian, localeTurkishAndAzeriLatin
+  , Locale(..)
+  , envLocale
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
-  , Category
-  , categoryLetterUppercase
-  , categoryLetterLowercase
-  , categoryLetterTitlecase
-  , categoryLetterOther
-  , categoryLetter
-  , categoryCaseMapped
-
-  , categoryMarkNonSpacing
-  , categoryMarkSpacing
-  , categoryMarkEnclosing
-  , categoryMark
-
-  , categoryNumberDecimal
-  , categoryNumberLetter
-  , categoryNumberOther
-  , categoryNumber
-
-  , categoryPunctuationConnector
-  , categoryPunctuationDash
-  , categoryPunctuationOpen
-  , categoryPunctuationClose
-  , categoryPunctuationInitial
-  , categoryPunctuationFinal
-  , categoryPunctuationOther
-  , categoryPunctuation
-
-  , categorySymbolMath
-  , categorySymbolCurrency
-  , categorySymbolModifier
-  , categorySymbolOther
-  , categorySymbol
-
-  , categorySeparatorSpace
-  , categorySeparatorLine
-  , categorySeparatorParagraph
-  , categorySeparator
-  , categoryControl
-  , categoryFormat
-  , categorySurrogate
-  , categoryPrivateUse
-  , categoryUnassigned
-  , categoryCompatibility
-  , categoryIgnoreGraphemeCluste
-  , categoryIscntrl
-
-  , categoryIsprint
-  , categoryIsspace
-  , categoryIsblank
-  , categoryIsgraph
-  , categoryIspunct
-  , categoryIsalnum
-  , categoryIsalpha
-  , categoryIsupper
-  , categoryIslower
-  , categoryIsdigit
-  , categoryIsxdigit
+  , Category(..)
  ) where
 
 import           Z.Data.Text.Base

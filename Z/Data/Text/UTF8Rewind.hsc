@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 {-|
 Module      : Z.Data.Text.UTF8Rewind
@@ -25,14 +26,15 @@ import GHC.Generics
 -- | Locale for case mapping.
 newtype Locale = Locale CSize deriving (Show, Eq, Ord, Generic)
 
-#{enum Locale, Locale, localeDefault    = UTF8_LOCALE_DEFAULT }
-#{enum Locale, Locale, localeLithuanian = UTF8_LOCALE_LITHUANIAN }
-#{enum Locale, Locale, localeTurkishAndAzeriLatin = UTF8_LOCALE_TURKISH_AND_AZERI_LATIN }
+pattern LocaleDefault              :: Locale 
+pattern LocaleDefault               = Locale (#const UTF8_LOCALE_DEFAULT)
+pattern LocaleLithuanian           :: Locale
+pattern LocaleLithuanian            = Locale (#const UTF8_LOCALE_LITHUANIAN)
+pattern LocaleTurkishAndAzeriLatin :: Locale
+pattern LocaleTurkishAndAzeriLatin  = Locale (#const UTF8_LOCALE_TURKISH_AND_AZERI_LATIN)
 
--- | see 'NormalizeMode' in Z.Data.Text.Base
-#{enum CSize, CSize, normalizeCompose       = UTF8_NORMALIZE_COMPOSE }
-#{enum CSize, CSize, normalizeDecompose     = UTF8_NORMALIZE_DECOMPOSE }
-#{enum CSize, CSize, normalizeCompatibility = UTF8_NORMALIZE_COMPATIBILITY }
+-- | Get environment locale
+foreign import ccall unsafe "utf8envlocale" envLocale :: IO Locale
 
 {-|
 These are the Unicode Normalization Forms:
@@ -63,64 +65,112 @@ toNormalizationResult #{const UTF8_NORMALIZATION_RESULT_NO} = NormalizedNo
 
 
 -- | Unicode categories.
+--
 -- See 'Z.Data.Text.Base.isCategory', you can combine categories with bitwise or.
 newtype Category = Category CSize deriving (Show, Eq, Ord, Bits, FiniteBits, Generic)
 
-#{enum Category, Category, categoryLetterUppercase        = UTF8_CATEGORY_LETTER_UPPERCASE }
-#{enum Category, Category, categoryLetterLowercase        = UTF8_CATEGORY_LETTER_LOWERCASE }
-#{enum Category, Category, categoryLetterTitlecase        = UTF8_CATEGORY_LETTER_TITLECASE }
-#{enum Category, Category, categoryLetterOther            = UTF8_CATEGORY_LETTER_OTHER }
-#{enum Category, Category, categoryLetter                 = UTF8_CATEGORY_LETTER }
-#{enum Category, Category, categoryCaseMapped             = UTF8_CATEGORY_CASE_MAPPED }
+pattern CategoryLetterUppercase       :: Category
+pattern CategoryLetterLowercase       :: Category
+pattern CategoryLetterTitlecase       :: Category
+pattern CategoryLetterOther           :: Category
+pattern CategoryLetter                :: Category
+pattern CategoryCaseMapped            :: Category
+pattern CategoryLetterUppercase        = Category (#const UTF8_CATEGORY_LETTER_UPPERCASE)
+pattern CategoryLetterLowercase        = Category (#const UTF8_CATEGORY_LETTER_LOWERCASE)
+pattern CategoryLetterTitlecase        = Category (#const UTF8_CATEGORY_LETTER_TITLECASE)
+pattern CategoryLetterOther            = Category (#const UTF8_CATEGORY_LETTER_OTHER)
+pattern CategoryLetter                 = Category (#const UTF8_CATEGORY_LETTER)
+pattern CategoryCaseMapped             = Category (#const UTF8_CATEGORY_CASE_MAPPED)
 
-#{enum Category, Category, categoryMarkNonSpacing         = UTF8_CATEGORY_MARK_NON_SPACING }
-#{enum Category, Category, categoryMarkSpacing            = UTF8_CATEGORY_MARK_SPACING }
-#{enum Category, Category, categoryMarkEnclosing          = UTF8_CATEGORY_MARK_ENCLOSING }
-#{enum Category, Category, categoryMark                   = UTF8_CATEGORY_MARK }
+pattern CategoryMarkNonSpacing        :: Category  
+pattern CategoryMarkSpacing           :: Category  
+pattern CategoryMarkEnclosing         :: Category  
+pattern CategoryMark                  :: Category  
+pattern CategoryMarkNonSpacing         = Category (#const UTF8_CATEGORY_MARK_NON_SPACING)
+pattern CategoryMarkSpacing            = Category (#const UTF8_CATEGORY_MARK_SPACING)
+pattern CategoryMarkEnclosing          = Category (#const UTF8_CATEGORY_MARK_ENCLOSING)
+pattern CategoryMark                   = Category (#const UTF8_CATEGORY_MARK)
 
-#{enum Category, Category, categoryNumberDecimal          = UTF8_CATEGORY_NUMBER_DECIMAL }
-#{enum Category, Category, categoryNumberLetter           = UTF8_CATEGORY_NUMBER_LETTER }
-#{enum Category, Category, categoryNumberOther            = UTF8_CATEGORY_NUMBER_OTHER }
-#{enum Category, Category, categoryNumber                 = UTF8_CATEGORY_NUMBER }
+pattern CategoryNumberDecimal         :: Category 
+pattern CategoryNumberLetter          :: Category 
+pattern CategoryNumberOther           :: Category 
+pattern CategoryNumber                :: Category 
+pattern CategoryNumberDecimal          = Category (#const UTF8_CATEGORY_NUMBER_DECIMAL)
+pattern CategoryNumberLetter           = Category (#const UTF8_CATEGORY_NUMBER_LETTER)
+pattern CategoryNumberOther            = Category (#const UTF8_CATEGORY_NUMBER_OTHER)
+pattern CategoryNumber                 = Category (#const UTF8_CATEGORY_NUMBER)
 
-#{enum Category, Category, categoryPunctuationConnector   = UTF8_CATEGORY_PUNCTUATION_CONNECTOR }
-#{enum Category, Category, categoryPunctuationDash        = UTF8_CATEGORY_PUNCTUATION_DASH }
-#{enum Category, Category, categoryPunctuationOpen        = UTF8_CATEGORY_PUNCTUATION_OPEN }
-#{enum Category, Category, categoryPunctuationClose       = UTF8_CATEGORY_PUNCTUATION_CLOSE }
-#{enum Category, Category, categoryPunctuationInitial     = UTF8_CATEGORY_PUNCTUATION_INITIAL }
-#{enum Category, Category, categoryPunctuationFinal       = UTF8_CATEGORY_PUNCTUATION_FINAL }
-#{enum Category, Category, categoryPunctuationOther       = UTF8_CATEGORY_PUNCTUATION_OTHER }
-#{enum Category, Category, categoryPunctuation            = UTF8_CATEGORY_PUNCTUATION }
+pattern CategoryPunctuationConnector  :: Category
+pattern CategoryPunctuationDash       :: Category
+pattern CategoryPunctuationOpen       :: Category
+pattern CategoryPunctuationClose      :: Category
+pattern CategoryPunctuationInitial    :: Category
+pattern CategoryPunctuationFinal      :: Category
+pattern CategoryPunctuationOther      :: Category
+pattern CategoryPunctuation           :: Category
+pattern CategoryPunctuationConnector   = Category (#const UTF8_CATEGORY_PUNCTUATION_CONNECTOR)
+pattern CategoryPunctuationDash        = Category (#const UTF8_CATEGORY_PUNCTUATION_DASH)
+pattern CategoryPunctuationOpen        = Category (#const UTF8_CATEGORY_PUNCTUATION_OPEN)
+pattern CategoryPunctuationClose       = Category (#const UTF8_CATEGORY_PUNCTUATION_CLOSE)
+pattern CategoryPunctuationInitial     = Category (#const UTF8_CATEGORY_PUNCTUATION_INITIAL)
+pattern CategoryPunctuationFinal       = Category (#const UTF8_CATEGORY_PUNCTUATION_FINAL)
+pattern CategoryPunctuationOther       = Category (#const UTF8_CATEGORY_PUNCTUATION_OTHER)
+pattern CategoryPunctuation            = Category (#const UTF8_CATEGORY_PUNCTUATION)
+pattern CategorySymbolMath            :: Category 
+pattern CategorySymbolCurrency        :: Category 
+pattern CategorySymbolModifier        :: Category 
+pattern CategorySymbolOther           :: Category 
+pattern CategorySymbol                :: Category 
+pattern CategorySymbolMath             = Category (#const UTF8_CATEGORY_SYMBOL_MATH)
+pattern CategorySymbolCurrency         = Category (#const UTF8_CATEGORY_SYMBOL_CURRENCY)
+pattern CategorySymbolModifier         = Category (#const UTF8_CATEGORY_SYMBOL_MODIFIER)
+pattern CategorySymbolOther            = Category (#const UTF8_CATEGORY_SYMBOL_OTHER)
+pattern CategorySymbol                 = Category (#const UTF8_CATEGORY_SYMBOL)
 
-#{enum Category, Category, categorySymbolMath             = UTF8_CATEGORY_SYMBOL_MATH }
-#{enum Category, Category, categorySymbolCurrency         = UTF8_CATEGORY_SYMBOL_CURRENCY }
-#{enum Category, Category, categorySymbolModifier         = UTF8_CATEGORY_SYMBOL_MODIFIER }
-#{enum Category, Category, categorySymbolOther            = UTF8_CATEGORY_SYMBOL_OTHER }
-#{enum Category, Category, categorySymbol                 = UTF8_CATEGORY_SYMBOL }
+pattern CategorySeparatorSpace        :: Category 
+pattern CategorySeparatorLine         :: Category 
+pattern CategorySeparatorParagraph    :: Category 
+pattern CategorySeparator             :: Category 
+pattern CategoryControl               :: Category 
+pattern CategoryFormat                :: Category 
+pattern CategorySurrogate             :: Category 
+pattern CategoryPrivateUse            :: Category 
+pattern CategoryUnassigned            :: Category 
+pattern CategoryCompatibility         :: Category 
+pattern CategoryIgnoreGraphemeCluster :: Category 
+pattern CategoryIscntrl               :: Category 
+pattern CategorySeparatorSpace         = Category (#const UTF8_CATEGORY_SEPARATOR_SPACE)
+pattern CategorySeparatorLine          = Category (#const UTF8_CATEGORY_SEPARATOR_LINE)
+pattern CategorySeparatorParagraph     = Category (#const UTF8_CATEGORY_SEPARATOR_PARAGRAPH)
+pattern CategorySeparator              = Category (#const UTF8_CATEGORY_SEPARATOR)
+pattern CategoryControl                = Category (#const UTF8_CATEGORY_CONTROL)
+pattern CategoryFormat                 = Category (#const UTF8_CATEGORY_FORMAT)
+pattern CategorySurrogate              = Category (#const UTF8_CATEGORY_SURROGATE)
+pattern CategoryPrivateUse             = Category (#const UTF8_CATEGORY_PRIVATE_USE)
+pattern CategoryUnassigned             = Category (#const UTF8_CATEGORY_UNASSIGNED)
+pattern CategoryCompatibility          = Category (#const UTF8_CATEGORY_COMPATIBILITY)
+pattern CategoryIgnoreGraphemeCluster  = Category (#const UTF8_CATEGORY_IGNORE_GRAPHEME_CLUSTER)
+pattern CategoryIscntrl                = Category (#const UTF8_CATEGORY_ISCNTRL)
 
-#{enum Category, Category, categorySeparatorSpace         = UTF8_CATEGORY_SEPARATOR_SPACE }
-#{enum Category, Category, categorySeparatorLine          = UTF8_CATEGORY_SEPARATOR_LINE }
-#{enum Category, Category, categorySeparatorParagraph     = UTF8_CATEGORY_SEPARATOR_PARAGRAPH }
-#{enum Category, Category, categorySeparator              = UTF8_CATEGORY_SEPARATOR }
-#{enum Category, Category, categoryControl                = UTF8_CATEGORY_CONTROL }
-#{enum Category, Category, categoryFormat                 = UTF8_CATEGORY_FORMAT }
-#{enum Category, Category, categorySurrogate              = UTF8_CATEGORY_SURROGATE }
-#{enum Category, Category, categoryPrivateUse             = UTF8_CATEGORY_PRIVATE_USE }
-#{enum Category, Category, categoryUnassigned             = UTF8_CATEGORY_UNASSIGNED }
-#{enum Category, Category, categoryCompatibility          = UTF8_CATEGORY_COMPATIBILITY }
-#{enum Category, Category, categoryIgnoreGraphemeCluste   = UTF8_CATEGORY_IGNORE_GRAPHEME_CLUSTER }
-#{enum Category, Category, categoryIscntrl                = UTF8_CATEGORY_ISCNTRL }
-
-#{enum Category, Category, categoryIsprint                = UTF8_CATEGORY_ISPRINT }
-#{enum Category, Category, categoryIsspace                = UTF8_CATEGORY_ISSPACE }
-#{enum Category, Category, categoryIsblank                = UTF8_CATEGORY_ISBLANK }
-#{enum Category, Category, categoryIsgraph                = UTF8_CATEGORY_ISGRAPH }
-#{enum Category, Category, categoryIspunct                = UTF8_CATEGORY_ISPUNCT }
-#{enum Category, Category, categoryIsalnum                = UTF8_CATEGORY_ISALNUM }
-#{enum Category, Category, categoryIsalpha                = UTF8_CATEGORY_ISALPHA }
-#{enum Category, Category, categoryIsupper                = UTF8_CATEGORY_ISUPPER }
-#{enum Category, Category, categoryIslower                = UTF8_CATEGORY_ISLOWER }
-#{enum Category, Category, categoryIsdigit                = UTF8_CATEGORY_ISDIGIT }
-#{enum Category, Category, categoryIsxdigit               = UTF8_CATEGORY_ISXDIGIT }
-
-foreign import ccall unsafe utf8envlocale :: IO Category
+pattern CategoryIsprint               :: Category
+pattern CategoryIsspace               :: Category
+pattern CategoryIsblank               :: Category
+pattern CategoryIsgraph               :: Category
+pattern CategoryIspunct               :: Category
+pattern CategoryIsalnum               :: Category
+pattern CategoryIsalpha               :: Category
+pattern CategoryIsupper               :: Category
+pattern CategoryIslower               :: Category
+pattern CategoryIsdigit               :: Category
+pattern CategoryIsxdigit              :: Category
+pattern CategoryIsprint                = Category (#const UTF8_CATEGORY_ISPRINT)
+pattern CategoryIsspace                = Category (#const UTF8_CATEGORY_ISSPACE)
+pattern CategoryIsblank                = Category (#const UTF8_CATEGORY_ISBLANK)
+pattern CategoryIsgraph                = Category (#const UTF8_CATEGORY_ISGRAPH)
+pattern CategoryIspunct                = Category (#const UTF8_CATEGORY_ISPUNCT)
+pattern CategoryIsalnum                = Category (#const UTF8_CATEGORY_ISALNUM)
+pattern CategoryIsalpha                = Category (#const UTF8_CATEGORY_ISALPHA)
+pattern CategoryIsupper                = Category (#const UTF8_CATEGORY_ISUPPER)
+pattern CategoryIslower                = Category (#const UTF8_CATEGORY_ISLOWER)
+pattern CategoryIsdigit                = Category (#const UTF8_CATEGORY_ISDIGIT)
+pattern CategoryIsxdigit               = Category (#const UTF8_CATEGORY_ISXDIGIT)                   

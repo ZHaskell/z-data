@@ -5,7 +5,9 @@ License     :  BSD-style
 Maintainer  :  winterland1989@gmail.com
 Stability   :  experimental
 Portability :  portable
+
 This module provide fast unboxed references for ST and IO monad, and atomic operations for 'Counter' type. Unboxed reference is implemented using single cell MutableByteArray s to eliminate indirection overhead which MutVar# s a carry, on the otherhand unboxed reference only support limited type(instances of Prim class).
+
 -}
 
 module Z.Data.PrimRef

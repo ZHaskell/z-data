@@ -79,6 +79,7 @@ module Z.Foreign
   , clearMBA
   , clearPtr
   , castPtr
+  , fromNullTerminated
   -- ** re-export
   , module Data.Primitive.ByteArray
   , module Foreign.C.Types
@@ -350,9 +351,21 @@ foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
 
 -- | Zero a structure.
 --
--- There's no 'Storable' or 'Prim' constraint on 'a' type, thus the length
+-- There's no 'Storable' or 'Prim' constraint on 'a' type, the length
 -- should be given in bytes.
 --
 clearPtr :: Ptr a -> Int -> IO ()
 {-# INLINE clearPtr #-}
 clearPtr dest nbytes = memset dest 0 (fromIntegral nbytes)
+
+-- | Copy some bytes from a null terminated pointer(without copy the null terminator).
+--
+-- There's no encoding guarantee, result could be any bytes sequence.
+fromNullTerminated :: Ptr a -> IO Bytes
+{-# INLINE fromNullTerminated #-}
+fromNullTerminated (Ptr addr#) = do
+    len <- fromIntegral <$> c_strlen addr#
+    marr <- newPrimArray len
+    copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
+    arr <- unsafeFreezePrimArray marr
+    return (PrimVector arr 0 len)

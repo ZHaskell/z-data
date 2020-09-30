@@ -1,6 +1,6 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.1.4.0
+version:                    0.1.4.1
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause
@@ -121,6 +121,7 @@ library
                           , template-haskell        >= 2.14.0
                           , unordered-containers    == 0.2.*
                           , tagged                  == 0.8.*
+                          , time                    >= 1.8
 
     if flag(integer-simple)
         cpp-options:        -DINTEGER_SIMPLE
@@ -167,8 +168,6 @@ library
                             -Wno-unticked-promoted-constructors
                             -Wno-incomplete-patterns
                             -- ploymorphic pattern synonym messed exhaustiveness checker
-    if os(windows)
-        cc-options:         -D_UCRT
 
 test-suite Z-Data-Test
     type:                   exitcode-stdio-1.0

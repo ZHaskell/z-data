@@ -52,67 +52,68 @@ module Z.Data.Text.Base (
   , isNormalized, isNormalizedTo, normalize, normalizeTo
     -- ** Case conversion
     -- $case
-  , Locale, localeDefault, localeLithuanian, localeTurkishAndAzeriLatin
+  , Locale(LocaleDefault, LocaleLithuanian, LocaleTurkishAndAzeriLatin)
+  , envLocale
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
-  , Category
-  , categoryLetterUppercase
-  , categoryLetterLowercase
-  , categoryLetterTitlecase
-  , categoryLetterOther
-  , categoryLetter
-  , categoryCaseMapped
+  , Category(
+        CategoryLetterUppercase
+      , CategoryLetterLowercase
+      , CategoryLetterTitlecase
+      , CategoryLetterOther
+      , CategoryLetter
+      , CategoryCaseMapped
 
-  , categoryMarkNonSpacing
-  , categoryMarkSpacing
-  , categoryMarkEnclosing
-  , categoryMark
+      , CategoryMarkNonSpacing
+      , CategoryMarkSpacing
+      , CategoryMarkEnclosing
+      , CategoryMark
 
-  , categoryNumberDecimal
-  , categoryNumberLetter
-  , categoryNumberOther
-  , categoryNumber
+      , CategoryNumberDecimal
+      , CategoryNumberLetter
+      , CategoryNumberOther
+      , CategoryNumber
 
-  , categoryPunctuationConnector
-  , categoryPunctuationDash
-  , categoryPunctuationOpen
-  , categoryPunctuationClose
-  , categoryPunctuationInitial
-  , categoryPunctuationFinal
-  , categoryPunctuationOther
-  , categoryPunctuation
+      , CategoryPunctuationConnector
+      , CategoryPunctuationDash
+      , CategoryPunctuationOpen
+      , CategoryPunctuationClose
+      , CategoryPunctuationInitial
+      , CategoryPunctuationFinal
+      , CategoryPunctuationOther
+      , CategoryPunctuation
 
-  , categorySymbolMath
-  , categorySymbolCurrency
-  , categorySymbolModifier
-  , categorySymbolOther
-  , categorySymbol
+      , CategorySymbolMath
+      , CategorySymbolCurrency
+      , CategorySymbolModifier
+      , CategorySymbolOther
+      , CategorySymbol
 
-  , categorySeparatorSpace
-  , categorySeparatorLine
-  , categorySeparatorParagraph
-  , categorySeparator
-  , categoryControl
-  , categoryFormat
-  , categorySurrogate
-  , categoryPrivateUse
-  , categoryUnassigned
-  , categoryCompatibility
-  , categoryIgnoreGraphemeCluste
-  , categoryIscntrl
+      , CategorySeparatorSpace
+      , CategorySeparatorLine
+      , CategorySeparatorParagraph
+      , CategorySeparator
+      , CategoryControl
+      , CategoryFormat
+      , CategorySurrogate
+      , CategoryPrivateUse
+      , CategoryUnassigned
+      , CategoryCompatibility
+      , CategoryIgnoreGraphemeCluster
+      , CategoryIscntrl
 
-  , categoryIsprint
-  , categoryIsspace
-  , categoryIsblank
-  , categoryIsgraph
-  , categoryIspunct
-  , categoryIsalnum
-  , categoryIsalpha
-  , categoryIsupper
-  , categoryIslower
-  , categoryIsdigit
-  , categoryIsxdigit
+      , CategoryIsprint
+      , CategoryIsspace
+      , CategoryIsblank
+      , CategoryIsgraph
+      , CategoryIspunct
+      , CategoryIsalnum
+      , CategoryIsalpha
+      , CategoryIsupper
+      , CategoryIslower
+      , CategoryIsdigit
+      , CategoryIsxdigit)
   -- * Misc
   , c_utf8_validate_ba
   , c_utf8_validate_addr
@@ -206,8 +207,8 @@ packUTF8Addr addr0# = validateAndCopy addr0#
     valid = unsafeDupablePerformIO $ c_utf8_validate_addr addr0# len
     validateAndCopy addr#
         | valid == 0 = packN len (unpackCStringUtf8# addr#) -- three bytes surrogate -> three bytes replacement
-                                                        -- two bytes NUL -> \NUL
-                                                        -- the result's length will either smaller or equal
+                                                            -- two bytes NUL -> \NUL
+                                                            -- the result's length will either smaller or equal
         | otherwise  = runST $ do
             marr <- newPrimArray len
             copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
@@ -768,7 +769,7 @@ foreign import ccall unsafe utf8_normalize_length ::
 
 -- | Remove case distinction from UTF-8 encoded text with default locale.
 caseFold :: Text -> Text
-caseFold = caseFoldWith localeDefault
+caseFold = caseFoldWith LocaleDefault
 
 {-|
 Remove case distinction from UTF-8 encoded text.
@@ -813,7 +814,7 @@ caseFoldWith locale (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
 
 -- | Convert UTF-8 encoded text to lowercase with default locale.
 toLower :: Text -> Text
-toLower = toLowerWith localeDefault
+toLower = toLowerWith LocaleDefault
 
 {-|
 Convert UTF-8 encoded text to lowercase.
@@ -853,7 +854,7 @@ toLowerWith locale (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
 
 -- | Convert UTF-8 encoded text to uppercase with default locale.
 toUpper :: Text -> Text
-toUpper = toUpperWith localeDefault
+toUpper = toUpperWith LocaleDefault
 
 {-|
 Convert UTF-8 encoded text to uppercase.
@@ -891,7 +892,7 @@ toUpperWith locale (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
 
 -- | Convert UTF-8 encoded text to titlecase with default locale.
 toTitle :: Text -> Text
-toTitle = toTitleWith localeDefault
+toTitle = toTitleWith LocaleDefault
 
 {-|
 Convert UTF-8 encoded text to titlecase.
@@ -980,12 +981,12 @@ U+0045     | 0                         | Lu (Uppercase letter) | LATIN CAPITAL L
 U+0300     | 230                       | Mn (Non-spacing mark) | COMBINING GRAVE ACCENT
 @
 
-Will match with 'categoryLetterUppercase' in its entirety, because
+Will match with 'CategoryLetterUppercase' in its entirety, because
 the COMBINING GRAVE ACCENT is treated as part of the grapheme cluster. This
 is useful when e.g. creating a text parser, because you do not have to
 normalize the text first.
 
-If this is undesired behavior, specify the 'UTF8_CATEGORY_IGNORE_GRAPHEME_CLUSTER' flag.
+If this is undesired behavior, specify the 'CategoryIgnoreGraphemeCluster' flag.
 
 In order to maintain backwards compatibility with POSIX functions
 like `isdigit` and `isspace`, compatibility flags have been provided. Note,

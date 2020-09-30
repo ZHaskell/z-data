@@ -1,4 +1,7 @@
-W.I.P
+module Z.Data.Builder.Time where
+
+
+class
 
 
 -- | Formats a time in ISO 8601, with up to 12 second decimals.

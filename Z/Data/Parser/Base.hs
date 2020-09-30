@@ -15,17 +15,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide a simple resumable 'Parser', which is suitable for binary protocol and simple textual protocol parsing. Both binary parsers ('decodePrim' ,etc) and textual parsers are provided, and they all work on 'V.Bytes'.
-
-You can use 'Alternative' instance to do backtracking, each branch will either succeed and may consume some input, or fail without consume anything. It's recommend to use 'peek' or 'peekMaybe' to avoid backtracking if possible to get high performance.
-
-Error message can be attached using '<?>', which have very small overhead, so it's recommended to attach a message in front of a composed parser like @xPacket = "Foo.Bar.xPacket" <?> do ...@, following is an example message when parsing an integer failed:
-
-@
-    >parse int "foo"
-    ([102,111,111],Left ["Z.Data.Parser.Numeric.int","Std.Data.Parser.Base.takeWhile1: no satisfied byte"])
-    -- It's easy to see we're trying to match a leading sign or digit here
-@
+This module provide internal data types for a simple resumable 'Parser', which is suitable for binary protocol and simple textual protocol parsing. 'Parser' extensively works on on 'V.Bytes', which is same to 'T.Text' representation.
 
 -}
 
