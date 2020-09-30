@@ -24,9 +24,9 @@ module Z.Data.Text.Base (
   -- * Text type
     Text(..)
   -- * Building text
-  , validate
-  , InvalidUTF8Exception(..)
-  , validateMaybe
+  , validate, validateASCII
+  , validateMaybe, validateASCIIMaybe
+  , TextException(..)
   , index, indexMaybe, charByteIndex, indexR, indexMaybeR, charByteIndexR
   -- * Basic creating
   , empty, singleton, copy
@@ -117,6 +117,8 @@ module Z.Data.Text.Base (
   -- * Misc
   , c_utf8_validate_ba
   , c_utf8_validate_addr
+  , c_ascii_validate_ba
+  , c_ascii_validate_addr
  ) where
 
 import           Control.DeepSeq
@@ -190,36 +192,11 @@ instance IsString Text where
     {-# INLINE fromString #-}
     fromString = pack
 
-packASCIIAddr :: Addr# -> Text
-packASCIIAddr addr0# = go addr0#
-  where
-    len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
-    go addr# = runST $ do
-        marr <- newPrimArray len
-        copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
-        arr <- unsafeFreezePrimArray marr
-        return $ Text (PrimVector arr 0 len)
-
-packUTF8Addr :: Addr# -> Text
-packUTF8Addr addr0# = validateAndCopy addr0#
-  where
-    len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
-    valid = unsafeDupablePerformIO $ c_utf8_validate_addr addr0# len
-    validateAndCopy addr#
-        | valid == 0 = packN len (unpackCStringUtf8# addr#) -- three bytes surrogate -> three bytes replacement
-                                                            -- two bytes NUL -> \NUL
-                                                            -- the result's length will either smaller or equal
-        | otherwise  = runST $ do
-            marr <- newPrimArray len
-            copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
-            arr <- unsafeFreezePrimArray marr
-            return $ Text (PrimVector arr 0 len)
-
--- | /O(n)/ Get the nth codepoint from 'Text', throw @IndexOutOfVectorRange n callStack@
+-- | /O(n)/ Get the nth codepoint from 'Text', throw 'IndexOutOfTextRange'
 -- when out of bound.
 index :: HasCallStack => Text -> Int -> Char
 {-# INLINABLE index #-}
-index t n = case t `indexMaybe` n of Nothing -> throw (V.IndexOutOfVectorRange n callStack)
+index t n = case t `indexMaybe` n of Nothing -> throw (IndexOutOfTextRange n callStack)
                                      Just x  -> x
 
 
@@ -300,6 +277,10 @@ validate bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
     | c_utf8_validate_ba ba# s# l# > 0 = Text bs
     | otherwise = throw (InvalidUTF8Exception callStack)
 
+-- | /O(n)/ Validate a sequence of bytes is UTF-8 encoded.
+--
+-- Return 'Nothing' in case of invalid codepoint.
+--
 validateMaybe :: Bytes -> Maybe Text
 {-# INLINE validateMaybe #-}
 validateMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
@@ -307,14 +288,43 @@ validateMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
     | c_utf8_validate_ba ba# s# l# > 0 = Just (Text bs)
     | otherwise = Nothing
 
+-- | /O(n)/ Validate a sequence of bytes is all ascii char byte(<128).
+--
+-- Throw 'InvalidASCIIException' in case of invalid byte, It's not faster
+-- than 'validate', use it only if you want to validate if a ASCII char sequence.
+--
+validateASCII :: HasCallStack => Bytes -> Text
+{-# INLINE validateASCII #-}
+validateASCII bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
+    | l == 0 = Text bs
+    | c_ascii_validate_ba ba# s# l# > 0 = Text bs
+    | otherwise = throw (InvalidASCIIException callStack)
+
+-- | /O(n)/ Validate a sequence of bytes is all ascii char byte(<128).
+--
+-- Return 'Nothing' in case of invalid byte.
+--
+validateASCIIMaybe :: Bytes -> Maybe Text
+{-# INLINE validateASCIIMaybe #-}
+validateASCIIMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
+    | l == 0 = Just (Text bs)
+    | c_ascii_validate_ba ba# s# l# > 0 = Just (Text bs)
+    | otherwise = Nothing
+
 foreign import ccall unsafe "text.h utf8_validate"
     c_utf8_validate_ba :: ByteArray# -> Int# -> Int# -> Int
 foreign import ccall unsafe "text.h utf8_validate_addr"
     c_utf8_validate_addr :: Addr# -> Int -> IO Int
+foreign import ccall unsafe "text.h ascii_validate"
+    c_ascii_validate_ba :: ByteArray# -> Int# -> Int# -> Int
+foreign import ccall unsafe "text.h ascii_validate_addr"
+    c_ascii_validate_addr :: Addr# -> Int -> IO Int
 
-data InvalidUTF8Exception = InvalidUTF8Exception CallStack
-                    deriving (Show, Typeable)
-instance Exception InvalidUTF8Exception
+data TextException = InvalidUTF8Exception CallStack
+                   | InvalidASCIIException CallStack
+                   | IndexOutOfTextRange Int CallStack   -- ^ first payload is invalid char index
+                  deriving (Show, Typeable)
+instance Exception TextException
 
 --------------------------------------------------------------------------------
 
@@ -326,6 +336,31 @@ pack = packN V.defaultInitSize
 {-# INLINE CONLIKE [0] pack #-}
 {-# RULES "pack/packASCIIAddr" forall addr . pack (unpackCString# addr) = packASCIIAddr addr #-}
 {-# RULES "pack/packUTF8Addr" forall addr . pack (unpackCStringUtf8# addr) = packUTF8Addr addr #-}
+
+packASCIIAddr :: Addr# -> Text
+packASCIIAddr addr0# = go addr0#
+  where
+    len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
+    go addr# = runST $ do
+        marr <- newPrimArray len
+        copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
+        arr <- unsafeFreezePrimArray marr
+        return $ Text (PrimVector arr 0 len)
+
+packUTF8Addr :: Addr# -> Text
+packUTF8Addr addr0# = validateAndCopy addr0#
+  where
+    len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
+    valid = unsafeDupablePerformIO $ c_utf8_validate_addr addr0# len
+    validateAndCopy addr#
+        | valid == 0 = packN len (unpackCStringUtf8# addr#) -- three bytes surrogate -> three bytes replacement
+                                                            -- two bytes NUL -> \NUL
+                                                            -- the result's length will either smaller or equal
+        | otherwise  = runST $ do
+            marr <- newPrimArray len
+            copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
+            arr <- unsafeFreezePrimArray marr
+            return $ Text (PrimVector arr 0 len)
 
 -- | /O(n)/ Convert a list into a text with an approximate size(in bytes, not codepoints).
 --

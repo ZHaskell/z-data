@@ -4,7 +4,7 @@
 
 * Add `fromNullTerminated` to `Z.Foreign`(and `Z.Data.Vector.Base`).
 * Change `Category` and `Locale`(`Z.Data.Text`) to use pattern synonyms, add `envLocale` to `Z.Data.Text`.
-* Some document improvements.
+* Add `validateASCII` and `validateASCIIMaybe` to `Z.Data.Text`.
 
 ## 0.1.4.0  -- 2020-09-24
 
