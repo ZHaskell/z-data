@@ -6,6 +6,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE UnboxedTuples       #-}
 {-# LANGUAGE UnliftedFFITypes    #-}
 
@@ -708,8 +709,8 @@ foreign import ccall unsafe "static grisu3" c_grisu3
 -- | Decimal encoding of a 'Double', note grisu only handles strictly positive finite numbers.
 grisu3 :: Double -> ([Int], Int)
 {-# INLINE grisu3 #-}
-grisu3 d = unsafePerformIO $
-    allocMutableByteArrayUnsafe GRISU3_DOUBLE_BUF_LEN $ \ pBuf -> do
+grisu3 d = snd . unsafePerformIO $
+    allocMutablePrimArrayUnsafe @Word8 GRISU3_DOUBLE_BUF_LEN $ \ pBuf -> do
         (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
             allocPrimUnsafe $ \ pE ->
                 c_grisu3 (realToFrac d) pBuf pLen pE
@@ -732,8 +733,8 @@ foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
 -- | Decimal encoding of a 'Float', note grisu3_sp only handles strictly positive finite numbers.
 grisu3_sp :: Float -> ([Int], Int)
 {-# INLINE grisu3_sp #-}
-grisu3_sp d = unsafePerformIO $
-    allocMutableByteArrayUnsafe GRISU3_SINGLE_BUF_LEN $ \ pBuf -> do
+grisu3_sp d = snd . unsafePerformIO $
+    allocMutablePrimArrayUnsafe @Word8 GRISU3_SINGLE_BUF_LEN $ \ pBuf -> do
         (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
             allocPrimUnsafe $ \ pE ->
                 c_grisu3_sp (realToFrac d) pBuf pLen pE

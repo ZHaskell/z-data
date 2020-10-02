@@ -60,16 +60,20 @@ will result in segfault.
 module Z.Foreign
   ( -- ** Unsafe FFI
     withPrimArrayUnsafe
-  , withMutablePrimArrayUnsafe
+  , allocPrimArrayUnsafe
+  , allocMutablePrimArrayUnsafe
   , withPrimVectorUnsafe
-  , allocMutableByteArrayUnsafe
+  , allocPrimVectorUnsafe
+  , allocBytesUnsafe
   , withPrimUnsafe
   , allocPrimUnsafe
     -- ** Safe FFI
   , withPrimArraySafe
-  , withMutablePrimArraySafe
+  , allocPrimArraySafe
   , allocMutablePrimArraySafe
   , withPrimVectorSafe
+  , allocPrimVectorSafe
+  , allocBytesSafe
   , withPrimSafe
   , allocPrimSafe
   , pinPrimArray
@@ -79,7 +83,7 @@ module Z.Foreign
   , clearMBA
   , clearPtr
   , castPtr
-  , fromNullTerminated
+  , fromNullTerminated, fromPtr, fromPrimPtr
   -- ** re-export
   , module Data.Primitive.ByteArray
   , module Foreign.C.Types
@@ -125,7 +129,9 @@ type BA# a = ByteArray#
 type MBA# a = MutableByteArray# RealWorld
 
 -- | Clear 'MBA#' with given length to zero.
-clearMBA :: MBA# a -> Int -> IO ()
+clearMBA :: MBA# a
+         -> Int  -- ^ in bytes
+         -> IO ()
 clearMBA mba# len = do
     let mba = (MutableByteArray mba#)
     setByteArray mba 0 len (0 :: Word8)
@@ -149,17 +155,16 @@ withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> IO b) -> IO b
 {-# INLINE withPrimArrayUnsafe #-}
 withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
 
--- | Pass mutable primitive array to unsafe FFI as pointer.
---
--- The mutable version of 'withPrimArrayUnsafe'.
+-- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimArray'.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
---
-withMutablePrimArrayUnsafe :: (Prim a) => MutablePrimArray RealWorld a
-                           -> (MBA# a -> Int -> IO b) -> IO b
-{-# INLINE withMutablePrimArrayUnsafe #-}
-withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
-    getSizeofMutablePrimArray mpa >>= f mba#
+allocPrimArrayUnsafe :: forall a b. Prim a => Int -> (MBA# a -> IO b) -> IO (PrimArray a, b)
+{-# INLINE allocPrimArrayUnsafe #-}
+allocPrimArrayUnsafe len f = do
+    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
+    !r <- f mba#
+    !pa <- unsafeFreezePrimArray mpa
+    return (pa, r)
 
 
 -- | Allocate some bytes and pass to FFI as pointer.
@@ -185,12 +190,35 @@ withMutablePrimArrayUnsafe mpa@(MutablePrimArray mba#) f =
 -- @
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocMutableByteArrayUnsafe :: Int              -- ^ number of bytes
-                  -> (MBA# a -> IO b) -> IO b
-{-# INLINE allocMutableByteArrayUnsafe #-}
-allocMutableByteArrayUnsafe len f = do
-    (MutableByteArray mba#) <- newByteArray len
-    f mba#
+allocMutablePrimArrayUnsafe :: forall a b . Prim a
+                            => Int              -- ^ number of elements
+                            -> (MBA# a -> IO b) -> IO (MutablePrimArray RealWorld a, b)
+{-# INLINE allocMutablePrimArrayUnsafe #-}
+allocMutablePrimArrayUnsafe len f = do
+    mba@(MutablePrimArray mba# :: MutablePrimArray RealWorld a) <- newPrimArray len
+    r <- f mba#
+    return (mba, r)
+
+-- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
+allocPrimVectorUnsafe :: forall a b. Prim a => Int  -- ^ number of elements
+                      -> (MBA# a -> IO b) -> IO (PrimVector a, b)
+{-# INLINE allocPrimVectorUnsafe #-}
+allocPrimVectorUnsafe len f = do
+    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
+    !r <- f mba#
+    !pa <- unsafeFreezePrimArray mpa
+    let !v = PrimVector pa 0 len
+    return (v, r)
+
+-- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'Bytes'.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
+allocBytesUnsafe :: Int  -- ^ number of bytes
+                 -> (MBA# a -> IO b) -> IO (Bytes, b)
+{-# INLINE allocBytesUnsafe #-}
+allocBytesUnsafe = allocPrimVectorUnsafe
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
@@ -224,6 +252,8 @@ withPrimUnsafe v f = do
     return (a, b)
 
 -- | like 'withPrimUnsafe', but don't write initial value.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 allocPrimUnsafe :: (Prim a) => (MBA# a -> IO b) -> IO (a, b)
 {-# INLINE allocPrimUnsafe #-}
 allocPrimUnsafe f = do
@@ -254,23 +284,17 @@ withPrimArraySafe arr f
         copyPrimArray buf 0 arr 0 siz
         withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
 
-
--- | Pass mutable primitive array to unsafe FFI as pointer.
---
--- The mutable version of 'withPrimArraySafe'. After call returned, pointer is no longer valid.
---
--- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
-withMutablePrimArraySafe :: (Prim a) => MutablePrimArray RealWorld a -> (Ptr a -> Int -> IO b) -> IO b
-{-# INLINE withMutablePrimArraySafe #-}
-withMutablePrimArraySafe marr f
-    | isMutablePrimArrayPinned marr = do
-        siz <- getSizeofMutablePrimArray marr
-        withMutablePrimArrayContents marr $ \ ptr -> f ptr siz
-    | otherwise = do
-        siz <- getSizeofMutablePrimArray marr
-        buf <- newPinnedPrimArray siz
-        copyMutablePrimArray buf 0 marr 0 siz
-        withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
+-- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimVector'.
+allocPrimArraySafe :: forall a b . Prim a
+                    => Int      -- ^ in elements
+                    -> (Ptr a -> IO b)
+                    -> IO (PrimArray a, b)
+{-# INLINE allocPrimArraySafe #-}
+allocPrimArraySafe len f = do
+    mpa <- newAlignedPinnedPrimArray len
+    !r <- withMutablePrimArrayContents mpa f
+    !pa <- unsafeFreezePrimArray mpa
+    return (pa, r)
 
 -- | Allocate a primitive array and pass to FFI as pointer.
 --
@@ -322,6 +346,24 @@ allocPrimSafe f = do
     !a <- readPrimArray buf 0
     return (a, b)
 
+-- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
+allocPrimVectorSafe :: forall a b . Prim a
+                    => Int      -- ^ in elements
+                    -> (Ptr a -> IO b) -> IO (PrimVector a, b)
+{-# INLINE allocPrimVectorSafe #-}
+allocPrimVectorSafe len f = do
+    mpa <- newAlignedPinnedPrimArray len
+    !r <- withMutablePrimArrayContents mpa f
+    !pa <- unsafeFreezePrimArray mpa
+    let !v = PrimVector pa 0 len
+    return (v, r)
+
+-- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimVector'.
+allocBytesSafe :: Int      -- ^ in bytes
+               -> (Ptr Word8 -> IO b) -> IO (Bytes, b)
+{-# INLINE allocBytesSafe #-}
+allocBytesSafe = allocPrimVectorSafe
+
 -- | Convert a 'PrimArray' to a pinned one(memory won't moved by GC) if necessary.
 pinPrimArray :: Prim a => PrimArray a -> IO (PrimArray a)
 {-# INLINE pinPrimArray #-}
@@ -365,6 +407,31 @@ fromNullTerminated :: Ptr a -> IO Bytes
 {-# INLINE fromNullTerminated #-}
 fromNullTerminated (Ptr addr#) = do
     len <- fromIntegral <$> c_strlen addr#
+    marr <- newPrimArray len
+    copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
+    arr <- unsafeFreezePrimArray marr
+    return (PrimVector arr 0 len)
+
+-- | Copy some bytes from a pointer.
+--
+-- There's no encoding guarantee, result could be any bytes sequence.
+fromPtr :: Ptr a -> Int -- ^ in bytes
+        -> IO Bytes
+{-# INLINE fromPtr #-}
+fromPtr (Ptr addr#) len = do
+    marr <- newPrimArray len
+    copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
+    arr <- unsafeFreezePrimArray marr
+    return (PrimVector arr 0 len)
+
+-- | Copy some bytes from a pointer.
+--
+-- There's no encoding guarantee, result could be any bytes sequence.
+fromPrimPtr :: forall a. Prim a
+            => Ptr a -> Int -- ^  in elements
+            -> IO (PrimVector a)
+{-# INLINE fromPrimPtr #-}
+fromPrimPtr (Ptr addr#) len = do
     marr <- newPrimArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
     arr <- unsafeFreezePrimArray marr
