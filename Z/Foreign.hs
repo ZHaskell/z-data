@@ -176,7 +176,7 @@ allocPrimArrayUnsafe len f = do
 -- example usage with hsc2hs:
 --
 -- @
---      allocMutableByteArrayUnsafe (#size c_struct) $ \ p -> do
+--      allocMutablePrimArrayUnsafe @Word8 (#size c_struct) $ \ p -> do
 --
 --          pokeMBA p (#offset c_struct c_field1) field1
 --          pokeMBA p (#offset c_struct c_field2) field2
@@ -219,6 +219,7 @@ allocBytesUnsafe :: Int  -- ^ number of bytes
                  -> (MBA# a -> IO b) -> IO (Bytes, b)
 {-# INLINE allocBytesUnsafe #-}
 allocBytesUnsafe = allocPrimVectorUnsafe
+
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
@@ -436,3 +437,4 @@ fromPrimPtr (Ptr addr#) len = do
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
     arr <- unsafeFreezePrimArray marr
     return (PrimVector arr 0 len)
+

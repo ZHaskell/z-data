@@ -1,6 +1,6 @@
 # Revision history for Z-Data
 
-## 0.1.4.1  -- 2020-09-29
+## 0.1.4.2  -- 2020-10-02
 
 * Remove `withMutablePrimArrayUnsafe/Safe` from `Z.Foreign`.
 * Add `allocPrimArrayUnsafe/Safe`, `allocPrimVectorUnsafe/Safe`, `allocBytesUnsafe/Safe`, `fromPtr/fromPrimPtr`
