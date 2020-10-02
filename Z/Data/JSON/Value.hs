@@ -251,10 +251,8 @@ string_ = do
             -- need escaping
             1 -> unsafeDupablePerformIO (do
                     let !len = V.length bs
-                    !mpa <- newPrimArray len
-                    !len' <- withMutablePrimArrayUnsafe mpa (\ mba# _ ->
+                    (!pa, !len') <- allocPrimArrayUnsafe len (\ mba# ->
                         withPrimVectorUnsafe bs (decode_json_string mba#))
-                    !pa <- unsafeFreezePrimArray mpa
                     if len' >= 0
                     then pure (Just (T.Text (V.PrimVector pa 0 len')))  -- unescaping also validate utf8
                     else pure Nothing)
