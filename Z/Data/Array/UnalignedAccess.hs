@@ -38,8 +38,6 @@ import           Foreign.C.Types
 
 --------------------------------------------------------------------------------
 
-newtype UnalignedSize a = UnalignedSize { getUnalignedSize :: Int } deriving (Show, Eq)
-
 -- | Primitive types which can be unaligned accessed
 --
 -- It can also be used as a lightweight method to peek\/poke value from\/to C structs
@@ -62,7 +60,7 @@ class UnalignedAccess a where
     {-# MINIMAL unalignedSize, indexWord8ArrayAs#, writeWord8ArrayAs#, readWord8ArrayAs# |
         unalignedSize, indexBA, peekMBA, pokeMBA #-}
     -- | byte size
-    unalignedSize :: UnalignedSize a
+    unalignedSize :: a -> Int
 
     -- | index element off byte array with offset in bytes(maybe unaligned)
     indexWord8ArrayAs# :: ByteArray# -> Int# -> a
@@ -129,7 +127,7 @@ indexPrimWord8ArrayAs (PrimArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
 
 instance UnalignedAccess Word8 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 1
+    unalignedSize _ = 1
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W8# x#) = writeWord8Array# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -140,7 +138,7 @@ instance UnalignedAccess Word8 where
 
 instance UnalignedAccess Int8 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 1
+    unalignedSize _ = 1
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I8# x#) = writeInt8Array# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -170,7 +168,7 @@ newtype BE a = BE { getBE :: a } deriving (Show, Eq)
 
 instance UnalignedAccess Word16 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W16# x#) = writeWord8ArrayAsWord16# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -181,7 +179,7 @@ instance UnalignedAccess Word16 where
 
 instance UnalignedAccess (LE Word16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W16# x#)) s0# =
@@ -203,7 +201,7 @@ instance UnalignedAccess (LE Word16) where
 
 instance UnalignedAccess (BE Word16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -240,7 +238,7 @@ instance UnalignedAccess (BE Word16) where
 
 instance UnalignedAccess Word32 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W32# x#) =  writeWord8ArrayAsWord32# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -252,7 +250,7 @@ instance UnalignedAccess Word32 where
 
 instance UnalignedAccess (LE Word32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W32# x#)) s0# =
@@ -284,7 +282,7 @@ instance UnalignedAccess (LE Word32) where
 
 instance UnalignedAccess (BE Word32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -331,7 +329,7 @@ instance UnalignedAccess (BE Word32) where
 
 instance UnalignedAccess Word64 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W64# x#) =  writeWord8ArrayAsWord64# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -343,7 +341,7 @@ instance UnalignedAccess Word64 where
 
 instance UnalignedAccess (LE Word64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W64# x#)) s0# =
@@ -395,7 +393,7 @@ instance UnalignedAccess (LE Word64) where
 
 instance UnalignedAccess (BE Word64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -463,10 +461,10 @@ instance UnalignedAccess (BE Word64) where
 instance UnalignedAccess Word where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #endif
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W# x#) = writeWord8ArrayAsWord# mba# i# x#
@@ -479,7 +477,7 @@ instance UnalignedAccess Word where
 instance UnalignedAccess (LE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W# x#)) = writeWord8ArrayAs# mba# i# (LE (W32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -489,7 +487,7 @@ instance UnalignedAccess (LE Word) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (W32# x#)) -> LE (W# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W# x#)) = writeWord8ArrayAs# mba# i# (LE (W64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -502,7 +500,7 @@ instance UnalignedAccess (LE Word) where
 instance UnalignedAccess (BE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W# x#)) = writeWord8ArrayAs# mba# i# (BE (W32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -512,7 +510,7 @@ instance UnalignedAccess (BE Word) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (BE (W32# x#)) -> BE (W# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W# x#)) = writeWord8ArrayAs# mba# i# (BE (W64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -526,7 +524,7 @@ instance UnalignedAccess (BE Word) where
 
 instance UnalignedAccess Int16 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I16# x#) = writeWord8ArrayAsInt16# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -537,7 +535,7 @@ instance UnalignedAccess Int16 where
 
 instance UnalignedAccess (LE Int16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I16# x#)) =
@@ -556,7 +554,7 @@ instance UnalignedAccess (LE Int16) where
 
 instance UnalignedAccess (BE Int16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 2
+    unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -577,7 +575,7 @@ instance UnalignedAccess (BE Int16) where
 
 instance UnalignedAccess Int32 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I32# x#) = writeWord8ArrayAsInt32# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -588,7 +586,7 @@ instance UnalignedAccess Int32 where
 
 instance UnalignedAccess (LE Int32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I32# x#)) =
@@ -607,7 +605,7 @@ instance UnalignedAccess (LE Int32) where
 
 instance UnalignedAccess (BE Int32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -628,7 +626,7 @@ instance UnalignedAccess (BE Int32) where
 
 instance UnalignedAccess Int64 where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I64# x#) = writeWord8ArrayAsInt64# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -639,7 +637,7 @@ instance UnalignedAccess Int64 where
 
 instance UnalignedAccess (LE Int64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I64# x#)) =
@@ -658,7 +656,7 @@ instance UnalignedAccess (LE Int64) where
 
 instance UnalignedAccess (BE Int64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -680,10 +678,10 @@ instance UnalignedAccess (BE Int64) where
 instance UnalignedAccess Int where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #endif
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I# x#) = writeWord8ArrayAsInt# mba# i# x#
@@ -696,7 +694,7 @@ instance UnalignedAccess Int where
 instance UnalignedAccess (LE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I# x#)) = writeWord8ArrayAs# mba# i# (LE (I32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -706,7 +704,7 @@ instance UnalignedAccess (LE Int) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (I32# x#)) -> LE (I# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I# x#)) = writeWord8ArrayAs# mba# i# (LE (I64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -719,7 +717,7 @@ instance UnalignedAccess (LE Int) where
 instance UnalignedAccess (BE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I# x#)) = writeWord8ArrayAs# mba# i# (BE (I32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -729,7 +727,7 @@ instance UnalignedAccess (BE Int) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (BE (I32# x#)) -> BE (I# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I# x#)) = writeWord8ArrayAs# mba# i# (BE (I64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -743,7 +741,7 @@ instance UnalignedAccess (BE Int) where
 
 instance UnalignedAccess Float where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (F# x#) = writeWord8ArrayAsFloat# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -754,7 +752,7 @@ instance UnalignedAccess Float where
 
 instance UnalignedAccess (LE Float) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (F# x#)) =
@@ -773,7 +771,7 @@ instance UnalignedAccess (LE Float) where
 
 instance UnalignedAccess (BE Float) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -794,7 +792,7 @@ instance UnalignedAccess (BE Float) where
 
 instance UnalignedAccess Double where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (D# x#) = writeWord8ArrayAsDouble# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -805,7 +803,7 @@ instance UnalignedAccess Double where
 
 instance UnalignedAccess (LE Double) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 8
+    unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (D# x#)) =
@@ -824,7 +822,7 @@ instance UnalignedAccess (LE Double) where
 
 instance UnalignedAccess (BE Double) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -846,7 +844,7 @@ instance UnalignedAccess (BE Double) where
 -- | Char's instance use 31bit wide char prim-op.
 instance UnalignedAccess Char where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (C# x#) = writeWord8ArrayAsWideChar# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -857,7 +855,7 @@ instance UnalignedAccess Char where
 
 instance UnalignedAccess (LE Char) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (C# x#)) =
@@ -876,7 +874,7 @@ instance UnalignedAccess (LE Char) where
 
 instance UnalignedAccess (BE Char) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else

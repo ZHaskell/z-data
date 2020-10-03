@@ -22,8 +22,8 @@ module Z.Data.Text.Extra (
   -- * Slice manipulation
     cons, snoc
   , uncons, unsnoc
-  , headMaybe, tailMayEmpty
-  , lastMaybe, initMayEmpty
+  , headMaybe, tailMayEmpty, lastMaybe, initMayEmpty
+  , head, tail, last, init
   , inits, tails
   , take, drop, takeR, dropR
   , slice
@@ -63,6 +63,7 @@ import           Prelude                       hiding (concat, concatMap,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
                                                 all, any, replicate, traverse,
+                                                head, tail, init, last,
                                                 take, drop, splitAt,
                                                 takeWhile, dropWhile,
                                                 break, span, reverse,
@@ -107,6 +108,34 @@ unsnoc (Text (V.PrimVector ba s l))
     | otherwise =
         let (# c, i #) = decodeCharReverse ba (s + l - 1)
         in Just (Text (V.PrimVector ba s (l-i)), c)
+
+-- | /O(1)/ Extract the first char of a text.
+--
+-- Throw 'EmptyText' if text is empty.
+head :: Text -> Char
+{-# INLINABLE head #-}
+head t = case uncons t of { Just (c, _) -> c; _ ->  errorEmptyText }
+
+-- | /O(1)/ Extract the chars after the head of a text.
+--
+-- Throw 'EmptyText' if text is empty.
+tail :: Text -> Text
+{-# INLINABLE tail #-}
+tail t = case uncons t of { Nothing -> errorEmptyText; Just (_, t') -> t' }
+
+-- | /O(1)/ Extract the last char of a text.
+--
+-- Throw 'EmptyText' if text is empty.
+last :: Text ->  Char
+{-# INLINABLE last #-}
+last t = case unsnoc t of { Just (_, c) -> c; _ -> errorEmptyText }
+
+-- | /O(1)/ Extract the chars before of the last one.
+--
+-- Throw 'EmptyText' if text is empty.
+init :: Text -> Text
+{-# INLINABLE init #-}
+init t = case unsnoc t of { Just (t', _) -> t'; _ -> errorEmptyText }
 
 -- | /O(1)/ Extract the first char of a text.
 headMaybe :: Text -> Maybe Char

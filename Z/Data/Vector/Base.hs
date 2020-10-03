@@ -1315,11 +1315,11 @@ data VectorException = IndexOutOfVectorRange {-# UNPACK #-} !Int CallStack
 instance Exception VectorException
 
 errorEmptyVector :: HasCallStack => a
-{-# NOINLINE errorEmptyVector #-}
+{-# INLINE errorEmptyVector #-}
 errorEmptyVector = throw (EmptyVector callStack)
 
 errorOutRange :: HasCallStack => Int -> a
-{-# NOINLINE errorOutRange #-}
+{-# INLINE errorOutRange #-}
 errorOutRange i = throw (IndexOutOfVectorRange i callStack)
 
 -- | Cast between vectors

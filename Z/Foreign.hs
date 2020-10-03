@@ -61,7 +61,6 @@ module Z.Foreign
   ( -- ** Unsafe FFI
     withPrimArrayUnsafe
   , allocPrimArrayUnsafe
-  , allocMutablePrimArrayUnsafe
   , withPrimVectorUnsafe
   , allocPrimVectorUnsafe
   , allocBytesUnsafe
@@ -70,7 +69,6 @@ module Z.Foreign
     -- ** Safe FFI
   , withPrimArraySafe
   , allocPrimArraySafe
-  , allocMutablePrimArraySafe
   , withPrimVectorSafe
   , allocPrimVectorSafe
   , allocBytesSafe
@@ -86,6 +84,7 @@ module Z.Foreign
   , fromNullTerminated, fromPtr, fromPrimPtr
   -- ** re-export
   , module Data.Primitive.ByteArray
+  , module Data.Primitive.PrimArray
   , module Foreign.C.Types
   , module Data.Primitive.Ptr
   , module Z.Data.Array.UnalignedAccess
@@ -96,6 +95,7 @@ import           Data.Primitive
 import           Data.Word
 import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
+import           Data.Primitive.PrimArray
 import           Foreign.C.Types
 import           GHC.Ptr
 import           Z.Data.Array
@@ -104,28 +104,27 @@ import           Z.Data.Vector.Base
 
 -- | Type alias for 'ByteArray#'.
 --
--- Since we can't newtype an unlifted type yet, type alias is the best we can get
--- to describe a 'ByteArray#' which we are going to pass across FFI. At C side you
--- should use a proper const pointer type.
+-- Describe a 'ByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
+-- extension, At C side you should use a proper const pointer type.
 --
 -- Don't cast 'BA#' to 'Addr#' since the heap object offset is hard-coded in code generator:
 -- <https://github.com/ghc/ghc/blob/master/compiler/codeGen/StgCmmForeign.hs#L520>
 --
--- USE THIS TYPE WITH UNSAFE FFI CALL ONLY.
--- A 'ByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+-- In haskell side we use type system to distinguish immutable / mutable arrays, but in C side we can't.
+-- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
+--
+-- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'ByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type BA# a = ByteArray#
 
 -- | Type alias for 'MutableByteArray#' 'RealWorld'.
 --
--- Since we can't newtype an unlifted type yet, type alias is the best we can get
--- to describe a 'MutableByteArray#' which we are going to pass across FFI. At C side you
--- should use a proper pointer type.
+-- Describe a 'MutableByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
+-- extension, At C side you should use a proper pointer type.
 --
 -- Don't cast 'MBA#' to 'Addr#' since the heap object offset is hard-coded in code generator:
--- <https://github.com/ghc/ghc/blob/master/compiler/codeGen/StgCmmForeign.hs#L520>
+-- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
 --
--- USE THIS TYPE WITH UNSAFE FFI CALL ONLY.
--- A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+-- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type MBA# a = MutableByteArray# RealWorld
 
 -- | Clear 'MBA#' with given length to zero.
@@ -143,14 +142,7 @@ clearMBA mba# len = do
 --
 -- The second 'Int' arguement is the element size not the bytes size.
 --
--- Don't cast 'ByteArray#' to 'Addr#' since the heap object offset is hard-coded in code generator:
--- <https://github.com/ghc/ghc/blob/master/compiler/codeGen/StgCmmForeign.hs#L520>
---
--- In haskell side we use type system to distinguish immutable / mutable arrays, but in C side we can't.
--- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
---
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
---
 withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> IO b) -> IO b
 {-# INLINE withPrimArrayUnsafe #-}
 withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
@@ -166,38 +158,19 @@ allocPrimArrayUnsafe len f = do
     !pa <- unsafeFreezePrimArray mpa
     return (pa, r)
 
-
--- | Allocate some bytes and pass to FFI as pointer.
+-- | Pass 'PrimVector' to unsafe FFI as pointer
 --
--- This function allocate some unpinned bytes and pass to FFI as MBA#, you should prefer
--- use this function (together with 'UalignedAccess') if no safe FFI is needed, since
--- this unpinned byte array can be easily collected.
+-- The 'PrimVector' version of 'withPrimArrayUnsafe'.
 --
--- example usage with hsc2hs:
---
--- @
---      allocMutablePrimArrayUnsafe @Word8 (#size c_struct) $ \ p -> do
---
---          pokeMBA p (#offset c_struct c_field1) field1
---          pokeMBA p (#offset c_struct c_field2) field2
---
---          c_ffi p ....
---
---          field1' <- peekMBA p (#offset c_struct c_field1)
---          field2' <- peekMBA p (#offset c_struct c_field2)
---          ...
---          return (CStruct field1' field2')
--- @
+-- The second 'Int' arguement is the first element offset, the third 'Int' argument is the
+-- element length.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocMutablePrimArrayUnsafe :: forall a b . Prim a
-                            => Int              -- ^ number of elements
-                            -> (MBA# a -> IO b) -> IO (MutablePrimArray RealWorld a, b)
-{-# INLINE allocMutablePrimArrayUnsafe #-}
-allocMutablePrimArrayUnsafe len f = do
-    mba@(MutablePrimArray mba# :: MutablePrimArray RealWorld a) <- newPrimArray len
-    r <- f mba#
-    return (mba, r)
+--
+withPrimVectorUnsafe :: (Prim a)
+                     => PrimVector a -> (BA# a -> Int -> Int -> IO b) -> IO b
+{-# INLINE withPrimVectorUnsafe #-}
+withPrimVectorUnsafe (PrimVector arr s l) f = withPrimArrayUnsafe arr $ \ ba# _ -> f ba# s l
 
 -- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
 --
@@ -220,20 +193,6 @@ allocBytesUnsafe :: Int  -- ^ number of bytes
 {-# INLINE allocBytesUnsafe #-}
 allocBytesUnsafe = allocPrimVectorUnsafe
 
-
--- | Pass 'PrimVector' to unsafe FFI as pointer
---
--- The 'PrimVector' version of 'withPrimArrayUnsafe'.
---
--- The second 'Int' arguement is the first element offset, the third 'Int' argument is the
--- element length.
---
--- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
---
-withPrimVectorUnsafe :: (Prim a)
-                     => PrimVector a -> (BA# a -> Int -> Int -> IO b) -> IO b
-{-# INLINE withPrimVectorUnsafe #-}
-withPrimVectorUnsafe (PrimVector arr s l) f = withPrimArrayUnsafe arr $ \ ba# _ -> f ba# s l
 
 
 -- | Create an one element primitive array and use it as a pointer to the primitive element.
@@ -285,7 +244,7 @@ withPrimArraySafe arr f
         copyPrimArray buf 0 arr 0 siz
         withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
 
--- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimVector'.
+-- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
 allocPrimArraySafe :: forall a b . Prim a
                     => Int      -- ^ in elements
                     -> (Ptr a -> IO b)
@@ -296,16 +255,6 @@ allocPrimArraySafe len f = do
     !r <- withMutablePrimArrayContents mpa f
     !pa <- unsafeFreezePrimArray mpa
     return (pa, r)
-
--- | Allocate a primitive array and pass to FFI as pointer.
---
--- After call returned, pointer is no longer valid.
-allocMutablePrimArraySafe :: (Prim a) => Int -- ^ in number of elements not bytes
-                          -> (Ptr a -> IO b) -> IO b
-{-# INLINE allocMutablePrimArraySafe #-}
-allocMutablePrimArraySafe siz f = do
-    buf <- newPinnedPrimArray siz
-    withMutablePrimArrayContents buf f
 
 -- | Pass 'PrimVector' to safe FFI as pointer
 --
@@ -401,9 +350,11 @@ clearPtr :: Ptr a -> Int -> IO ()
 {-# INLINE clearPtr #-}
 clearPtr dest nbytes = memset dest 0 (fromIntegral nbytes)
 
--- | Copy some bytes from a null terminated pointer(without copy the null terminator).
+-- | Copy some bytes from a null terminated pointer(without copying the null terminator).
 --
--- There's no encoding guarantee, result could be any bytes sequence.
+-- You should consider using 'Z.Data.CBytes' type for storing NULL terminated bytes first,
+-- This method is provided if you really need to read 'Bytes', there's no encoding guarantee,
+-- result could be any bytes sequence.
 fromNullTerminated :: Ptr a -> IO Bytes
 {-# INLINE fromNullTerminated #-}
 fromNullTerminated (Ptr addr#) = do

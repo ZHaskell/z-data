@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.1.4.3  -- 2020-10-02
+
+* Rework `CBytes` type to use unpinned byte array only, add `withCBytesUnsafe`, `allocCBytesUnsafe`.
+* Export `head`, `tail`, `init`, `last` from `Z.IO.Vector`, `Z.IO.Text` (well, safety first).
+
 ## 0.1.4.2  -- 2020-10-02
 
 * Remove `withMutablePrimArrayUnsafe/Safe` from `Z.Foreign`.
