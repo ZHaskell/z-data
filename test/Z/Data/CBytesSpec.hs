@@ -5,10 +5,11 @@
 module Z.Data.CBytesSpec where
 
 import qualified Data.List                  as List
+import qualified GHC.Exts                   as List
 import           Data.Word
 import           Data.Hashable              (hashWithSalt, hash)
 import qualified Z.Data.CBytes              as CB
-import           Z.Foreign                  (fromNullTerminated)
+import           Z.Foreign
 import qualified Z.Data.Vector.Base         as V
 import           System.IO.Unsafe
 import           Test.QuickCheck
@@ -40,6 +41,8 @@ spec = describe "CBytes-base" $ do
             "hello world" === CB.fromText "hello world"
         prop "UTF8 string" $
             "你好世界" === CB.fromText "你好世界"
+        prop "ASCII string" $
+            "hello world" === CB.CBytes (List.fromList (map V.c2w ("hello world") ++ [0]))
 
     describe "CBytes length == List.length" $ do
         prop "CBytes length === List.length" $ \ (ASCIIString xs) ->
@@ -50,7 +53,17 @@ spec = describe "CBytes-base" $ do
         prop "CBytes eq === List.eq" $ \ xs ys ->
             (CB.pack xs `CB.append` CB.pack ys) === CB.pack (xs ++ ys)
 
+    describe "CBytes concat == List.concat" $ do
+        prop "CBytes eq === List.eq" $ \ xss ->
+            (CB.concat  (map CB.pack xss)) === CB.pack (List.concat xss)
+
+    describe "withCBytes fromCString == id" $ do
+        prop "withCBytes fromCString == id" $ \ xs ->
+            (unsafeDupablePerformIO $ CB.withCBytes (CB.pack xs) (CB.fromCString . castPtr))
+                === CB.pack xs
+
     describe "withCBytes fromNullTerminated  == toBytes" $ do
         prop "CBytes eq === List.eq" $ \ xs ->
             CB.toBytes (CB.pack xs) ===
                 (unsafeDupablePerformIO $ CB.withCBytes (CB.pack xs) fromNullTerminated)
+

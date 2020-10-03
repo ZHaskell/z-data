@@ -26,7 +26,6 @@ module Z.Data.Text.Base (
   -- * Building text
   , validate, validateASCII
   , validateMaybe, validateASCIIMaybe
-  , TextException(..)
   , index, indexMaybe, charByteIndex, indexR, indexMaybeR, charByteIndexR
   -- * Basic creating
   , empty, singleton, copy
@@ -115,6 +114,7 @@ module Z.Data.Text.Base (
       , CategoryIsdigit
       , CategoryIsxdigit)
   -- * Misc
+  , TextException(..), errorEmptyText
   , c_utf8_validate_ba
   , c_utf8_validate_addr
   , c_ascii_validate_ba
@@ -323,8 +323,13 @@ foreign import ccall unsafe "text.h ascii_validate_addr"
 data TextException = InvalidUTF8Exception CallStack
                    | InvalidASCIIException CallStack
                    | IndexOutOfTextRange Int CallStack   -- ^ first payload is invalid char index
+                   | EmptyText CallStack
                   deriving (Show, Typeable)
 instance Exception TextException
+
+errorEmptyText :: HasCallStack => a
+{-# INLINE errorEmptyText #-}
+errorEmptyText = throw (EmptyText callStack)
 
 --------------------------------------------------------------------------------
 

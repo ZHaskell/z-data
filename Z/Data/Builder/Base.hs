@@ -396,7 +396,7 @@ encodePrim x = do
         writePrimWord8ArrayAs mpa i x
         k () (Buffer mpa (i + n)))
   where
-    n = (getUnalignedSize (unalignedSize :: UnalignedSize a))
+    n = unalignedSize (undefined :: a)
 
 -- | write primitive types with little endianess.
 encodePrimLE :: forall a. UnalignedAccess (LE a) => a -> Builder ()

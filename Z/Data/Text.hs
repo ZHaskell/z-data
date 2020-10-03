@@ -51,6 +51,7 @@ module Z.Data.Text (
   , uncons, unsnoc
   , headMaybe, tailMayEmpty
   , lastMaybe, initMayEmpty
+  , head, tail, last, init
   , inits, tails
   , take, drop, takeR, dropR
   , slice
