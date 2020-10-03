@@ -359,7 +359,7 @@ toBytes (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr - 1)
 fromBytes :: V.Bytes -> CBytes
 {-# INLINABLE fromBytes #-}
 fromBytes v@(V.PrimVector arr s l) = runST (do
-    if s == 0 && sizeofPrimArray arr > l && indexPrimArray arr l == 0 -- there's \NUL already
+    if s == 0 && sizeofPrimArray arr == l+1 && indexPrimArray arr l == 0 -- there's \NUL already
     then return (CBytes arr)
     else do
         let l' = case V.elemIndex 0 v of
