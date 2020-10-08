@@ -66,7 +66,7 @@ library
                             Z.Data.Array.Cast
                             Z.Data.Array.Checked
                             Z.Data.Array.QQ
-                            Z.Data.Array.UnalignedAccess
+                            Z.Data.Array.Unaligned
                             Z.Data.Array.UnliftedArray
                             Z.Data.CBytes
                             Z.Data.Vector
@@ -183,7 +183,7 @@ test-suite Z-Data-Test
                             Z.Data.JSON.ValueSpec
                             Z.Data.Parser.BaseSpec
                             Z.Data.Parser.NumericSpec
-                            Z.Data.Array.UnalignedAccessSpec
+                            Z.Data.Array.UnalignedSpec
                             Z.Data.Text.BaseSpec
                             Z.Data.Text.BuilderSpec
                             Z.Data.Text.ExtraSpec

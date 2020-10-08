@@ -39,10 +39,14 @@ spec = describe "CBytes-base" $ do
     describe "CBytes IsString instance property" $ do
         prop "ASCII string" $
             "hello world" === CB.fromText "hello world"
+        prop "ASCII string" $
+            "hello world" === CB.fromBytes "hello world"
+        prop "ASCII string" $
+           CB.toBytes "\NUL" === (V.pack [0xC0, 0x80])
         prop "UTF8 string" $
             "你好世界" === CB.fromText "你好世界"
-        prop "ASCII string" $
-            "hello world" === CB.CBytes (List.fromList (map V.c2w ("hello world") ++ [0]))
+        prop "UTF8 string" $
+            "\NUL" === CB.pack ['\NUL']
 
     describe "CBytes length == List.length" $ do
         prop "CBytes length === List.length" $ \ (ASCIIString xs) ->
