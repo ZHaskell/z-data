@@ -52,7 +52,7 @@ import           Data.Int
 import           Data.Word
 import           GHC.Types
 import           Prelude                            hiding (take, takeWhile)
-import           Z.Data.Array.UnalignedAccess
+import           Z.Data.Array.Unaligned
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Vector.Base               as V
 import qualified Z.Data.Vector.Extra              as V
@@ -279,7 +279,7 @@ atEnd = Parser $ \ _ k inp ->
     then Partial (\ inp' -> k (V.null inp') inp')
     else k False inp
 
-decodePrim :: forall a. (UnalignedAccess a) => Parser a
+decodePrim :: forall a. (Unaligned a) => Parser a
 {-# INLINE decodePrim #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Word   #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Word64 #-}
@@ -299,7 +299,7 @@ decodePrim = do
   where
     n = unalignedSize (undefined :: a)
 
-decodePrimLE :: forall a. (UnalignedAccess (LE a)) => Parser a
+decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# INLINE decodePrimLE #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Word   #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Word64 #-}
@@ -317,7 +317,7 @@ decodePrimLE = do
   where
     n = unalignedSize (undefined :: (LE a))
 
-decodePrimBE :: forall a. (UnalignedAccess (BE a)) => Parser a
+decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# INLINE decodePrimBE #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Word   #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Word64 #-}

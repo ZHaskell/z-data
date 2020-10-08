@@ -2,13 +2,13 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Z.Data.Array.UnalignedAccessSpec where
+module Z.Data.Array.UnalignedSpec where
 
 import qualified Data.List                as L
 import           Data.Int
 import           GHC.Float
 import           Data.Word
-import           Z.Data.Array.UnalignedAccess
+import           Z.Data.Array.Unaligned
 import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
 import           Test.QuickCheck

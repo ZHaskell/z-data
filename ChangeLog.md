@@ -2,9 +2,10 @@
 
 ## 0.1.5.0  -- 2020-10-02
 
-* Rework `CBytes` type to use unpinned byte array only, add `withCBytesUnsafe`, `allocCBytesUnsafe`.
+* Rework `CBytes` type to use unpinned byte array, add `withCBytesUnsafe`, `allocCBytesUnsafe`.
 * Export `head`, `tail`, `init`, `last` from `Z.IO.Vector`, `Z.IO.Text` (well, safety first).
 * Change `unalignedSize` in `UnalignedAccess` class's type to take a instance type and return `Int`.
+* Rename `UnalignedAccess` to `Unaligned`.
 
 ## 0.1.4.2  -- 2020-10-02
 

@@ -82,7 +82,7 @@ import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
 import           GHC.Exts
 import qualified Z.Data.Array                     as A
-import           Z.Data.Array.UnalignedAccess
+import           Z.Data.Array.Unaligned
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Text.UTF8Codec            as T
 import qualified Z.Data.Vector.Base               as V
@@ -378,7 +378,7 @@ writeN n f = ensureN n `append`
         f buf offset >> k () (Buffer buf (offset+n)))
 
 -- | write primitive types in host byte order.
-encodePrim :: forall a. UnalignedAccess a => a -> Builder ()
+encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# INLINE encodePrim #-}
 {-# SPECIALIZE INLINE encodePrim :: Word -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrim :: Word64 -> Builder () #-}
@@ -399,7 +399,7 @@ encodePrim x = do
     n = unalignedSize (undefined :: a)
 
 -- | write primitive types with little endianess.
-encodePrimLE :: forall a. UnalignedAccess (LE a) => a -> Builder ()
+encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
 {-# INLINE encodePrimLE #-}
 {-# SPECIALIZE INLINE encodePrimLE :: Word -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimLE :: Word64 -> Builder () #-}
@@ -412,7 +412,7 @@ encodePrimLE :: forall a. UnalignedAccess (LE a) => a -> Builder ()
 encodePrimLE = encodePrim . LE
 
 -- | write primitive types with big endianess.
-encodePrimBE :: forall a. UnalignedAccess (BE a) => a -> Builder ()
+encodePrimBE :: forall a. Unaligned (BE a) => a -> Builder ()
 {-# INLINE encodePrimBE #-}
 {-# SPECIALIZE INLINE encodePrimBE :: Word -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimBE :: Word64 -> Builder () #-}

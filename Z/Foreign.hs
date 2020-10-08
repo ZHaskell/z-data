@@ -87,7 +87,7 @@ module Z.Foreign
   , module Data.Primitive.PrimArray
   , module Foreign.C.Types
   , module Data.Primitive.Ptr
-  , module Z.Data.Array.UnalignedAccess
+  , module Z.Data.Array.Unaligned
   ) where
 
 import           Control.Monad.Primitive
@@ -99,7 +99,7 @@ import           Data.Primitive.PrimArray
 import           Foreign.C.Types
 import           GHC.Ptr
 import           Z.Data.Array
-import           Z.Data.Array.UnalignedAccess
+import           Z.Data.Array.Unaligned
 import           Z.Data.Vector.Base
 
 -- | Type alias for 'ByteArray#'.

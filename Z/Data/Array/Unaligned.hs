@@ -10,7 +10,7 @@
 {-# LANGUAGE PolyKinds #-}
 
 {-|
-Module      : Z.Data.Array.UnalignedAccess
+Module      : Z.Data.Array.Unaligned
 Description : unaligned access for primitive arrays
 Copyright   : (c) Dong Han, 2017-2019
 License     : BSD
@@ -18,10 +18,11 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module implements unaligned element access with ghc primitives (> 8.6).
+This module implements unaligned element access with ghc primitives (> 8.6), which can be used
+as a simple binary encoding \/ decoding method.
 -}
 
-module Z.Data.Array.UnalignedAccess where
+module Z.Data.Array.Unaligned where
 
 import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
@@ -56,7 +57,7 @@ import           Foreign.C.Types
 --          ....
 -- @
 --
-class UnalignedAccess a where
+class Unaligned a where
     {-# MINIMAL unalignedSize, indexWord8ArrayAs#, writeWord8ArrayAs#, readWord8ArrayAs# |
         unalignedSize, indexBA, peekMBA, pokeMBA #-}
     -- | byte size
@@ -96,36 +97,36 @@ class UnalignedAccess a where
 
 
 -- | Lifted version of 'writeWord8ArrayAs#'
-writeWord8ArrayAs :: (PrimMonad m, UnalignedAccess a) => MutableByteArray (PrimState m) -> Int -> a -> m ()
+writeWord8ArrayAs :: (PrimMonad m, Unaligned a) => MutableByteArray (PrimState m) -> Int -> a -> m ()
 {-# INLINE writeWord8ArrayAs #-}
 writeWord8ArrayAs (MutableByteArray mba#) (I# i#) x = primitive_ (writeWord8ArrayAs# mba# i# x)
 
 -- | Lifted version of 'readWord8ArrayAs#'
-readWord8ArrayAs :: (PrimMonad m, UnalignedAccess a) => MutableByteArray (PrimState m) -> Int -> m a
+readWord8ArrayAs :: (PrimMonad m, Unaligned a) => MutableByteArray (PrimState m) -> Int -> m a
 {-# INLINE readWord8ArrayAs #-}
 readWord8ArrayAs (MutableByteArray mba#) (I# i#) = primitive (readWord8ArrayAs# mba# i#)
 
 -- | Lifted version of 'indexWord8ArrayAs#'
-indexWord8ArrayAs :: UnalignedAccess a => ByteArray -> Int -> a
+indexWord8ArrayAs :: Unaligned a => ByteArray -> Int -> a
 {-# INLINE indexWord8ArrayAs #-}
 indexWord8ArrayAs (ByteArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
 
 -- | Lifted version of 'writeWord8ArrayAs#'
-writePrimWord8ArrayAs :: (PrimMonad m, UnalignedAccess a) => MutablePrimArray (PrimState m) Word8 -> Int -> a -> m ()
+writePrimWord8ArrayAs :: (PrimMonad m, Unaligned a) => MutablePrimArray (PrimState m) Word8 -> Int -> a -> m ()
 {-# INLINE writePrimWord8ArrayAs #-}
 writePrimWord8ArrayAs (MutablePrimArray mba#) (I# i#) x = primitive_ (writeWord8ArrayAs# mba# i# x)
 
 -- | Lifted version of 'readWord8ArrayAs#'
-readPrimWord8ArrayAs :: (PrimMonad m, UnalignedAccess a) => MutablePrimArray (PrimState m) Word8 -> Int -> m a
+readPrimWord8ArrayAs :: (PrimMonad m, Unaligned a) => MutablePrimArray (PrimState m) Word8 -> Int -> m a
 {-# INLINE readPrimWord8ArrayAs #-}
 readPrimWord8ArrayAs (MutablePrimArray mba#) (I# i#) = primitive (readWord8ArrayAs# mba# i#)
 
 -- | Lifted version of 'indexWord8ArrayAs#'
-indexPrimWord8ArrayAs :: UnalignedAccess a => PrimArray Word8 -> Int -> a
+indexPrimWord8ArrayAs :: Unaligned a => PrimArray Word8 -> Int -> a
 {-# INLINE indexPrimWord8ArrayAs #-}
 indexPrimWord8ArrayAs (PrimArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
 
-instance UnalignedAccess Word8 where
+instance Unaligned Word8 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 1
     {-# INLINE writeWord8ArrayAs# #-}
@@ -136,7 +137,7 @@ instance UnalignedAccess Word8 where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = W8# (indexWord8Array# ba# i#)
 
-instance UnalignedAccess Int8 where
+instance Unaligned Int8 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 1
     {-# INLINE writeWord8ArrayAs# #-}
@@ -166,7 +167,7 @@ newtype BE a = BE { getBE :: a } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Word16 where
+instance Unaligned Word16 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
     {-# INLINE writeWord8ArrayAs# #-}
@@ -177,7 +178,7 @@ instance UnalignedAccess Word16 where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = W16# (indexWord8ArrayAsWord16# ba# i#)
 
-instance UnalignedAccess (LE Word16) where
+instance Unaligned (LE Word16) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -199,7 +200,7 @@ instance UnalignedAccess (LE Word16) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Word16) where
+instance Unaligned (BE Word16) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -236,7 +237,7 @@ instance UnalignedAccess (BE Word16) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Word32 where
+instance Unaligned Word32 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
@@ -248,7 +249,7 @@ instance UnalignedAccess Word32 where
     indexWord8ArrayAs# ba# i# = W32# (indexWord8ArrayAsWord32# ba# i#)
 
 
-instance UnalignedAccess (LE Word32) where
+instance Unaligned (LE Word32) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -280,7 +281,7 @@ instance UnalignedAccess (LE Word32) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Word32) where
+instance Unaligned (BE Word32) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -327,7 +328,7 @@ instance UnalignedAccess (BE Word32) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Word64 where
+instance Unaligned Word64 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
@@ -339,7 +340,7 @@ instance UnalignedAccess Word64 where
     indexWord8ArrayAs# ba# i# = W64# (indexWord8ArrayAsWord64# ba# i#)
 
 
-instance UnalignedAccess (LE Word64) where
+instance Unaligned (LE Word64) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -391,7 +392,7 @@ instance UnalignedAccess (LE Word64) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Word64) where
+instance Unaligned (BE Word64) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -458,7 +459,7 @@ instance UnalignedAccess (BE Word64) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Word where
+instance Unaligned Word where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -474,7 +475,7 @@ instance UnalignedAccess Word where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = W# (indexWord8ArrayAsWord# ba# i#)
 
-instance UnalignedAccess (LE Word) where
+instance Unaligned (LE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -497,7 +498,7 @@ instance UnalignedAccess (LE Word) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (W64# x#)) -> LE (W# x#)
 #endif
 
-instance UnalignedAccess (BE Word) where
+instance Unaligned (BE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -522,7 +523,7 @@ instance UnalignedAccess (BE Word) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Int16 where
+instance Unaligned Int16 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
     {-# INLINE writeWord8ArrayAs# #-}
@@ -533,7 +534,7 @@ instance UnalignedAccess Int16 where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = I16# (indexWord8ArrayAsInt16# ba# i#)
 
-instance UnalignedAccess (LE Int16) where
+instance Unaligned (LE Int16) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -552,7 +553,7 @@ instance UnalignedAccess (LE Int16) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Int16) where
+instance Unaligned (BE Int16) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -573,7 +574,7 @@ instance UnalignedAccess (BE Int16) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Int32 where
+instance Unaligned Int32 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
@@ -584,7 +585,7 @@ instance UnalignedAccess Int32 where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = I32# (indexWord8ArrayAsInt32# ba# i#)
 
-instance UnalignedAccess (LE Int32) where
+instance Unaligned (LE Int32) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -603,7 +604,7 @@ instance UnalignedAccess (LE Int32) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Int32) where
+instance Unaligned (BE Int32) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -624,7 +625,7 @@ instance UnalignedAccess (BE Int32) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Int64 where
+instance Unaligned Int64 where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
@@ -635,7 +636,7 @@ instance UnalignedAccess Int64 where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = I64# (indexWord8ArrayAsInt64# ba# i#)
 
-instance UnalignedAccess (LE Int64) where
+instance Unaligned (LE Int64) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -654,7 +655,7 @@ instance UnalignedAccess (LE Int64) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Int64) where
+instance Unaligned (BE Int64) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -675,7 +676,7 @@ instance UnalignedAccess (BE Int64) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Int where
+instance Unaligned Int where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -691,7 +692,7 @@ instance UnalignedAccess Int where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = I# (indexWord8ArrayAsInt# ba# i#)
 
-instance UnalignedAccess (LE Int) where
+instance Unaligned (LE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -714,7 +715,7 @@ instance UnalignedAccess (LE Int) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (I64# x#)) -> LE (I# x#)
 #endif
 
-instance UnalignedAccess (BE Int) where
+instance Unaligned (BE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
@@ -739,7 +740,7 @@ instance UnalignedAccess (BE Int) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Float where
+instance Unaligned Float where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
@@ -750,7 +751,7 @@ instance UnalignedAccess Float where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = F# (indexWord8ArrayAsFloat# ba# i#)
 
-instance UnalignedAccess (LE Float) where
+instance Unaligned (LE Float) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -769,7 +770,7 @@ instance UnalignedAccess (LE Float) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Float) where
+instance Unaligned (BE Float) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -790,7 +791,7 @@ instance UnalignedAccess (BE Float) where
 
 --------------------------------------------------------------------------------
 
-instance UnalignedAccess Double where
+instance Unaligned Double where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
     {-# INLINE writeWord8ArrayAs# #-}
@@ -801,7 +802,7 @@ instance UnalignedAccess Double where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = D# (indexWord8ArrayAsDouble# ba# i#)
 
-instance UnalignedAccess (LE Double) where
+instance Unaligned (LE Double) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -820,7 +821,7 @@ instance UnalignedAccess (LE Double) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Double) where
+instance Unaligned (BE Double) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -842,7 +843,7 @@ instance UnalignedAccess (BE Double) where
 --------------------------------------------------------------------------------
 
 -- | Char's instance use 31bit wide char prim-op.
-instance UnalignedAccess Char where
+instance Unaligned Char where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
     {-# INLINE writeWord8ArrayAs# #-}
@@ -853,7 +854,7 @@ instance UnalignedAccess Char where
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# = C# (indexWord8ArrayAsWideChar# ba# i#)
 
-instance UnalignedAccess (LE Char) where
+instance Unaligned (LE Char) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -872,7 +873,7 @@ instance UnalignedAccess (LE Char) where
     USE_HOST_IMPL(LE)
 #endif
 
-instance UnalignedAccess (BE Char) where
+instance Unaligned (BE Char) where
     {-# INLINE unalignedSize #-}
     unalignedSize _ = 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
@@ -894,29 +895,29 @@ instance UnalignedAccess (BE Char) where
 --------------------------------------------------------------------------------
 
 -- Prim instances for newtypes in Foreign.C.Types
-deriving instance UnalignedAccess CChar
-deriving instance UnalignedAccess CSChar
-deriving instance UnalignedAccess CUChar
-deriving instance UnalignedAccess CShort
-deriving instance UnalignedAccess CUShort
-deriving instance UnalignedAccess CInt
-deriving instance UnalignedAccess CUInt
-deriving instance UnalignedAccess CLong
-deriving instance UnalignedAccess CULong
-deriving instance UnalignedAccess CPtrdiff
-deriving instance UnalignedAccess CSize
-deriving instance UnalignedAccess CWchar
-deriving instance UnalignedAccess CSigAtomic
-deriving instance UnalignedAccess CLLong
-deriving instance UnalignedAccess CULLong
-deriving instance UnalignedAccess CBool
-deriving instance UnalignedAccess CIntPtr
-deriving instance UnalignedAccess CUIntPtr
-deriving instance UnalignedAccess CIntMax
-deriving instance UnalignedAccess CUIntMax
-deriving instance UnalignedAccess CClock
-deriving instance UnalignedAccess CTime
-deriving instance UnalignedAccess CUSeconds
-deriving instance UnalignedAccess CSUSeconds
-deriving instance UnalignedAccess CFloat
-deriving instance UnalignedAccess CDouble
+deriving instance Unaligned CChar
+deriving instance Unaligned CSChar
+deriving instance Unaligned CUChar
+deriving instance Unaligned CShort
+deriving instance Unaligned CUShort
+deriving instance Unaligned CInt
+deriving instance Unaligned CUInt
+deriving instance Unaligned CLong
+deriving instance Unaligned CULong
+deriving instance Unaligned CPtrdiff
+deriving instance Unaligned CSize
+deriving instance Unaligned CWchar
+deriving instance Unaligned CSigAtomic
+deriving instance Unaligned CLLong
+deriving instance Unaligned CULLong
+deriving instance Unaligned CBool
+deriving instance Unaligned CIntPtr
+deriving instance Unaligned CUIntPtr
+deriving instance Unaligned CIntMax
+deriving instance Unaligned CUIntMax
+deriving instance Unaligned CClock
+deriving instance Unaligned CTime
+deriving instance Unaligned CUSeconds
+deriving instance Unaligned CSUSeconds
+deriving instance Unaligned CFloat
+deriving instance Unaligned CDouble
