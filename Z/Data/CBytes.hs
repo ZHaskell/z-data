@@ -27,7 +27,7 @@ module Z.Data.CBytes
   , unpack
   , null , length
   , empty, append, concat, intercalate, intercalateElem
-  , toBytes, fromBytes, toText, toTextMaybe, fromText
+  , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   -- re-export
@@ -36,7 +36,6 @@ module Z.Data.CBytes
   ) where
 
 import           Control.DeepSeq
-import           Control.Exception (Exception, throwIO)
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.ST
@@ -44,7 +43,6 @@ import           Data.Bits
 import           Data.Foldable           (foldlM)
 import           Data.Hashable           (Hashable(..))
 import qualified Data.List               as List
-import           Data.Typeable
 import           Data.Primitive.PrimArray
 import           Data.Word
 import           Foreign.C.String
@@ -65,7 +63,9 @@ import           Prelude                 hiding (all, any, appendFile, break,
                                           zipWith)
 import           Z.Data.Array
 import           Z.Data.Array.Unaligned
+import qualified Z.Data.Builder        as B
 import qualified Z.Data.Text           as T
+import qualified Z.Data.Text.Builder   as T
 import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
 import qualified Z.Data.Vector.Base    as V
 import           Z.Foreign
@@ -180,6 +180,11 @@ instance Unaligned CBytes where
         copyPrimArray mpa 0 (PrimArray ba#) i l'
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa))
+
+-- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
+instance T.ToText CBytes where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = T.stringUTF8 . show . unpack
 
 append :: CBytes -> CBytes -> CBytes
 {-# INLINABLE append #-}
@@ -408,6 +413,18 @@ toTextMaybe = T.validateMaybe . toBytes
 fromText :: T.Text -> CBytes
 {-# INLINABLE fromText #-}
 fromText = fromBytes . T.getUTF8Bytes
+
+
+-- | Write 'CBytes' \'s byte sequence to buffer.
+--
+-- This function is different from 'ToText' instance in that it directly write byte sequence without
+-- checking if it's UTF8 encoded.
+toBuilder :: CBytes -> B.Builder ()
+toBuilder = B.bytes . toBytes
+
+-- | Build a 'CBytes' with builder, result will be trimmed down to first byte before @\NUL@ byte if there's any.
+buildCBytes :: B.Builder a -> CBytes
+buildCBytes = fromBytes . B.buildBytes
 
 --------------------------------------------------------------------------------
 

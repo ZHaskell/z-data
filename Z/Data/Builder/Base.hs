@@ -155,6 +155,8 @@ instance Monoid (Builder ()) where
     mconcat = foldr append (pure ())
     {-# INLINE mconcat #-}
 
+-- | This instance simple write literals' bytes into buffer,
+-- which is different from 'stringUTF8' in that it DOES NOT PROVIDE UTF8 GUARANTEES! :
 instance (a ~ ()) => IsString (Builder a) where
     {-# INLINE fromString #-}
     fromString = stringModifiedUTF8
@@ -430,9 +432,8 @@ encodePrimBE = encodePrim . BE
 --
 -- Illegal codepoints will be written as 'T.replacementChar's.
 --
--- Note, if you're trying to write string literals builders, and you know it doen't contain
--- '\NUL' or surrgate codepoints, then you can open 'OverloadedStrings' and use 'Builder''s
--- 'IsString' instance, it can save an extra UTF-8 validation.
+-- This is different from writing string literals builders via @OverloadedStrings@, because string literals
+-- do not provide UTF8 guarantees.
 --
 -- This function will be rewritten into a memcpy if possible, (running a fast UTF-8 validation
 -- at runtime first).
