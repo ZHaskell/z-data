@@ -92,6 +92,7 @@ import qualified Data.Semigroup               as Semigroup
 import           Data.Tagged                  (Tagged (..))
 import           Data.Version                 (Version, parseVersion)
 import           Data.Word
+import           Foreign.C.Types
 import           GHC.Exts                     (Proxy#, proxy#)
 import           GHC.Generics
 import           GHC.Natural
@@ -1291,6 +1292,89 @@ deriving newtype instance EncodeJSON a => EncodeJSON (Monoid.Last a)
 deriving newtype instance EncodeJSON a => EncodeJSON (Identity a)
 deriving newtype instance EncodeJSON a => EncodeJSON (Const a b)
 deriving newtype instance EncodeJSON b => EncodeJSON (Tagged a b)
+
+--------------------------------------------------------------------------------
+
+deriving newtype instance FromValue CChar
+deriving newtype instance FromValue CSChar
+deriving newtype instance FromValue CUChar
+deriving newtype instance FromValue CShort
+deriving newtype instance FromValue CUShort
+deriving newtype instance FromValue CInt
+deriving newtype instance FromValue CUInt
+deriving newtype instance FromValue CLong
+deriving newtype instance FromValue CULong
+deriving newtype instance FromValue CPtrdiff
+deriving newtype instance FromValue CSize
+deriving newtype instance FromValue CWchar
+deriving newtype instance FromValue CSigAtomic
+deriving newtype instance FromValue CLLong
+deriving newtype instance FromValue CULLong
+deriving newtype instance FromValue CBool
+deriving newtype instance FromValue CIntPtr
+deriving newtype instance FromValue CUIntPtr
+deriving newtype instance FromValue CIntMax
+deriving newtype instance FromValue CUIntMax
+deriving newtype instance FromValue CClock
+deriving newtype instance FromValue CTime
+deriving newtype instance FromValue CUSeconds
+deriving newtype instance FromValue CSUSeconds
+deriving newtype instance FromValue CFloat
+deriving newtype instance FromValue CDouble
+
+deriving newtype instance ToValue CChar
+deriving newtype instance ToValue CSChar
+deriving newtype instance ToValue CUChar
+deriving newtype instance ToValue CShort
+deriving newtype instance ToValue CUShort
+deriving newtype instance ToValue CInt
+deriving newtype instance ToValue CUInt
+deriving newtype instance ToValue CLong
+deriving newtype instance ToValue CULong
+deriving newtype instance ToValue CPtrdiff
+deriving newtype instance ToValue CSize
+deriving newtype instance ToValue CWchar
+deriving newtype instance ToValue CSigAtomic
+deriving newtype instance ToValue CLLong
+deriving newtype instance ToValue CULLong
+deriving newtype instance ToValue CBool
+deriving newtype instance ToValue CIntPtr
+deriving newtype instance ToValue CUIntPtr
+deriving newtype instance ToValue CIntMax
+deriving newtype instance ToValue CUIntMax
+deriving newtype instance ToValue CClock
+deriving newtype instance ToValue CTime
+deriving newtype instance ToValue CUSeconds
+deriving newtype instance ToValue CSUSeconds
+deriving newtype instance ToValue CFloat
+deriving newtype instance ToValue CDouble
+
+deriving newtype instance EncodeJSON CChar
+deriving newtype instance EncodeJSON CSChar
+deriving newtype instance EncodeJSON CUChar
+deriving newtype instance EncodeJSON CShort
+deriving newtype instance EncodeJSON CUShort
+deriving newtype instance EncodeJSON CInt
+deriving newtype instance EncodeJSON CUInt
+deriving newtype instance EncodeJSON CLong
+deriving newtype instance EncodeJSON CULong
+deriving newtype instance EncodeJSON CPtrdiff
+deriving newtype instance EncodeJSON CSize
+deriving newtype instance EncodeJSON CWchar
+deriving newtype instance EncodeJSON CSigAtomic
+deriving newtype instance EncodeJSON CLLong
+deriving newtype instance EncodeJSON CULLong
+deriving newtype instance EncodeJSON CBool
+deriving newtype instance EncodeJSON CIntPtr
+deriving newtype instance EncodeJSON CUIntPtr
+deriving newtype instance EncodeJSON CIntMax
+deriving newtype instance EncodeJSON CUIntMax
+deriving newtype instance EncodeJSON CClock
+deriving newtype instance EncodeJSON CTime
+deriving newtype instance EncodeJSON CUSeconds
+deriving newtype instance EncodeJSON CSUSeconds
+deriving newtype instance EncodeJSON CFloat
+deriving newtype instance EncodeJSON CDouble
 
 --------------------------------------------------------------------------------
 
