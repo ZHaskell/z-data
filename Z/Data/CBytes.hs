@@ -85,20 +85,22 @@ import           System.IO.Unsafe        (unsafeDupablePerformIO)
 --
 -- When textual represatation is needed(conver to 'String', 'T.Text', 'Show' instance, etc.),
 -- we assume 'CBytes' using UTF-8 encodings, 'CBytes' can be used with @OverloadedString@,
--- literal encoding is UTF-8 with some modifications: @\NUL@ char is encoded to 'C0 80',
+-- literal encoding is UTF-8 with some modifications: @\NUL@ is encoded to 'C0 80',
 -- and '\xD800' ~ '\xDFFF' is encoded as a three bytes normal utf-8 codepoint.
 --
 -- Note most of the unix API is not unicode awared though, you may find a `scandir` call
 -- return a filename which is not proper encoded in any unicode encoding at all.
--- But still, UTF-8 is recommanded to be used everywhere, and we use UTF-8 assumption in
--- various places.
+-- But still, UTF-8 is recommanded to be used when text represatation is needed.
 -- --
 data CBytes = CBytes
-    { toPrimArray :: {-# UNPACK #-} !(PrimArray Word8)    -- ^ Convert to 'PrimArray'
-    }                                                   -- there's an invariance that this array's
-                                                        -- length is always shrinked to contain content
-                                                        -- before \NUL terminator
+    {
+        -- | Convert to 'PrimArray',
+        --
+        -- there's an invariance that this array never contains @\NUL@
+        toPrimArray :: {-# UNPACK #-} !(PrimArray Word8)
+    }
 
+-- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first byte before @\NUL@ byte if there's any.
 pattern CB :: PrimArray Word8 -> CBytes
 pattern CB arr <- CBytes arr where
     CB arr = fromPrimArray arr
@@ -147,17 +149,18 @@ instance Hashable CBytes where
     hashWithSalt salt (CBytes pa@(PrimArray ba#)) = unsafeDupablePerformIO $ do
         V.c_fnv_hash_ba ba# 0 (sizeofPrimArray pa) salt
 
--- | This instance peek bytes until \NUL, poke bytes with an extra \NUL terminator.
+-- | This instance peek bytes until @\NUL@(or input chunk ends), poke bytes with an extra \NUL terminator.
 instance Unaligned CBytes where
     {-# INLINE unalignedSize #-}
     unalignedSize (CBytes arr) = sizeofPrimArray arr + 1
     {-# INLINE peekMBA #-}
     peekMBA mba# i = do
         b <- getSizeofMutableByteArray (MutableByteArray mba#)
-        l <- c_memchr mba# i 0 b
-        let l' = if l == -1 then b else l
-        mpa <- newPrimArray l
-        copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l
+        let rest = b-i
+        l <- c_memchr mba# i 0 rest
+        let l' = if l == -1 then rest else l
+        mpa <- newPrimArray l'
+        copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
 
@@ -170,10 +173,11 @@ instance Unaligned CBytes where
     {-# INLINE indexBA #-}
     indexBA ba# i = runST (do
         let b = sizeofByteArray (ByteArray ba#)
-            l = V.c_memchr ba# i 0 b
-            l' = if l == -1 then b else l
-        mpa <- newPrimArray l
-        copyPrimArray mpa 0 (PrimArray ba#) i l
+            rest = b-i
+            l = V.c_memchr ba# i 0 rest
+            l' = if l == -1 then rest else l
+        mpa <- newPrimArray l'
+        copyPrimArray mpa 0 (PrimArray ba#) i l'
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa))
 
@@ -192,7 +196,7 @@ append strA@(CBytes pa) strB@(CBytes pb)
     lenA = length strA
     lenB = length strB
 
--- | 'empty' 'CBytes'
+-- | An empty 'CBytes'
 empty :: CBytes
 {-# NOINLINE empty #-}
 empty = CBytes (V.empty)
@@ -235,7 +239,7 @@ intercalate s = concat . List.intersperse s
 
 -- | /O(n)/ An efficient way to join 'CByte' s with a byte.
 --
--- Intercalate bytes list with @\NUL@ will effectively leave the first bytes.
+-- Intercalate bytes list with @\NUL@ will effectively leave the first bytes in the list.
 intercalateElem :: Word8 -> [CBytes] -> CBytes
 {-# INLINABLE intercalateElem #-}
 intercalateElem 0 [] = empty
@@ -318,7 +322,7 @@ data SP2 s = SP2 {-# UNPACK #-}!Int {-# UNPACK #-}!(MutablePrimArray s Word8)
 -- | /O(n)/ Convert cbytes to a char list using UTF8 encoding assumption.
 --
 -- This function is much tolerant than 'toText', it simply decoding codepoints using UTF8 'decodeChar'
--- without checking, thus @pack . unpack /== id@ ('pack' will replace illegal codepoints with replacement char).
+-- without checking errors such as overlong or invalid range.
 --
 -- Unpacking is done lazily. i.e. we will retain reference to the array until all element are consumed.
 --
@@ -348,13 +352,13 @@ unpackFB (CBytes arr) k z = go 0
 
 --------------------------------------------------------------------------------
 
--- Return 'True' if 'CBytes' is empty.
+-- | Return 'True' if 'CBytes' is empty.
 --
 null :: CBytes -> Bool
 {-# INLINE null #-}
 null (CBytes pa) = sizeofPrimArray pa == 0
 
--- Return the BTYE length of 'CBytes'.
+-- | Return the BTYE length of 'CBytes'.
 --
 length :: CBytes -> Int
 {-# INLINE length #-}
@@ -467,16 +471,19 @@ withCBytes (CBytes pa) f = do
 -- | Create a 'CBytes' with IO action.
 --
 -- If (<=0) capacity is provided, a pointer pointing to @\NUL@ is passed to initialize function
--- and 'empty' will be returned. Which may cause troubles for some FFI functions.
+-- and 'empty' will be returned. This behavior is different from 'allocCBytes', which may cause
+-- trouble for some FFI functions.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 allocCBytesUnsafe :: HasCallStack
-                  => Int                   -- ^ capacity n(not include the @\NUL@ terminator)
+                  => Int                   -- ^ capacity n(include the @\NUL@ terminator)
                   -> (MBA# Word8 -> IO a)  -- ^ initialization function,
                   -> IO (CBytes, a)
 {-# INLINABLE allocCBytesUnsafe #-}
 allocCBytesUnsafe n fill | n <= 0 = withPrimUnsafe (0::Word8) fill >>=
                                         \ (_, b) -> return (empty, b)
                          | otherwise = do
-    mba@(MutablePrimArray mba#) <- newPrimArray (n+1) :: IO (MutablePrimArray RealWorld Word8)
+    mba@(MutablePrimArray mba#) <- newPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     a <- fill mba#
     l <- fromIntegral <$> (c_memchr mba# 0 0 n)
     shrinkMutablePrimArray mba (if l == -1 then n else l)
@@ -490,13 +497,13 @@ allocCBytesUnsafe n fill | n <= 0 = withPrimUnsafe (0::Word8) fill >>=
 -- 'empty' will be returned. Other than that, User have to make sure a @\NUL@ ternimated
 -- string will be written.
 allocCBytes :: HasCallStack
-            => Int                -- ^ capacity n(not include the @\NUL@ terminator)
+            => Int                -- ^ capacity n(include the @\NUL@ terminator)
             -> (CString -> IO a)  -- ^ initialization function,
             -> IO (CBytes, a)
 {-# INLINABLE allocCBytes #-}
 allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
                    | otherwise = do
-    mba@(MutablePrimArray mba#) <- newPinnedPrimArray (n+1) :: IO (MutablePrimArray RealWorld Word8)
+    mba@(MutablePrimArray mba#) <- newPinnedPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     a <- withMutablePrimArrayContents mba (fill . castPtr)
     l <- fromIntegral <$> (c_memchr mba# 0 0 n)
     shrinkMutablePrimArray mba (if l == -1 then n else l)

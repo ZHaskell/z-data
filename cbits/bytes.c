@@ -43,10 +43,6 @@ HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t c, HsInt n) {
     else return (p - a);
 }
 
-HsInt hs_strlen(uint8_t *a, HsInt aoff){
-    return (HsInt)strlen(a + aoff);
-}
-
 /* FNV-1 hash
  *
  * The FNV-1 hash description: http://isthe.com/chongo/tech/comp/fnv/
