@@ -74,6 +74,7 @@ import           Foreign.C.Types
 import           GHC.Exts
 import           GHC.Natural
 import           GHC.Generics
+import           GHC.Stack
 import           Data.Version
 import           Data.Primitive.Types
 import qualified Z.Data.Builder.Base            as B
@@ -641,6 +642,10 @@ instance (ShowT a, Integral a) => ShowT (Ratio a) where
                                                 toTextBuilder 8 (denominator r)
 
 instance HasResolution a => ShowT (Fixed a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = TextBuilder . B.string8 .  show
+
+instance ShowT CallStack where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . B.string8 .  show
 
