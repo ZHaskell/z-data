@@ -26,7 +26,7 @@ module Z.Data.JSON.Builder
 
 import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text                    as T
-import qualified Z.Data.Text.Builder            as T
+import qualified Z.Data.Text.ShowT              as T
 import           Z.Data.Vector.Base             as V
 import           Z.Data.JSON.Value              (Value(..))
 

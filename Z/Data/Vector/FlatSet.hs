@@ -33,9 +33,9 @@ import           Control.Monad.ST
 import qualified Data.Primitive.SmallArray  as A
 import qualified Data.Semigroup             as Semigroup
 import qualified Data.Monoid                as Monoid
-import qualified Z.Data.Vector.Base as V
-import qualified Z.Data.Vector.Sort as V
-import qualified Z.Data.Text.Builder        as T
+import qualified Z.Data.Vector.Base         as V
+import qualified Z.Data.Vector.Sort         as V
+import qualified Z.Data.Text.ShowT          as T
 import           Data.Bits                   (shiftR)
 import           Data.Data
 import           Prelude hiding (elem, null)
@@ -46,7 +46,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 newtype FlatSet v = FlatSet { sortedValues :: V.Vector v }
     deriving (Show, Eq, Ord, Typeable, Foldable)
 
-instance T.ToText v => T.ToText (FlatSet v) where
+instance T.ShowT v => T.ShowT (FlatSet v) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p (FlatSet vec) = T.parenWhen (p > 10) $ do
         T.unsafeFromBuilder "FlatSet {"

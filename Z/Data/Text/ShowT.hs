@@ -10,14 +10,14 @@ Portability : non-portable
 Base on UTF8 compatible textual builders from 'Z.Data.Builder', we provide a newtype wrapper
 'TextBuilder' which can be directly used to build 'Text'.
 
-We also provide faster alternative to 'Show' class, i.e. 'ToText', which also provides 'Generic'
+We also provide faster alternative to 'Show' class, i.e. 'ShowT', which also provides 'Generic'
 based instances deriving.
 
 -}
 
-module Z.Data.Text.Builder
-  ( -- * ToText class
-  ToText(..), toText, toBuilder, toBytes, toString
+module Z.Data.Text.ShowT
+  ( -- * ShowT class
+  ShowT(..), showT, toBuilder, toBytes, toString
   -- * Str newtype
   , Str(..)
   -- * Textual Builder
@@ -118,7 +118,7 @@ instance CoArbitrary (TextBuilder ()) where
 instance Show (TextBuilder a) where
     show = show . buildText
 
-instance ToText (TextBuilder a) where
+instance ShowT (TextBuilder a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ b = quotes (void b)
 
@@ -261,7 +261,7 @@ paren (TextBuilder b) = TextBuilder (B.paren b)
 
 -- | Add "(..)" around builders when condition is met, otherwise add nothing.
 --
--- This is useful when defining 'ToText' instances.
+-- This is useful when defining 'ShowT' instances.
 parenWhen :: Bool -> TextBuilder () -> TextBuilder ()
 {-# INLINE parenWhen #-}
 parenWhen True b = paren b
@@ -338,7 +338,7 @@ newtype Str = Str { chrs :: [Char] } deriving stock (Eq, Ord, Generic)
 instance Show Str where show = show . chrs
 instance Read Str where readPrec = Str <$> readPrec
 
-instance ToText Str where
+instance ShowT Str where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . B.string8 . show
 
@@ -350,27 +350,27 @@ instance ToText Str where
 -- You can use newtype or generic deriving to implement instance of this class quickly:
 --
 -- @
---  {-# LANGUAGE GeneralizedNewtypeDeriving #-}
---  {-# LANGUAGE DeriveAnyClass #-}
---  {-# LANGUAGE DeriveGeneric #-}
---  {-# LANGUAGE DerivingStrategies #-}
+--  {-## LANGUAGE GeneralizedNewtypeDeriving ##-}
+--  {-## LANGUAGE DeriveAnyClass ##-}
+--  {-## LANGUAGE DeriveGeneric ##-}
+--  {-## LANGUAGE DerivingStrategies ##-}
 --
 --  import GHC.Generics
 --
 --  newtype FooInt = FooInt Int deriving (Generic)
---                            deriving anyclass ToText
+--                            deriving anyclass ShowT
 --
--- > toText (FooInt 3)
+-- > showT (FooInt 3)
 -- > "FooInt 3"
 --
 --  newtype FooInt = FooInt Int deriving (Generic)
---                            deriving newtype ToText
+--                            deriving newtype ShowT
 --
--- > toText (FooInt 3)
+-- > showT (FooInt 3)
 -- > "3"
 -- @
 --
-class ToText a where
+class ShowT a where
     toTextBuilder :: Int -> a  -> TextBuilder ()
     default toTextBuilder :: (Generic a, GToText (Rep a)) => Int -> a -> TextBuilder ()
     toTextBuilder p = gToTextBuilder p . from
@@ -436,7 +436,7 @@ instance (GFieldToText (a :*: b), Constructor c) => GToText (C1 c (a :*: b)) whe
                 gFieldToTextBuilder
                     (B.char8 ' ' >> B.stringModifiedUTF8 (conName m1) >> B.char8 ' ') (p'+1) x
 
-instance ToText a => GToText (K1 i a) where
+instance ShowT a => GToText (K1 i a) where
     {-# INLINE gToTextBuilder #-}
     gToTextBuilder p (K1 x) = toTextBuilder p x
 
@@ -446,68 +446,67 @@ instance GToText f => GToText (D1 c f) where
     {-# INLINE gToTextBuilder #-}
     gToTextBuilder p (M1 x) = gToTextBuilder p x
 
-
 -- | Directly convert data to 'Text'.
-toText :: ToText a => a -> Text
-{-# INLINE toText #-}
-toText = buildText .  toTextBuilder 0
+showT :: ShowT a => a -> Text
+{-# INLINE showT #-}
+showT = buildText .  toTextBuilder 0
 
 -- | Directly convert data to 'B.Builder'.
-toBuilder :: ToText a => a -> B.Builder ()
+toBuilder :: ShowT a => a -> B.Builder ()
 {-# INLINE toBuilder #-}
 toBuilder = getBuilder . toTextBuilder 0
 
 -- | Directly convert data to 'V.Bytes'.
-toBytes :: ToText a => a -> V.Bytes
+toBytes :: ShowT a => a -> V.Bytes
 {-# INLINE toBytes #-}
 toBytes = B.buildBytes .  toBuilder
 
 -- | Faster 'show' replacement.
-toString :: ToText a => a -> String
+toString :: ShowT a => a -> String
 {-# INLINE toString #-}
-toString = T.unpack . toText
+toString = T.unpack . showT
 
-instance ToText Bool where
+instance ShowT Bool where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ True = TextBuilder "True"
     toTextBuilder _ _    = TextBuilder "False"
 
-instance ToText Char where
+instance ShowT Char where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . B.string8 . show
 
-instance ToText Double where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = double;}
-instance ToText Float  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = float;}
+instance ShowT Double where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = double;}
+instance ShowT Float  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = float;}
 
-instance ToText Int     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Int8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Int16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Int32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Int64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Word     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Word8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Word16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Word32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ToText Word64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Word     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Word8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Word16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Word32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Word64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
 
-instance ToText Integer  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer;}
-instance ToText Natural  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer . fromIntegral}
-instance ToText Ordering where
+instance ShowT Integer  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer;}
+instance ShowT Natural  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer . fromIntegral}
+instance ShowT Ordering where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ GT = TextBuilder "GT"
     toTextBuilder _ EQ = TextBuilder "EQ"
     toTextBuilder _ _  = TextBuilder "LT"
 
-instance ToText () where
+instance ShowT () where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ () = TextBuilder "()"
 
-instance ToText Version where
+instance ShowT Version where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = stringUTF8 . show
 
 -- | The escaping rules is same with 'Show' instance: we reuse JSON escaping rules here, so it will be faster.
-instance ToText Text where
+instance ShowT Text where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . escapeTextJSON
 
@@ -545,57 +544,57 @@ foreign import ccall unsafe escape_json_string_length
 foreign import ccall unsafe escape_json_string
     :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
 
-instance ToText Sci.Scientific where
+instance ShowT Sci.Scientific where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = scientific
 
-instance ToText a => ToText [a] where
+instance ShowT a => ShowT [a] where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateList comma (toTextBuilder 0)
 
-instance ToText a => ToText (A.Array a) where
+instance ShowT a => ShowT (A.Array a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance ToText a => ToText (A.SmallArray a) where
+instance ShowT a => ShowT (A.SmallArray a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance (A.PrimUnlifted a, ToText a) => ToText (A.UnliftedArray a) where
+instance (A.PrimUnlifted a, ShowT a) => ShowT (A.UnliftedArray a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance (Prim a, ToText a) => ToText (A.PrimArray a) where
+instance (Prim a, ShowT a) => ShowT (A.PrimArray a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance ToText a => ToText (V.Vector a) where
+instance ShowT a => ShowT (V.Vector a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance (Prim a, ToText a) => ToText (V.PrimVector a) where
+instance (Prim a, ShowT a) => ShowT (V.PrimVector a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
-instance (ToText a, ToText b) => ToText (a, b) where
+instance (ShowT a, ShowT b) => ShowT (a, b) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
 
-instance (ToText a, ToText b, ToText c) => ToText (a, b, c) where
+instance (ShowT a, ShowT b, ShowT c) => ShowT (a, b, c) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b, c) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
                      >> comma >> toTextBuilder 0 c
 
-instance (ToText a, ToText b, ToText c, ToText d) => ToText (a, b, c, d) where
+instance (ShowT a, ShowT b, ShowT c, ShowT d) => ShowT (a, b, c, d) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b, c, d) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
                      >> comma >> toTextBuilder 0 c
                      >> comma >> toTextBuilder 0 d
 
-instance (ToText a, ToText b, ToText c, ToText d, ToText e) => ToText (a, b, c, d, e) where
+instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e) => ShowT (a, b, c, d, e) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b, c, d, e) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
@@ -603,7 +602,7 @@ instance (ToText a, ToText b, ToText c, ToText d, ToText e) => ToText (a, b, c, 
                      >> comma >> toTextBuilder 0 d
                      >> comma >> toTextBuilder 0 e
 
-instance (ToText a, ToText b, ToText c, ToText d, ToText e, ToText f) => ToText (a, b, c, d, e, f) where
+instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f) => ShowT (a, b, c, d, e, f) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b, c, d, e, f) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
@@ -612,7 +611,7 @@ instance (ToText a, ToText b, ToText c, ToText d, ToText e, ToText f) => ToText 
                      >> comma >> toTextBuilder 0 e
                      >> comma >> toTextBuilder 0 f
 
-instance (ToText a, ToText b, ToText c, ToText d, ToText e, ToText f, ToText g) => ToText (a, b, c, d, e, f, g) where
+instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f, ShowT g) => ShowT (a, b, c, d, e, f, g) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ (a, b, c, d, e, f, g) = paren $  toTextBuilder 0 a
                      >> comma >> toTextBuilder 0 b
@@ -622,69 +621,69 @@ instance (ToText a, ToText b, ToText c, ToText d, ToText e, ToText f, ToText g) 
                      >> comma >> toTextBuilder 0 f
                      >> comma >> toTextBuilder 0 g
 
-instance ToText a => ToText (Maybe a) where
+instance ShowT a => ShowT (Maybe a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p (Just x) = parenWhen (p > 10) $ do TextBuilder "Just "
                                                        toTextBuilder 11 x
     toTextBuilder _ _        = TextBuilder "Nothing"
 
-instance (ToText a, ToText b) => ToText (Either a b) where
+instance (ShowT a, ShowT b) => ShowT (Either a b) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p (Left x) = parenWhen (p > 10) $ do TextBuilder "Left "
                                                        toTextBuilder 11 x
     toTextBuilder p (Right x) = parenWhen (p > 10) $ do TextBuilder "Right "
                                                         toTextBuilder 11 x
 
-instance (ToText a, Integral a) => ToText (Ratio a) where
+instance (ShowT a, Integral a) => ShowT (Ratio a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p r = parenWhen (p > 10) $ do toTextBuilder 8 (numerator r)
                                                 TextBuilder " % "
                                                 toTextBuilder 8 (denominator r)
 
-instance HasResolution a => ToText (Fixed a) where
+instance HasResolution a => ShowT (Fixed a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . B.string8 .  show
 
-deriving newtype instance ToText CChar
-deriving newtype instance ToText CSChar
-deriving newtype instance ToText CUChar
-deriving newtype instance ToText CShort
-deriving newtype instance ToText CUShort
-deriving newtype instance ToText CInt
-deriving newtype instance ToText CUInt
-deriving newtype instance ToText CLong
-deriving newtype instance ToText CULong
-deriving newtype instance ToText CPtrdiff
-deriving newtype instance ToText CSize
-deriving newtype instance ToText CWchar
-deriving newtype instance ToText CSigAtomic
-deriving newtype instance ToText CLLong
-deriving newtype instance ToText CULLong
-deriving newtype instance ToText CBool
-deriving newtype instance ToText CIntPtr
-deriving newtype instance ToText CUIntPtr
-deriving newtype instance ToText CIntMax
-deriving newtype instance ToText CUIntMax
-deriving newtype instance ToText CClock
-deriving newtype instance ToText CTime
-deriving newtype instance ToText CUSeconds
-deriving newtype instance ToText CSUSeconds
-deriving newtype instance ToText CFloat
-deriving newtype instance ToText CDouble
+deriving newtype instance ShowT CChar
+deriving newtype instance ShowT CSChar
+deriving newtype instance ShowT CUChar
+deriving newtype instance ShowT CShort
+deriving newtype instance ShowT CUShort
+deriving newtype instance ShowT CInt
+deriving newtype instance ShowT CUInt
+deriving newtype instance ShowT CLong
+deriving newtype instance ShowT CULong
+deriving newtype instance ShowT CPtrdiff
+deriving newtype instance ShowT CSize
+deriving newtype instance ShowT CWchar
+deriving newtype instance ShowT CSigAtomic
+deriving newtype instance ShowT CLLong
+deriving newtype instance ShowT CULLong
+deriving newtype instance ShowT CBool
+deriving newtype instance ShowT CIntPtr
+deriving newtype instance ShowT CUIntPtr
+deriving newtype instance ShowT CIntMax
+deriving newtype instance ShowT CUIntMax
+deriving newtype instance ShowT CClock
+deriving newtype instance ShowT CTime
+deriving newtype instance ShowT CUSeconds
+deriving newtype instance ShowT CSUSeconds
+deriving newtype instance ShowT CFloat
+deriving newtype instance ShowT CDouble
 
-deriving anyclass instance ToText a => ToText (Semigroup.Min a)
-deriving anyclass instance ToText a => ToText (Semigroup.Max a)
-deriving anyclass instance ToText a => ToText (Semigroup.First a)
-deriving anyclass instance ToText a => ToText (Semigroup.Last a)
-deriving anyclass instance ToText a => ToText (Semigroup.WrappedMonoid a)
-deriving anyclass instance ToText a => ToText (Semigroup.Dual a)
-deriving anyclass instance ToText a => ToText (Monoid.First a)
-deriving anyclass instance ToText a => ToText (Monoid.Last a)
-deriving anyclass instance ToText a => ToText (NonEmpty a)
-deriving anyclass instance ToText a => ToText (Identity a)
-deriving anyclass instance ToText a => ToText (Const a b)
-deriving anyclass instance ToText (Proxy a)
-deriving anyclass instance ToText b => ToText (Tagged a b)
-deriving anyclass instance ToText (f (g a)) => ToText (Compose f g a)
-deriving anyclass instance (ToText (f a), ToText (g a)) => ToText (Product f g a)
-deriving anyclass instance (ToText (f a), ToText (g a), ToText a) => ToText (Sum f g a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.Min a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.Max a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.First a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.Last a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.WrappedMonoid a)
+deriving anyclass instance ShowT a => ShowT (Semigroup.Dual a)
+deriving anyclass instance ShowT a => ShowT (Monoid.First a)
+deriving anyclass instance ShowT a => ShowT (Monoid.Last a)
+deriving anyclass instance ShowT a => ShowT (NonEmpty a)
+deriving anyclass instance ShowT a => ShowT (Identity a)
+deriving anyclass instance ShowT a => ShowT (Const a b)
+deriving anyclass instance ShowT (Proxy a)
+deriving anyclass instance ShowT b => ShowT (Tagged a b)
+deriving anyclass instance ShowT (f (g a)) => ShowT (Compose f g a)
+deriving anyclass instance (ShowT (f a), ShowT (g a)) => ShowT (Product f g a)
+deriving anyclass instance (ShowT (f a), ShowT (g a), ShowT a) => ShowT (Sum f g a)

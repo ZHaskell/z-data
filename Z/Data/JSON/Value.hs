@@ -47,7 +47,7 @@ import           GHC.Generics
 import qualified Z.Data.Parser          as P
 import           Z.Data.Parser          ((<?>))
 import qualified Z.Data.Text            as T
-import           Z.Data.Text.Builder    (ToText)
+import           Z.Data.Text.ShowT     (ShowT(..))
 import           Z.Data.Vector.Base     as V
 import           Z.Data.Vector.Extra    as V
 import           Z.Foreign
@@ -91,7 +91,7 @@ data Value = Object {-# UNPACK #-} !(V.Vector (T.Text, Value))
            | Number {-# UNPACK #-} !Scientific
            | Bool   !Bool
            | Null
-         deriving (Eq, Show, Typeable, Generic, ToText)
+         deriving (Eq, Show, Typeable, Generic, ShowT)
 
 instance NFData Value where
     {-# INLINE rnf #-}
