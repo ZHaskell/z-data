@@ -57,7 +57,7 @@ import           Z.Data.Array
 import           Z.Data.Array.Unaligned
 import qualified Z.Data.Builder        as B
 import qualified Z.Data.Text           as T
-import qualified Z.Data.Text.Builder   as T
+import qualified Z.Data.Text.ShowT     as T
 import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
 import qualified Z.Data.Vector.Base    as V
 import           Z.Foreign
@@ -182,7 +182,7 @@ instance Unaligned CBytes where
         return (CBytes pa))
 
 -- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
-instance T.ToText CBytes where
+instance T.ShowT CBytes where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = T.stringUTF8 . show . unpack
 
@@ -417,7 +417,7 @@ fromText = fromBytes . T.getUTF8Bytes
 
 -- | Write 'CBytes' \'s byte sequence to buffer.
 --
--- This function is different from 'ToText' instance in that it directly write byte sequence without
+-- This function is different from 'ShowT' instance in that it directly write byte sequence without
 -- checking if it's UTF8 encoded.
 toBuilder :: CBytes -> B.Builder ()
 toBuilder = B.bytes . toBytes

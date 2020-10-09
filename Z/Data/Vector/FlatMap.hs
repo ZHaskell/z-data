@@ -41,7 +41,7 @@ import qualified Data.Semigroup             as Semigroup
 import qualified Data.Monoid                as Monoid
 import qualified Z.Data.Vector.Base as V
 import qualified Z.Data.Vector.Sort as V
-import qualified Z.Data.Text.Builder        as T
+import qualified Z.Data.Text.ShowT          as T
 import           Data.Function              (on)
 import           Data.Bits                   (shiftR)
 import           Data.Data
@@ -53,7 +53,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 newtype FlatMap k v = FlatMap { sortedKeyValues :: V.Vector (k, v) }
     deriving (Show, Eq, Ord, Typeable)
 
-instance (T.ToText k, T.ToText v) => T.ToText (FlatMap k v) where
+instance (T.ShowT k, T.ShowT v) => T.ShowT (FlatMap k v) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p (FlatMap vec) = T.parenWhen (p > 10) $ do
         T.unsafeFromBuilder "FlatMap {"

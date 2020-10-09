@@ -80,7 +80,7 @@ import qualified Z.Data.JSON.Builder        as JB
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Parser.Numeric      as P
 import qualified Z.Data.Text                as T
-import qualified Z.Data.Text.Builder        as TB
+import qualified Z.Data.Text.ShowT          as T
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Extra        as V
 import qualified Z.Data.Vector.FlatIntMap   as FIM
@@ -146,12 +146,12 @@ encodeBytes = B.buildBytes . encodeJSON
 -- | Text version 'encodeBytes'.
 encodeText :: EncodeJSON a => a -> T.Text
 {-# INLINE encodeText #-}
-encodeText = TB.buildText . encodeTextBuilder
+encodeText = T.buildText . encodeTextBuilder
 
 -- | JSON Docs are guaranteed to be valid UTF-8 texts, so we provide this.
-encodeTextBuilder :: EncodeJSON a => a -> TB.TextBuilder ()
+encodeTextBuilder :: EncodeJSON a => a -> T.TextBuilder ()
 {-# INLINE encodeTextBuilder #-}
-encodeTextBuilder = TB.unsafeFromBuilder . encodeJSON
+encodeTextBuilder = T.unsafeFromBuilder . encodeJSON
 
 -- | Run a 'Converter' with input value.
 convert :: (a -> Converter r) -> a -> Either ConvertError r
@@ -181,14 +181,14 @@ data ConvertError = ConvertError { errPath :: [PathElement], errMsg :: T.Text } 
 
 instance Show ConvertError where
     -- TODO use standard format
-    show (ConvertError paths msg) = T.unpack . TB.buildText $ do
+    show (ConvertError paths msg) = T.unpack . T.buildText $ do
         "<"
         mapM_ renderPath (reverse paths)
         "> "
-        TB.text msg
+        T.text msg
       where
-        renderPath (Index ix) = TB.char7 '[' >> TB.int ix >> TB.char7 ']'
-        renderPath (Key k) = TB.char7 '.' >> (TB.unsafeFromBuilder $ JB.string k)
+        renderPath (Index ix) = T.char7 '[' >> T.int ix >> T.char7 ']'
+        renderPath (Key k) = T.char7 '.' >> (T.unsafeFromBuilder $ JB.string k)
         renderPath Embedded = "<Embedded>"
 
 -- | 'Converter' for convert result from JSON 'Value'.
@@ -328,11 +328,11 @@ withBoundedScientific :: T.Text -> (Scientific -> Converter a) -> Value ->  Conv
 {-# INLINE withBoundedScientific #-}
 withBoundedScientific name f (Number x)
     | e <= 1024 = f x
-    | otherwise = fail' . TB.buildText $ do
+    | otherwise = fail' . T.buildText $ do
         "converting "
-        TB.text name
+        T.text name
         " failed, found a number with exponent "
-        TB.int e
+        T.int e
         ", but it must not be greater than 1024"
   where e = base10Exponent x
 withBoundedScientific name _ v = typeMismatch name "Number" v
@@ -344,11 +344,11 @@ withBoundedIntegral :: (Bounded a, Integral a) => T.Text -> (a -> Converter r) -
 withBoundedIntegral name f (Number x) =
     case toBoundedInteger x of
         Just i -> f i
-        _      -> fail' . TB.buildText $ do
+        _      -> fail' . T.buildText $ do
             "converting "
-            TB.text name
+            T.text name
             "failed, value is either floating or will cause over or underflow "
-            TB.scientific x
+            T.scientific x
 withBoundedIntegral name _ v = typeMismatch name "Number" v
 
 withText :: T.Text -> (T.Text -> Converter a) -> Value -> Converter a
@@ -781,13 +781,13 @@ instance (GBuildLookup a, GBuildLookup b) => GBuildLookup (a :*: b) where
 instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
     {-# INLINE gBuildLookup #-}
     gBuildLookup _ siz name (Array v)
-        | siz' /= siz = fail' . TB.buildText $ do
+        | siz' /= siz = fail' . T.buildText $ do
             "converting "
-            TB.text name
+            T.text name
             " failed, product size mismatch, expected "
-            TB.int siz
+            T.int siz
             ", get"
-            TB.int siz'
+            T.int siz'
         | otherwise = pure v
       where siz' = V.length v
     gBuildLookup _ _   name x         = typeMismatch name "Array" x
@@ -795,13 +795,13 @@ instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
 instance GBuildLookup (S1 ((MetaSel (Just l) u ss ds)) f) where
     {-# INLINE gBuildLookup #-}
     gBuildLookup _ siz name (Object v)
-        | siz' /= siz = fail' . TB.buildText $ do
+        | siz' /= siz = fail' . T.buildText $ do
             "converting "
-            TB.text name
+            T.text name
             " failed, product size mismatch, expected "
-            TB.int siz
+            T.int siz
             ", get"
-            TB.int siz'
+            T.int siz'
         | otherwise = pure m
       where siz' = FM.size m
             m = FM.packVectorR v
@@ -885,15 +885,15 @@ instance FromValue T.Text   where {{-# INLINE fromValue #-}; fromValue = withTex
 instance ToValue T.Text     where {{-# INLINE toValue #-}; toValue = String;}
 instance EncodeJSON T.Text where {{-# INLINE encodeJSON #-}; encodeJSON = JB.string;}
 
-instance FromValue TB.Str where
+instance FromValue T.Str where
     {-# INLINE fromValue #-}
-    fromValue = withText "Str" (pure . TB.Str . T.unpack)
-instance ToValue TB.Str where
+    fromValue = withText "Str" (pure . T.Str . T.unpack)
+instance ToValue T.Str where
     {-# INLINE toValue #-}
-    toValue = String . T.pack . TB.chrs
-instance EncodeJSON TB.Str where
+    toValue = String . T.pack . T.chrs
+instance EncodeJSON T.Str where
     {-# INLINE encodeJSON #-}
-    encodeJSON = JB.string . T.pack . TB.chrs
+    encodeJSON = JB.string . T.pack . T.chrs
 
 instance FromValue Scientific where {{-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;}
 instance ToValue Scientific where {{-# INLINE toValue #-}; toValue = Number;}
@@ -948,7 +948,7 @@ instance FromValue a => FromValue (FIM.FlatIntMap a) where
 instance ToValue a => ToValue (FIM.FlatIntMap a) where
     {-# INLINE toValue #-}
     toValue = Object . V.map' toKV . FIM.sortedKeyValues
-      where toKV (V.IPair i x) = let !k = TB.buildText (TB.int i)
+      where toKV (V.IPair i x) = let !k = T.buildText (T.int i)
                                      !v = toValue x
                                  in (k, v)
 instance EncodeJSON a => EncodeJSON (FIM.FlatIntMap a) where
@@ -1109,9 +1109,9 @@ instance FromValue Integer where
     fromValue = withBoundedScientific "Integer" $ \ n ->
         case Scientific.floatingOrInteger n :: Either Double Integer of
             Right x -> pure x
-            Left _  -> fail' . TB.buildText $ do
+            Left _  -> fail' . T.buildText $ do
                 "converting Integer failed, unexpected floating number "
-                TB.scientific n
+                T.scientific n
 instance ToValue Integer where
     {-# INLINE toValue #-}
     toValue = Number . fromIntegral
@@ -1123,14 +1123,14 @@ instance FromValue Natural where
     {-# INLINE fromValue #-}
     fromValue = withBoundedScientific "Natural" $ \ n ->
         if n < 0
-        then fail' . TB.buildText $ do
+        then fail' . T.buildText $ do
                 "converting Natural failed, unexpected negative number "
-                TB.scientific n
+                T.scientific n
         else case Scientific.floatingOrInteger n :: Either Double Natural of
             Right x -> pure x
-            Left _  -> fail' . TB.buildText $ do
+            Left _  -> fail' . T.buildText $ do
                 "converting Natural failed, unexpected floating number "
-                TB.scientific n
+                T.scientific n
 instance ToValue Natural where
     {-# INLINE toValue #-}
     toValue = Number . fromIntegral

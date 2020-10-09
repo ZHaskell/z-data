@@ -41,7 +41,7 @@ import qualified Data.Monoid                as Monoid
 import qualified Data.Primitive.SmallArray  as A
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Sort         as V
-import qualified Z.Data.Text.Builder        as T
+import qualified Z.Data.Text.ShowT          as T
 import           Data.Function              (on)
 import           Data.Bits                   (shiftR)
 import           Data.Data
@@ -53,7 +53,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 newtype FlatIntMap v = FlatIntMap { sortedKeyValues :: V.Vector (V.IPair v) }
     deriving (Show, Eq, Ord, Typeable)
 
-instance T.ToText v => T.ToText (FlatIntMap v) where
+instance T.ShowT v => T.ShowT (FlatIntMap v) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder p (FlatIntMap vec) = T.parenWhen (p > 10) $ do
         T.unsafeFromBuilder "FlatIntMap {"
