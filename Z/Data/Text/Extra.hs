@@ -1,10 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE TypeApplications #-}
-
 {-|
 Module      : Z.Data.Text.Extra
 Description : Fast text slice manipulation
@@ -517,6 +510,7 @@ padLeft n c t@(Text (V.PrimVector arr s l))
   where
     tsiz = length t
     csiz = encodeCharLength c
+    go :: forall s. MutablePrimArray s Word8 -> Int -> Int -> ST s ()
     go marr s' psiz
         | s' >= psiz = return ()
         | otherwise = copyChar' csiz marr s' marr (s'-csiz) >> go marr (s'+csiz) psiz
@@ -536,6 +530,7 @@ padRight n c t@(Text (V.PrimVector arr s l))
   where
     tsiz = length t
     csiz = encodeCharLength c
+    go :: forall s. MutablePrimArray s Word8 -> Int -> Int -> ST s ()
     go marr s' siz
         | s' >= siz = return ()
         | otherwise = copyChar' csiz marr s' marr (s'-csiz) >> go marr (s'+csiz) siz

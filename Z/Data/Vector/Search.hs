@@ -1,9 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 {-|
 Module      : Z.Data.Vector.Search
 Description : Searching vectors

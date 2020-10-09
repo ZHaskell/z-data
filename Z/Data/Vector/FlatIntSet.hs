@@ -1,13 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
-
 {-|
 Module      : Z.Data.Vector.FlatIntSet
 Description : Fast int set based on sorted vector
@@ -54,7 +44,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 --------------------------------------------------------------------------------
 
 newtype FlatIntSet = FlatIntSet { sortedValues :: V.PrimVector Int }
-    deriving (Show, Eq, Ord, Typeable, NFData)
+    deriving (Show, Eq, Ord, Typeable)
 
 instance T.ToText FlatIntSet where
     {-# INLINE toTextBuilder #-}
@@ -72,6 +62,10 @@ instance Monoid.Monoid FlatIntSet where
     mappend = merge
     {-# INLINE mempty #-}
     mempty = empty
+
+instance NFData FlatIntSet where
+    {-# INLINE rnf #-}
+    rnf (FlatIntSet vs) = rnf vs
 
 instance Arbitrary FlatIntSet where
     arbitrary = pack <$> arbitrary

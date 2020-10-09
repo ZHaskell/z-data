@@ -1,14 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE UnboxedTuples       #-}
-
 {-|
 Module      : Z.Data.Builder.Base
 Description : Efficient serialization/format.

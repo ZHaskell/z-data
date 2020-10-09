@@ -1,12 +1,3 @@
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE CPP #-}
-
 {-|
 Module      : Z.Data.Text.Base
 Description : Unicode text processing
@@ -121,6 +112,8 @@ module Z.Data.Text.Base (
   , c_ascii_validate_addr
  ) where
 
+#define DOUBLE_QUOTE 34
+
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.ST
@@ -158,7 +151,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 --
 newtype Text = Text
     { getUTF8Bytes :: Bytes -- ^ Extract UTF-8 encoded 'Bytes' from 'Text'
-    } deriving (Semigroup, Monoid, Typeable)
+    } deriving newtype (Monoid, Semigroup)
 
 instance Eq Text where
     Text b1 == Text b2 = b1 == b2
@@ -168,11 +161,27 @@ instance Ord Text where
     Text b1 `compare` Text b2 = b1 `compare` b2 -- UTF-8 encoding property
     {-# INLINE compare #-}
 
+-- | The escaping rules is different from 'String' 's 'Show' instance, see "Z.Data.Text.Builder.escapeTextJSON"
 instance Show Text where
-    showsPrec p t = showsPrec p (unpack t)
+    show = unpack . escapeTextJSON
+        where
+            escapeTextJSON (Text (V.PrimVector ba@(PrimArray ba#) s l)) = unsafeDupablePerformIO $ do
+                let siz = escape_json_string_length ba# s l
+                mba@(MutablePrimArray mba#) <- newPrimArray siz
+                if siz == l+2   -- no need to escape
+                then do
+                    writePrimArray mba 0 DOUBLE_QUOTE
+                    copyPrimArray mba 1 ba s l
+                    writePrimArray mba (l+1) DOUBLE_QUOTE
+                else void $ (escape_json_string ba# s l mba# 0)
+                ba' <- unsafeFreezePrimArray mba
+                return (Text (V.PrimVector ba' 0 siz))
 
-instance Read Text where
-    readsPrec p str = [ (pack x, y) | (x, y) <- readsPrec p str ]
+foreign import ccall unsafe escape_json_string_length
+    :: ByteArray# -> Int -> Int -> Int
+
+foreign import ccall unsafe escape_json_string
+    :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
 
 instance NFData Text where
     rnf (Text bs) = rnf bs
@@ -704,6 +713,7 @@ fromVector :: V.PrimVector Char -> Text
 fromVector (V.PrimVector arr s l) = Text (V.createN l (go s 0))
   where
     end = s+l
+    go :: forall s. Int -> Int -> MutablePrimArray s Word8 -> ST s Int
     go !i !j !marr
         | i >= end = return j
         | otherwise = do
@@ -717,6 +727,7 @@ toVector :: Text -> V.PrimVector Char
 toVector (Text (V.PrimVector arr s l)) = V.createN (l*4) (go s 0)
   where
     end = s+l
+    go :: forall s. Int -> Int -> MutablePrimArray s Char -> ST s Int
     go !i !j !marr
         | i >= end = return j
         | otherwise = do

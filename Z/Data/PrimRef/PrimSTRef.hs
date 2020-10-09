@@ -1,5 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-
 {-|
 Module      :  Z.Data.PrimRef.PrimSTRef
 Copyright   :  (c) Dong Han 2017~2019

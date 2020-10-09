@@ -1,8 +1,3 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE CPP               #-}
-
 {-|
 Module      : Z.Data.Parser.Numeric
 Description : Textual numeric parsers.

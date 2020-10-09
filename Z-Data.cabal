@@ -168,6 +168,40 @@ library
                             -Wno-unticked-promoted-constructors
                             -Wno-incomplete-patterns
                             -- ploymorphic pattern synonym messed exhaustiveness checker
+    extensions:             BangPatterns
+                            CApiFFI
+                            ConstraintKinds
+                            CPP 
+                            DerivingStrategies
+                            DeriveGeneric
+                            DeriveAnyClass
+                            DefaultSignatures
+                            DataKinds
+                            FlexibleContexts
+                            FlexibleInstances
+                            GeneralizedNewtypeDeriving 
+                            KindSignatures
+                            MagicHash
+                            MultiParamTypeClasses
+                            PartialTypeSignatures
+                            PatternSynonyms 
+                            PolyKinds
+                            QuantifiedConstraints
+                            QuasiQuotes
+                            OverloadedStrings
+                            RankNTypes
+                            RecordWildCards
+                            ScopedTypeVariables 
+                            StandaloneDeriving
+                            TemplateHaskell
+                            TypeApplications
+                            TypeFamilyDependencies
+                            TypeFamilies
+                            TypeOperators
+                            TupleSections
+                            UnboxedTuples 
+                            UnliftedFFITypes 
+                            ViewPatterns
 
 test-suite Z-Data-Test
     type:                   exitcode-stdio-1.0

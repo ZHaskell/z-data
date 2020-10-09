@@ -1,7 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE BangPatterns #-}
-
 {-|
 Module      :  Z.Data.PrimIORef
 Copyright   :  (c) Dong Han 2017~2019

@@ -1,11 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-|
 Module      : Z.Data.CBytes
 Description : Null-ternimated byte string.
@@ -70,6 +62,7 @@ import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
 import qualified Z.Data.Vector.Base    as V
 import           Z.Foreign
 import           System.IO.Unsafe        (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
 -- | A efficient wrapper for short immutable null-terminated byte sequences which can be
 -- automatically freed by ghc garbage collector.
@@ -148,6 +141,13 @@ instance Monoid CBytes where
 instance Hashable CBytes where
     hashWithSalt salt (CBytes pa@(PrimArray ba#)) = unsafeDupablePerformIO $ do
         V.c_fnv_hash_ba ba# 0 (sizeofPrimArray pa) salt
+
+instance Arbitrary CBytes where
+    arbitrary = pack <$> arbitrary
+    shrink a = pack <$> shrink (unpack a)
+
+instance CoArbitrary CBytes where
+    coarbitrary = coarbitrary . unpack
 
 -- | This instance peek bytes until @\NUL@(or input chunk ends), poke bytes with an extra \NUL terminator.
 instance Unaligned CBytes where

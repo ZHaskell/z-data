@@ -1,7 +1,3 @@
-{-# LANGUAGE BangPatterns  #-}
-{-# LANGUAGE MagicHash     #-}
-{-# LANGUAGE UnboxedTuples #-}
-
 {-|
 Module      : Z.Data.Text.UTF8Codec
 Description : UTF-8 codecs and helpers.

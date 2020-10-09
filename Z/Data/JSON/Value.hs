@@ -1,12 +1,3 @@
-{-# LANGUAGE BangPatterns       #-}
-{-# LANGUAGE CPP                #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE MagicHash          #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE UnliftedFFITypes   #-}
-
 {-|
 Module      : Z.Data.JSON.Value
 Description : JSON representation and parsers
@@ -49,7 +40,6 @@ module Z.Data.JSON.Value
 import           Control.DeepSeq
 import           Data.Bits                ((.&.))
 import           Data.Functor
-import           Data.Primitive.PrimArray
 import           Data.Scientific          (Scientific, scientific)
 import           Data.Typeable
 import           Data.Word

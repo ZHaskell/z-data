@@ -1,7 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE MagicHash #-}
-
 {-|
 Module      : Z.Data.Vector.QQ
 Description : vectors literals using QuasiQuote

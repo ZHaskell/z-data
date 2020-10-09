@@ -1,20 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE CApiFFI #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
-
 {-|
 Module      : Z.Data.Vector
 Description : Fast boxed and unboxed vector

@@ -1,27 +1,3 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MagicHash             #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-
 {-|
 Module      : Z.Data.JSON.Base
 Description : Fast JSON serialization/deserialization
@@ -84,7 +60,7 @@ import qualified Data.List.NonEmpty           as NonEmpty
 import qualified Data.Monoid                  as Monoid
 import           Data.Primitive.Types         (Prim)
 import qualified Data.Primitive.SmallArray    as A
-import           Data.Proxy                   (Proxy (..))
+import           Data.Proxy                   (Proxy(..))
 import           Data.Ratio                   (Ratio, (%), numerator, denominator)
 import           Data.Scientific              (Scientific, base10Exponent, toBoundedInteger)
 import qualified Data.Scientific              as Scientific

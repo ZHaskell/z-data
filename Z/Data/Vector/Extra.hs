@@ -1,10 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE TypeApplications #-}
-
 {-|
 Module      : Z.Data.Vector.Extra
 Description : Fast vector slice manipulation
@@ -597,7 +590,7 @@ intercalate s = concat . List.intersperse s
 
 -- | /O(n)/ An efficient way to join vector with an element.
 --
-intercalateElem :: Vec v a => a -> [v a] -> v a
+intercalateElem :: forall v a. Vec v a => a -> [v a] -> v a
 {-# INLINE intercalateElem #-}
 intercalateElem _ [] = empty
 intercalateElem _ [v] = v
@@ -606,6 +599,7 @@ intercalateElem w vs = create (len vs 0) (go 0 vs)
     len []             !acc = acc
     len [Vec _ _ l]    !acc = l + acc
     len (Vec _ _ l:vs') !acc = len vs' (acc+l+1)
+    go :: forall s. Int -> [v a] -> MArr (IArray v) s a -> ST s ()
     go !_ []               !_    = return ()
     go !i (Vec arr s l:[]) !marr = copyArr marr i arr s l
     go !i (Vec arr s l:vs') !marr = do
@@ -630,12 +624,13 @@ transpose vs =
 --
 -- For example, @'zipWith' (+)@ is applied to two vector to produce
 -- a vector of corresponding sums, the result will be evaluated strictly.
-zipWith' :: (Vec v a, Vec u b, Vec w c)
+zipWith' :: forall v a u b w c. (Vec v a, Vec u b, Vec w c)
          => (a -> b -> c) -> v a -> u b -> w c
 {-# INLINE zipWith' #-}
 zipWith' f (Vec arrA sA lA) (Vec arrB sB lB) = create len (go 0)
   where
     !len = min lA lB
+    go :: forall s. Int -> MArr (IArray w) s c -> ST s ()
     go !i !marr
         | i >= len = return ()
         | otherwise = case indexArr' arrA (i+sA) of
@@ -646,11 +641,12 @@ zipWith' f (Vec arrA sA lA) (Vec arrB sB lB) = create len (go 0)
 -- | 'unzipWith'' disassemble a vector with a disassembling function,
 --
 -- The results inside tuple will be evaluated strictly.
-unzipWith' :: (Vec v a, Vec u b, Vec w c)
+unzipWith' :: forall v a u b w c. (Vec v a, Vec u b, Vec w c)
            => (a -> (b, c)) -> v a -> (u b, w c)
 {-# INLINE unzipWith' #-}
 unzipWith' f (Vec arr s l) = createN2 l l (go 0)
   where
+    go :: forall s. Int -> MArr (IArray u) s b -> MArr (IArray w) s c -> ST s (Int, Int)
     go !i !marrB !marrC
         | i >= l = return (l,l)
         | otherwise = case indexArr' arr (i+s) of

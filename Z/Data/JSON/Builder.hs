@@ -1,12 +1,3 @@
-{-# LANGUAGE BangPatterns       #-}
-{-# LANGUAGE CPP                #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE MagicHash          #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE UnliftedFFITypes   #-}
-{-# LANGUAGE TypeApplications   #-}
-
 {-|
 Module      : Z.Data.JSON.Builder
 Description : JSON representation and builders
@@ -33,19 +24,12 @@ module Z.Data.JSON.Builder
   , Value(..)
   ) where
 
-import           Control.Monad
-import           Control.Monad.ST.Unsafe  (unsafeIOToST)
-import           Data.Primitive.PrimArray
-import           Data.Word
-import           GHC.Prim                 (unsafeCoerce#)
-import qualified Z.Data.Builder              as B
-import qualified Z.Data.Builder.Base         as B
-import qualified Z.Data.Text            as T
-import           Z.Data.Vector.Base     as V
-import           Z.Foreign
-import           Z.Data.JSON.Value      (Value(..))
+import qualified Z.Data.Builder                 as B
+import qualified Z.Data.Text                    as T
+import qualified Z.Data.Text.Builder            as T
+import           Z.Data.Vector.Base             as V
+import           Z.Data.JSON.Value              (Value(..))
 
-#define DOUBLE_QUOTE 34
 
 -- | Use @:@ as separator to connect a label(no need to escape, only add quotes) with field builders.
 kv :: T.Text -> B.Builder () -> B.Builder ()
@@ -100,20 +84,4 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 --
 string :: T.Text -> B.Builder ()
 {-# INLINE string #-}
-string (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
-    let siz = escape_json_string_length ba# s l
-    B.ensureN siz
-    B.Builder (\ _  k (B.Buffer mba@(MutablePrimArray mba#) i) -> do
-        if siz == l+2   -- no need to escape
-        then do
-            writePrimArray mba i DOUBLE_QUOTE
-            copyPrimArray mba (i+1) ba s l
-            writePrimArray mba (i+1+l) DOUBLE_QUOTE
-        else void $ unsafeIOToST (escape_json_string ba# s l (unsafeCoerce# mba#) i)
-        k () (B.Buffer mba (i+siz)))
-
-foreign import ccall unsafe escape_json_string_length
-    :: BA# Word8 -> Int -> Int -> Int
-
-foreign import ccall unsafe escape_json_string
-    :: BA# Word8 -> Int -> Int -> MBA# Word8 -> Int -> IO Int
+string = T.escapeTextJSON

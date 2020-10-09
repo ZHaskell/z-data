@@ -1,9 +1,3 @@
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 {-|
 Module      : Z.Data.Text
 Description : Unicode text processing

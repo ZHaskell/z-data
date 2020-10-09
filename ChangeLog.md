@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.1.5.1  -- 2020-10-02
+
+* Change `Text` 's `ToText` escaping rules to reuse JSON escaping.
+* Add `ToText` instances to `CBytes` and FFI types.
+* Change `Text` 's `Show` instance to reuse JSON escaping rules, remove `Read` instance.
+
 ## 0.1.5.0  -- 2020-10-02
 
 * Rework `CBytes` type to use unpinned byte array, add `withCBytesUnsafe`, `allocCBytesUnsafe`.

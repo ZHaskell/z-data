@@ -1,18 +1,3 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE CPP                    #-}
-{-# LANGUAGE FlexibleContexts       #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE MagicHash              #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE UnboxedTuples          #-}
-{-# LANGUAGE UnliftedFFITypes       #-}
-
-
 {-|
 Module      : Z.Data.Array
 Description : Fast boxed and unboxed arrays
