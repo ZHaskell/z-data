@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 {-|
 Module      : Z.Data.Text.UTF8Rewind
 Description : Errno provided by libuv
@@ -67,7 +63,8 @@ toNormalizationResult #{const UTF8_NORMALIZATION_RESULT_NO} = NormalizedNo
 -- | Unicode categories.
 --
 -- See 'Z.Data.Text.Base.isCategory', you can combine categories with bitwise or.
-newtype Category = Category CSize deriving (Show, Eq, Ord, Bits, FiniteBits, Generic)
+newtype Category = Category CSize deriving (Show, Eq, Ord, Generic)
+                                    deriving newtype (Bits, FiniteBits)
 
 pattern CategoryLetterUppercase       :: Category
 pattern CategoryLetterLowercase       :: Category

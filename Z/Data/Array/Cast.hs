@@ -1,10 +1,3 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE MagicHash             #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 {-|
 Module      : Z.Data.Array.Cast
 Description : Primitive casting

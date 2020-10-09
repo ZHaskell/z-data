@@ -1,14 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 {-|
 Module      : Z.Data.Vector.FlatSet
 Description : Fast set based on sorted vector
@@ -55,7 +44,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 --------------------------------------------------------------------------------
 
 newtype FlatSet v = FlatSet { sortedValues :: V.Vector v }
-    deriving (Show, Eq, Ord, Typeable, Foldable, NFData)
+    deriving (Show, Eq, Ord, Typeable, Foldable)
 
 instance T.ToText v => T.ToText (FlatSet v) where
     {-# INLINE toTextBuilder #-}
@@ -73,6 +62,10 @@ instance Ord v => Monoid.Monoid (FlatSet v) where
     mappend = merge
     {-# INLINE mempty #-}
     mempty = empty
+
+instance NFData v => NFData (FlatSet v) where
+    {-# INLINE rnf #-}
+    rnf (FlatSet vs) = rnf vs
 
 instance (Ord v, Arbitrary v) => Arbitrary (FlatSet v) where
     arbitrary = pack <$> arbitrary

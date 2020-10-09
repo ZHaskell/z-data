@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP           #-}
-{-# LANGUAGE TypeFamilies  #-}
-{-# LANGUAGE UnboxedTuples #-}
-
 {-|
 Module      : Z.Data.Array.Checked
 Description : Bounded checked boxed and unboxed arrays

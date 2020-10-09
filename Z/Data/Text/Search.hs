@@ -1,10 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnboxedTuples       #-}
-
-
 {-|
 Module      : Z.Data.Text.Search
 Description : Searching text

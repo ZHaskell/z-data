@@ -1,20 +1,3 @@
-{-# LANGUAGE BangPatterns           #-}
-{-# LANGUAGE DeriveDataTypeable     #-}
-{-# LANGUAGE FlexibleContexts       #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE MagicHash              #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PatternSynonyms        #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE UnboxedTuples          #-}
-{-# LANGUAGE ViewPatterns           #-}
-{-# LANGUAGE UnliftedFFITypes       #-}
-{-# LANGUAGE QuantifiedConstraints  #-}
-{-# LANGUAGE TypeApplications       #-}
-
 {-|
 Module      : Z.Data.Vector.Base
 Description : Fast boxed and unboxed vector
@@ -103,7 +86,6 @@ import           Control.Monad
 import           Control.Monad.ST
 import           Data.Bits
 import           Data.Char                     (ord)
-import           Data.Data
 import qualified Data.Foldable                 as F
 import           Data.Hashable                 (Hashable(..))
 import           Data.Hashable.Lifted          (Hashable1(..), hashWithSalt1)
@@ -203,7 +185,6 @@ data Vector a = Vector
     {-# UNPACK #-} !(SmallArray a)  -- ^ payload
     {-# UNPACK #-} !Int             -- ^ offset
     {-# UNPACK #-} !Int             -- ^ length
-    deriving (Typeable, Data)
 
 instance Vec Vector a where
     type IArray Vector = SmallArray
@@ -395,7 +376,6 @@ data PrimVector a = PrimVector
     {-# UNPACK #-} !(PrimArray a)   -- ^ payload
     {-# UNPACK #-} !Int             -- ^ offset in elements of type a rather than in bytes
     {-# UNPACK #-} !Int             -- ^ length in elements of type a rather than in bytes
-  deriving Typeable
 
 instance Prim a => Vec PrimVector a where
     type IArray PrimVector = PrimArray
@@ -1311,7 +1291,7 @@ defaultInitSize = 30
 -- | All exception can be throw by using 'Vec'.
 data VectorException = IndexOutOfVectorRange {-# UNPACK #-} !Int CallStack
                      | EmptyVector CallStack
-                    deriving (Show, Typeable)
+                    deriving Show
 instance Exception VectorException
 
 errorEmptyVector :: HasCallStack => a

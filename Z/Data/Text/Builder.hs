@@ -1,18 +1,3 @@
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE DeriveAnyClass             #-}
-
 {-|
 Module      : Z.Data.Text.Builder
 Description : UTF8 compatible builders.
@@ -41,7 +26,7 @@ module Z.Data.Text.Builder
   , unsafeFromBuilder
   , buildText
   -- * Basic UTF8 builders
-  , stringUTF8, charUTF8, string7, char7, text
+  , stringUTF8, charUTF8, string7, char7, text, escapeTextJSON
   -- * Numeric builders
   -- ** Integral type formatting
   , B.IFormat(..)
@@ -65,35 +50,42 @@ module Z.Data.Text.Builder
   ) where
 
 import           Control.Monad
-import qualified Data.Scientific          as Sci
+import           Control.Monad.ST.Unsafe        (unsafeIOToST)
+import qualified Data.Scientific                as Sci
 import           Data.String
 import           Data.Bits
-import           Data.Data                (Data(..))
 import           Data.Fixed
+import           Data.Primitive.PrimArray
 import           Data.Functor.Compose
 import           Data.Functor.Const
 import           Data.Functor.Identity
 import           Data.Functor.Product
 import           Data.Functor.Sum
 import           Data.Int
-import           Data.List.NonEmpty           (NonEmpty (..))
-import qualified Data.Monoid                  as Monoid
-import           Data.Proxy                   (Proxy (..))
-import           Data.Ratio                   (Ratio, numerator, denominator)
-import           Data.Tagged                  (Tagged (..))
+import           Data.List.NonEmpty             (NonEmpty (..))
+import qualified Data.Monoid                    as Monoid
+import           Data.Proxy                     (Proxy(..))
+import           Data.Ratio                     (Ratio, numerator, denominator)
+import           Data.Tagged                    (Tagged (..))
 import           Data.Word
-import qualified Data.Semigroup               as Semigroup
+import qualified Data.Semigroup                 as Semigroup
 import           Data.Typeable
+import           Foreign.C.Types
+import           GHC.Exts
 import           GHC.Natural
 import           GHC.Generics
 import           Data.Version
 import           Data.Primitive.Types
-import qualified Z.Data.Builder         as B
-import qualified Z.Data.Text.Base       as T
-import           Z.Data.Text.Base       (Text(..))
-import qualified Z.Data.Vector.Base     as V
-import           Text.Read                (Read(..))
+import qualified Z.Data.Builder.Base            as B
+import qualified Z.Data.Builder.Numeric         as B
+import qualified Z.Data.Text.Base               as T
+import           Z.Data.Text.Base               (Text(..))
+import qualified Z.Data.Array                   as A
+import qualified Z.Data.Vector.Base             as V
+import           Text.Read                      (Read(..))
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
+
+#define DOUBLE_QUOTE 34
 
 -- | Buidlers which guarantee UTF-8 encoding, thus can be used to build
 -- text directly.
@@ -341,7 +333,7 @@ intercalateList (TextBuilder s) f = TextBuilder . B.intercalateList s (getBuilde
 -- >>> Z.Data.JSON.encodeText . Str $ ("abc" :: String)
 -- > "\"abc\""
 --
-newtype Str = Str { chrs :: [Char] } deriving stock (Eq, Ord, Data, Typeable, Generic)
+newtype Str = Str { chrs :: [Char] } deriving stock (Eq, Ord, Generic)
 
 instance Show Str where show = show . chrs
 instance Read Str where readPrec = Str <$> readPrec
@@ -353,8 +345,31 @@ instance ToText Str where
 --------------------------------------------------------------------------------
 -- Data types
 --
--- | A class similar to 'Show', serving the purpose that quickly convert a data type
--- to a 'Text' value.
+-- | A class similar to 'Show', serving the purpose that quickly convert a data type to a 'Text' value.
+--
+-- You can use newtype or generic deriving to implement instance of this class quickly:
+--
+-- @
+--  {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+--  {-# LANGUAGE DeriveAnyClass #-}
+--  {-# LANGUAGE DeriveGeneric #-}
+--  {-# LANGUAGE DerivingStrategies #-}
+--
+--  import GHC.Generics
+--
+--  newtype FooInt = FooInt Int deriving (Generic)
+--                            deriving anyclass ToText
+--
+-- > toText (FooInt 3)
+-- > "FooInt 3"
+--
+--  newtype FooInt = FooInt Int deriving (Generic)
+--                            deriving newtype ToText
+--
+-- > toText (FooInt 3)
+-- > "3"
+-- @
+--
 class ToText a where
     toTextBuilder :: Int -> a  -> TextBuilder ()
     default toTextBuilder :: (Generic a, GToText (Rep a)) => Int -> a -> TextBuilder ()
@@ -491,10 +506,44 @@ instance ToText Version where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = stringUTF8 . show
 
--- | To keep sync with 'Show' instance's escaping rule, we reuse show here, so it won't be as fast as memcpy.
+-- | The escaping rules is same with 'Show' instance: we reuse JSON escaping rules here, so it will be faster.
 instance ToText Text where
     {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = stringUTF8 . show
+    toTextBuilder _ = TextBuilder . escapeTextJSON
+
+-- | Escape text using JSON string escaping rules and add double quotes, escaping rules:
+--
+-- @
+--    \'\\b\':  \"\\b\"
+--    \'\\f\':  \"\\f\"
+--    \'\\n\':  \"\\n\"
+--    \'\\r\':  \"\\r\"
+--    \'\\t\':  \"\\t\"
+--    \'\"\':  \"\\\"\"
+--    \'\\\':  \"\\\\\"
+--    \'\/\':  \"\\/\"
+--    other chars <= 0x1F: "\\u00XX"
+-- @
+--
+escapeTextJSON :: T.Text -> B.Builder ()
+{-# INLINE escapeTextJSON #-}
+escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
+    let siz = escape_json_string_length ba# s l
+    B.ensureN siz
+    B.Builder (\ _  k (B.Buffer mba@(MutablePrimArray mba#) i) -> do
+        if siz == l+2   -- no need to escape
+        then do
+            writePrimArray mba i DOUBLE_QUOTE
+            copyPrimArray mba (i+1) ba s l
+            writePrimArray mba (i+1+l) DOUBLE_QUOTE
+        else void $ unsafeIOToST (escape_json_string ba# s l (unsafeCoerce# mba#) i)
+        k () (B.Buffer mba (i+siz)))
+
+foreign import ccall unsafe escape_json_string_length
+    :: ByteArray# -> Int -> Int -> Int
+
+foreign import ccall unsafe escape_json_string
+    :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
 
 instance ToText Sci.Scientific where
     {-# INLINE toTextBuilder #-}
@@ -503,6 +552,22 @@ instance ToText Sci.Scientific where
 instance ToText a => ToText [a] where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = square . intercalateList comma (toTextBuilder 0)
+
+instance ToText a => ToText (A.Array a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+
+instance ToText a => ToText (A.SmallArray a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+
+instance (A.PrimUnlifted a, ToText a) => ToText (A.UnliftedArray a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+
+instance (Prim a, ToText a) => ToText (A.PrimArray a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
 
 instance ToText a => ToText (V.Vector a) where
     {-# INLINE toTextBuilder #-}
@@ -579,6 +644,33 @@ instance (ToText a, Integral a) => ToText (Ratio a) where
 instance HasResolution a => ToText (Fixed a) where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = TextBuilder . B.string8 .  show
+
+deriving newtype instance ToText CChar
+deriving newtype instance ToText CSChar
+deriving newtype instance ToText CUChar
+deriving newtype instance ToText CShort
+deriving newtype instance ToText CUShort
+deriving newtype instance ToText CInt
+deriving newtype instance ToText CUInt
+deriving newtype instance ToText CLong
+deriving newtype instance ToText CULong
+deriving newtype instance ToText CPtrdiff
+deriving newtype instance ToText CSize
+deriving newtype instance ToText CWchar
+deriving newtype instance ToText CSigAtomic
+deriving newtype instance ToText CLLong
+deriving newtype instance ToText CULLong
+deriving newtype instance ToText CBool
+deriving newtype instance ToText CIntPtr
+deriving newtype instance ToText CUIntPtr
+deriving newtype instance ToText CIntMax
+deriving newtype instance ToText CUIntMax
+deriving newtype instance ToText CClock
+deriving newtype instance ToText CTime
+deriving newtype instance ToText CUSeconds
+deriving newtype instance ToText CSUSeconds
+deriving newtype instance ToText CFloat
+deriving newtype instance ToText CDouble
 
 deriving anyclass instance ToText a => ToText (Semigroup.Min a)
 deriving anyclass instance ToText a => ToText (Semigroup.Max a)

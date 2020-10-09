@@ -1,6 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Z.Data.Text.ExtraSpec where
 
 import qualified Data.List                as List

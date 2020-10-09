@@ -1,7 +1,3 @@
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 {-|
 Module      : Z.Foreign
 Description : Use PrimArray with FFI

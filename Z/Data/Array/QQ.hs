@@ -1,10 +1,3 @@
-{-# LANGUAGE CPP             #-}
-{-# LANGUAGE MagicHash       #-}
-{-# LANGUAGE QuasiQuotes     #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections   #-}
-
-
 {-|
 Module      : Z.Data.Array.QQ
 Description : Extra stuff for PrimArray related literals

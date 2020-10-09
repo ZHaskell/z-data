@@ -1,14 +1,4 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE CPP               #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MagicHash         #-}
-{-# LANGUAGE UnboxedTuples     #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE PolyKinds #-}
-
 {-|
 Module      : Z.Data.Array.Unaligned
 Description : unaligned access for primitive arrays
@@ -895,29 +885,29 @@ instance Unaligned (BE Char) where
 --------------------------------------------------------------------------------
 
 -- Prim instances for newtypes in Foreign.C.Types
-deriving instance Unaligned CChar
-deriving instance Unaligned CSChar
-deriving instance Unaligned CUChar
-deriving instance Unaligned CShort
-deriving instance Unaligned CUShort
-deriving instance Unaligned CInt
-deriving instance Unaligned CUInt
-deriving instance Unaligned CLong
-deriving instance Unaligned CULong
-deriving instance Unaligned CPtrdiff
-deriving instance Unaligned CSize
-deriving instance Unaligned CWchar
-deriving instance Unaligned CSigAtomic
-deriving instance Unaligned CLLong
-deriving instance Unaligned CULLong
-deriving instance Unaligned CBool
-deriving instance Unaligned CIntPtr
-deriving instance Unaligned CUIntPtr
-deriving instance Unaligned CIntMax
-deriving instance Unaligned CUIntMax
-deriving instance Unaligned CClock
-deriving instance Unaligned CTime
-deriving instance Unaligned CUSeconds
-deriving instance Unaligned CSUSeconds
-deriving instance Unaligned CFloat
-deriving instance Unaligned CDouble
+deriving newtype instance Unaligned CChar
+deriving newtype instance Unaligned CSChar
+deriving newtype instance Unaligned CUChar
+deriving newtype instance Unaligned CShort
+deriving newtype instance Unaligned CUShort
+deriving newtype instance Unaligned CInt
+deriving newtype instance Unaligned CUInt
+deriving newtype instance Unaligned CLong
+deriving newtype instance Unaligned CULong
+deriving newtype instance Unaligned CPtrdiff
+deriving newtype instance Unaligned CSize
+deriving newtype instance Unaligned CWchar
+deriving newtype instance Unaligned CSigAtomic
+deriving newtype instance Unaligned CLLong
+deriving newtype instance Unaligned CULLong
+deriving newtype instance Unaligned CBool
+deriving newtype instance Unaligned CIntPtr
+deriving newtype instance Unaligned CUIntPtr
+deriving newtype instance Unaligned CIntMax
+deriving newtype instance Unaligned CUIntMax
+deriving newtype instance Unaligned CClock
+deriving newtype instance Unaligned CTime
+deriving newtype instance Unaligned CUSeconds
+deriving newtype instance Unaligned CSUSeconds
+deriving newtype instance Unaligned CFloat
+deriving newtype instance Unaligned CDouble

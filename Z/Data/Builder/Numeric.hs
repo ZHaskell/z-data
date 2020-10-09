@@ -1,15 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE UnboxedTuples       #-}
-{-# LANGUAGE UnliftedFFITypes    #-}
-
 {-|
 Module      : Z.Data.Builder.Numeric
 Description : Textual numeric builders.
@@ -497,16 +485,7 @@ i2wHeX v
 
 -- | Format a 'FiniteBits' 'Integral' type into hex nibbles.
 hex :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# SPECIALIZE INLINE hex :: Int    -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Int8   -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Int16  -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Int32  -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Int64  -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Word   -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Word8  -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Word16 -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Word32 -> Builder () #-}
-{-# SPECIALIZE INLINE hex :: Word64 -> Builder () #-}
+{-# INLINE hex #-}
 hex w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)
@@ -528,16 +507,7 @@ hex w = writeN hexSiz (go w (hexSiz-2))
 
 -- | The UPPERCASED version of 'hex'.
 heX :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# SPECIALIZE INLINE heX :: Int    -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Int8   -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Int16  -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Int32  -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Int64  -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Word   -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Word8  -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Word16 -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Word32 -> Builder () #-}
-{-# SPECIALIZE INLINE heX :: Word64 -> Builder () #-}
+{-# INLINE heX #-}
 heX w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)

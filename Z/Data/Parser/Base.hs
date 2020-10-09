@@ -1,11 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 {-|
 Module      : Z.Data.Parser.Base
 Description : Efficient deserialization/parse.
@@ -244,6 +236,7 @@ ensureN n0 err = Parser $ \ kf k inp -> do
     else Partial (ensureNPartial l inp kf k)
   where
     {-# INLINABLE ensureNPartial #-}
+    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep r) -> (() -> ParseStep r) -> ParseStep r
     ensureNPartial l0 inp0 kf k =
         let go acc !l = \ inp -> do
                 let l' = V.length inp
@@ -367,7 +360,7 @@ scan s0 f = scanChunks s0 f'
 -- the predicate on each chunk of the input until one chunk got splited to
 -- @Right (V.Bytes, V.Bytes)@ or the input ends.
 --
-scanChunks :: s -> (s -> V.Bytes -> Either s (V.Bytes, V.Bytes, s)) -> Parser (V.Bytes, s)
+scanChunks :: forall s. s -> (s -> V.Bytes -> Either s (V.Bytes, V.Bytes, s)) -> Parser (V.Bytes, s)
 {-# INLINE scanChunks #-}
 scanChunks s0 consume = Parser (\ _ k inp ->
     case consume s0 inp of
@@ -376,6 +369,7 @@ scanChunks s0 consume = Parser (\ _ k inp ->
   where
     -- we want to inline consume if possible
     {-# INLINABLE scanChunksPartial #-}
+    scanChunksPartial :: forall r. s -> ((V.PrimVector Word8, s) -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
     scanChunksPartial s0' k inp0 =
         let go s acc = \ inp ->
                 if V.null inp
@@ -530,6 +524,7 @@ skipWhile p =
   where
     -- we want to inline p if possible
     {-# INLINABLE skipWhilePartial #-}
+    skipWhilePartial :: forall r. (() -> ParseStep r) -> ParseStep r
     skipWhilePartial k =
         let go = \ inp ->
                 if V.null inp
@@ -573,6 +568,7 @@ takeTill p = Parser (\ _ k inp ->
         else k want rest)
   where
     {-# INLINABLE takeTillPartial #-}
+    takeTillPartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
     takeTillPartial k want =
         let go acc = \ inp ->
                 if V.null inp
@@ -598,6 +594,7 @@ takeWhile p = Parser (\ _ k inp ->
   where
     -- we want to inline p if possible
     {-# INLINABLE takeWhilePartial #-}
+    takeWhilePartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
     takeWhilePartial k want =
         let go acc = \ inp ->
                 if V.null inp
