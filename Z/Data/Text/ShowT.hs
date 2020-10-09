@@ -18,8 +18,6 @@ based instances deriving.
 module Z.Data.Text.ShowT
   ( -- * ShowT class
   ShowT(..), showT, toBuilder, toBytes, toString
-  -- * Str newtype
-  , Str(..)
   -- * Textual Builder
   , TextBuilder
   , getBuilder
@@ -83,7 +81,6 @@ import qualified Z.Data.Text.Base               as T
 import           Z.Data.Text.Base               (Text(..))
 import qualified Z.Data.Array                   as A
 import qualified Z.Data.Vector.Base             as V
-import           Text.Read                      (Read(..))
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
 #define DOUBLE_QUOTE 34
@@ -321,29 +318,6 @@ intercalateList :: TextBuilder ()           -- ^ the seperator
 intercalateList (TextBuilder s) f = TextBuilder . B.intercalateList s (getBuilder . f)
 
 --------------------------------------------------------------------------------
--- | Newtype wrapper for @[Char]@ to provide textual instances.
---
--- We didn't provide special treatment to differentiate instances between @[a]@ and @[Char]@
--- in various classes, e.g. 'Z.Data.JSON.ToJSON'.
---
--- This newtype is therefore to provide instances similar to @T.Text@, in case you really
--- need to wrap a 'String'.
---
--- >>> Z.Data.JSON.encodeText ("abc" :: String)
--- > "[\"a\",\"b\",\"c\"]"   -- Just like any other [a]'s instance
--- >>> Z.Data.JSON.encodeText . Str $ ("abc" :: String)
--- > "\"abc\""
---
-newtype Str = Str { chrs :: [Char] } deriving stock (Eq, Ord, Generic)
-
-instance Show Str where show = show . chrs
-instance Read Str where readPrec = Str <$> readPrec
-
-instance ShowT Str where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = TextBuilder . B.string8 . show
-
---------------------------------------------------------------------------------
 -- Data types
 --
 -- | A class similar to 'Show', serving the purpose that quickly convert a data type to a 'Text' value.
@@ -351,10 +325,10 @@ instance ShowT Str where
 -- You can use newtype or generic deriving to implement instance of this class quickly:
 --
 -- @
---  {-## LANGUAGE GeneralizedNewtypeDeriving ##-}
---  {-## LANGUAGE DeriveAnyClass ##-}
---  {-## LANGUAGE DeriveGeneric ##-}
---  {-## LANGUAGE DerivingStrategies ##-}
+--  {-\# LANGUAGE GeneralizedNewtypeDeriving \#-}
+--  {-\# LANGUAGE DeriveAnyClass \#-}
+--  {-\# LANGUAGE DeriveGeneric \#-}
+--  {-\# LANGUAGE DerivingStrategies \#-}
 --
 --  import GHC.Generics
 --

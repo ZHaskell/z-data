@@ -42,7 +42,6 @@ import           Data.Bits
 import           Data.Int
 import qualified Data.Scientific          as Sci
 import           Data.Word
-import           Foreign.Ptr              (IntPtr)
 import qualified Z.Data.Builder.Numeric as B
 import           Z.Data.Parser.Base     (Parser, (<?>))
 import qualified Z.Data.Parser.Base     as P
@@ -67,18 +66,6 @@ import qualified Z.Data.Vector.Extra    as V
 --
 hex :: (Integral a, Bits a) => Parser a
 {-# INLINE hex #-}
-{-# SPECIALIZE INLINE hex :: Parser Int    #-}
-{-# SPECIALIZE INLINE hex :: Parser Int64  #-}
-{-# SPECIALIZE INLINE hex :: Parser Int32  #-}
-{-# SPECIALIZE INLINE hex :: Parser Int16  #-}
-{-# SPECIALIZE INLINE hex :: Parser Int8   #-}
-{-# SPECIALIZE INLINE hex :: Parser Word   #-}
-{-# SPECIALIZE INLINE hex :: Parser Word64 #-}
-{-# SPECIALIZE INLINE hex :: Parser Word32 #-}
-{-# SPECIALIZE INLINE hex :: Parser Word16 #-}
-{-# SPECIALIZE INLINE hex :: Parser Word8  #-}
-{-# SPECIALIZE INLINE hex :: Parser Integer #-}
-{-# SPECIALIZE INLINE hex :: Parser IntPtr #-}
 hex = "Z.Data.Parser.Numeric.hex" <?> hexLoop 0 <$> P.takeWhile1 isHexDigit
 
 -- | decode hex digits sequence within an array.
@@ -103,17 +90,6 @@ isHexDigit w = w - 48 <= 9 || w - 65 <= 5 || w - 97 <= 5
 -- | Parse and decode an unsigned decimal number.
 uint :: (Integral a) => Parser a
 {-# INLINE uint #-}
-{-# SPECIALIZE INLINE uint :: Parser Int    #-}
-{-# SPECIALIZE INLINE uint :: Parser Int64  #-}
-{-# SPECIALIZE INLINE uint :: Parser Int32  #-}
-{-# SPECIALIZE INLINE uint :: Parser Int16  #-}
-{-# SPECIALIZE INLINE uint :: Parser Int8   #-}
-{-# SPECIALIZE INLINE uint :: Parser Word   #-}
-{-# SPECIALIZE INLINE uint :: Parser Word64 #-}
-{-# SPECIALIZE INLINE uint :: Parser Word32 #-}
-{-# SPECIALIZE INLINE uint :: Parser Word16 #-}
-{-# SPECIALIZE INLINE uint :: Parser Word8  #-}
-{-# SPECIALIZE INLINE uint :: Parser Integer #-}
 uint = "Z.Data.Parser.Numeric.uint" <?> decLoop 0 <$> P.takeWhile1 isDigit
 
 -- | decode digits sequence within an array.
@@ -143,17 +119,6 @@ isDigit w = w - 48 <= 9
 -- character.
 int :: (Integral a) => Parser a
 {-# INLINE int #-}
-{-# SPECIALIZE INLINE int :: Parser Int    #-}
-{-# SPECIALIZE INLINE int :: Parser Int64  #-}
-{-# SPECIALIZE INLINE int :: Parser Int32  #-}
-{-# SPECIALIZE INLINE int :: Parser Int16  #-}
-{-# SPECIALIZE INLINE int :: Parser Int8   #-}
-{-# SPECIALIZE INLINE int :: Parser Word   #-}
-{-# SPECIALIZE INLINE int :: Parser Word64 #-}
-{-# SPECIALIZE INLINE int :: Parser Word32 #-}
-{-# SPECIALIZE INLINE int :: Parser Word16 #-}
-{-# SPECIALIZE INLINE int :: Parser Word8  #-}
-{-# SPECIALIZE INLINE int :: Parser Integer #-}
 int = "Z.Data.Parser.Numeric.int" <?> do
     w <- P.peek
     if w == MINUS

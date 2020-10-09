@@ -885,16 +885,6 @@ instance FromValue T.Text   where {{-# INLINE fromValue #-}; fromValue = withTex
 instance ToValue T.Text     where {{-# INLINE toValue #-}; toValue = String;}
 instance EncodeJSON T.Text where {{-# INLINE encodeJSON #-}; encodeJSON = JB.string;}
 
-instance FromValue T.Str where
-    {-# INLINE fromValue #-}
-    fromValue = withText "Str" (pure . T.Str . T.unpack)
-instance ToValue T.Str where
-    {-# INLINE toValue #-}
-    toValue = String . T.pack . T.chrs
-instance EncodeJSON T.Str where
-    {-# INLINE encodeJSON #-}
-    encodeJSON = JB.string . T.pack . T.chrs
-
 instance FromValue Scientific where {{-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;}
 instance ToValue Scientific where {{-# INLINE toValue #-}; toValue = Number;}
 instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = B.scientific;}
