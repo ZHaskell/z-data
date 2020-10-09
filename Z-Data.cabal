@@ -177,12 +177,14 @@ library
                             DeriveAnyClass
                             DefaultSignatures
                             DataKinds
+                            ExistentialQuantification
                             FlexibleContexts
                             FlexibleInstances
                             GeneralizedNewtypeDeriving 
                             KindSignatures
                             MagicHash
                             MultiParamTypeClasses
+                            MultiWayIf
                             PartialTypeSignatures
                             PatternSynonyms 
                             PolyKinds

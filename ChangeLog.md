@@ -2,7 +2,7 @@
 
 ## 0.1.6.0  -- 2020-10-09
 
-* Rename `ToText` to `ShowT`, `toText` to `showT`, add FFI types instances.
+* Rename `ToText` to `ShowT`, `toText` to `showT`, add FFI types instances, remove `Str` newtype.
 * Change `Text` 's `Show` and `ShowT` escaping rules to reuse JSON escaping, remove `Read` instance.
 * Add `ShowT` instances to `CBytes` and FFI types.
 
