@@ -23,6 +23,8 @@ import           GHC.Word
 import           GHC.Float (stgFloatToWord32, stgWord32ToFloat, stgWord64ToDouble, stgDoubleToWord64)
 import           Foreign.C.Types
 
+#include "MachDeps.h"
+
 -- toggle these defs to test different implements
 #define USE_BSWAP
 -- #define USE_SHIFT
@@ -729,6 +731,17 @@ instance Unaligned (BE Int) where
 #endif
 
 --------------------------------------------------------------------------------
+
+instance Unaligned (Ptr a) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize _ = SIZEOF_HSPTR
+    {-# INLINE writeWord8ArrayAs# #-}
+    writeWord8ArrayAs# mba# i# (Ptr x#) = writeWord8ArrayAsAddr# mba# i# x#
+    {-# INLINE readWord8ArrayAs# #-}
+    readWord8ArrayAs# mba# i# s0 =
+        let !(# s1, x# #) = readWord8ArrayAsAddr# mba# i# s0 in (# s1, Ptr x# #)
+    {-# INLINE indexWord8ArrayAs# #-}
+    indexWord8ArrayAs# ba# i# = Ptr (indexWord8ArrayAsAddr# ba# i#)
 
 instance Unaligned Float where
     {-# INLINE unalignedSize #-}

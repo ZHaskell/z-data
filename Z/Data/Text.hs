@@ -78,12 +78,68 @@ module Z.Data.Text (
   , isNormalized, isNormalizedTo, normalize, normalizeTo
     -- ** Case conversion
     -- $case
-  , Locale(..)
   , envLocale
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
-  , Category(..)
+  -- * Constants
+  -- ** Locale
+  , Locale
+  , pattern LocaleDefault
+  , pattern LocaleLithuanian
+  , pattern LocaleTurkishAndAzeriLatin
+  -- ** Category
+  , Category
+  , pattern CategoryLetterUppercase
+  , pattern CategoryLetterLowercase
+  , pattern CategoryLetterTitlecase
+  , pattern CategoryLetterOther
+  , pattern CategoryLetter
+  , pattern CategoryCaseMapped
+  , pattern CategoryMarkNonSpacing
+  , pattern CategoryMarkSpacing
+  , pattern CategoryMarkEnclosing
+  , pattern CategoryMark
+  , pattern CategoryNumberDecimal
+  , pattern CategoryNumberLetter
+  , pattern CategoryNumberOther
+  , pattern CategoryNumber
+  , pattern CategoryPunctuationConnector
+  , pattern CategoryPunctuationDash
+  , pattern CategoryPunctuationOpen
+  , pattern CategoryPunctuationClose
+  , pattern CategoryPunctuationInitial
+  , pattern CategoryPunctuationFinal
+  , pattern CategoryPunctuationOther
+  , pattern CategoryPunctuation
+  , pattern CategorySymbolMath
+  , pattern CategorySymbolCurrency
+  , pattern CategorySymbolModifier
+  , pattern CategorySymbolOther
+  , pattern CategorySymbol
+  , pattern CategorySeparatorSpace
+  , pattern CategorySeparatorLine
+  , pattern CategorySeparatorParagraph
+  , pattern CategorySeparator
+  , pattern CategoryControl
+  , pattern CategoryFormat
+  , pattern CategorySurrogate
+  , pattern CategoryPrivateUse
+  , pattern CategoryUnassigned
+  , pattern CategoryCompatibility
+  , pattern CategoryIgnoreGraphemeCluster
+  , pattern CategoryIscntrl
+  , pattern CategoryIsprint
+  , pattern CategoryIsspace
+  , pattern CategoryIsblank
+  , pattern CategoryIsgraph
+  , pattern CategoryIspunct
+  , pattern CategoryIsalnum
+  , pattern CategoryIsalpha
+  , pattern CategoryIsupper
+  , pattern CategoryIslower
+  , pattern CategoryIsdigit
+  , pattern CategoryIsxdigit
  ) where
 
 import           Z.Data.Text.Base
