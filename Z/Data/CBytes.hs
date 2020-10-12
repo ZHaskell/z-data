@@ -85,12 +85,12 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- return a filename which is not proper encoded in any unicode encoding at all.
 -- But still, UTF-8 is recommanded to be used when text represatation is needed.
 -- --
-data CBytes = CBytes
+newtype CBytes = CBytes
     {
         -- | Convert to 'PrimArray',
         --
         -- there's an invariance that this array never contains @\NUL@
-        toPrimArray :: {-# UNPACK #-} !(PrimArray Word8)
+        toPrimArray :: PrimArray Word8
     }
 
 -- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first byte before @\NUL@ byte if there's any.

@@ -42,68 +42,68 @@ module Z.Data.Text.Base (
   , isNormalized, isNormalizedTo, normalize, normalizeTo
     -- ** Case conversion
     -- $case
-  , Locale(LocaleDefault, LocaleLithuanian, LocaleTurkishAndAzeriLatin)
   , envLocale
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
-  , Category(
-        CategoryLetterUppercase
-      , CategoryLetterLowercase
-      , CategoryLetterTitlecase
-      , CategoryLetterOther
-      , CategoryLetter
-      , CategoryCaseMapped
-
-      , CategoryMarkNonSpacing
-      , CategoryMarkSpacing
-      , CategoryMarkEnclosing
-      , CategoryMark
-
-      , CategoryNumberDecimal
-      , CategoryNumberLetter
-      , CategoryNumberOther
-      , CategoryNumber
-
-      , CategoryPunctuationConnector
-      , CategoryPunctuationDash
-      , CategoryPunctuationOpen
-      , CategoryPunctuationClose
-      , CategoryPunctuationInitial
-      , CategoryPunctuationFinal
-      , CategoryPunctuationOther
-      , CategoryPunctuation
-
-      , CategorySymbolMath
-      , CategorySymbolCurrency
-      , CategorySymbolModifier
-      , CategorySymbolOther
-      , CategorySymbol
-
-      , CategorySeparatorSpace
-      , CategorySeparatorLine
-      , CategorySeparatorParagraph
-      , CategorySeparator
-      , CategoryControl
-      , CategoryFormat
-      , CategorySurrogate
-      , CategoryPrivateUse
-      , CategoryUnassigned
-      , CategoryCompatibility
-      , CategoryIgnoreGraphemeCluster
-      , CategoryIscntrl
-
-      , CategoryIsprint
-      , CategoryIsspace
-      , CategoryIsblank
-      , CategoryIsgraph
-      , CategoryIspunct
-      , CategoryIsalnum
-      , CategoryIsalpha
-      , CategoryIsupper
-      , CategoryIslower
-      , CategoryIsdigit
-      , CategoryIsxdigit)
+  -- * Constants
+  -- ** Locale
+  , Locale
+  , pattern LocaleDefault
+  , pattern LocaleLithuanian
+  , pattern LocaleTurkishAndAzeriLatin
+  -- ** Category
+  , Category
+  , pattern CategoryLetterUppercase
+  , pattern CategoryLetterLowercase
+  , pattern CategoryLetterTitlecase
+  , pattern CategoryLetterOther
+  , pattern CategoryLetter
+  , pattern CategoryCaseMapped
+  , pattern CategoryMarkNonSpacing
+  , pattern CategoryMarkSpacing
+  , pattern CategoryMarkEnclosing
+  , pattern CategoryMark
+  , pattern CategoryNumberDecimal
+  , pattern CategoryNumberLetter
+  , pattern CategoryNumberOther
+  , pattern CategoryNumber
+  , pattern CategoryPunctuationConnector
+  , pattern CategoryPunctuationDash
+  , pattern CategoryPunctuationOpen
+  , pattern CategoryPunctuationClose
+  , pattern CategoryPunctuationInitial
+  , pattern CategoryPunctuationFinal
+  , pattern CategoryPunctuationOther
+  , pattern CategoryPunctuation
+  , pattern CategorySymbolMath
+  , pattern CategorySymbolCurrency
+  , pattern CategorySymbolModifier
+  , pattern CategorySymbolOther
+  , pattern CategorySymbol
+  , pattern CategorySeparatorSpace
+  , pattern CategorySeparatorLine
+  , pattern CategorySeparatorParagraph
+  , pattern CategorySeparator
+  , pattern CategoryControl
+  , pattern CategoryFormat
+  , pattern CategorySurrogate
+  , pattern CategoryPrivateUse
+  , pattern CategoryUnassigned
+  , pattern CategoryCompatibility
+  , pattern CategoryIgnoreGraphemeCluster
+  , pattern CategoryIscntrl
+  , pattern CategoryIsprint
+  , pattern CategoryIsspace
+  , pattern CategoryIsblank
+  , pattern CategoryIsgraph
+  , pattern CategoryIspunct
+  , pattern CategoryIsalnum
+  , pattern CategoryIsalpha
+  , pattern CategoryIsupper
+  , pattern CategoryIslower
+  , pattern CategoryIsdigit
+  , pattern CategoryIsxdigit
   -- * Misc
   , TextException(..), errorEmptyText
   , c_utf8_validate_ba

@@ -72,6 +72,8 @@ import           Foreign.C.Types
 import           GHC.Exts                     (Proxy#, proxy#)
 import           GHC.Generics
 import           GHC.Natural
+import           System.Exit
+import           Text.ParserCombinators.ReadP (readP_to_S)
 import qualified Z.Data.Builder             as B
 import           Z.Data.Generics.Utils
 import           Z.Data.JSON.Value          (Value(..))
@@ -87,7 +89,6 @@ import qualified Z.Data.Vector.FlatIntMap   as FIM
 import qualified Z.Data.Vector.FlatIntSet   as FIS
 import qualified Z.Data.Vector.FlatMap      as FM
 import qualified Z.Data.Vector.FlatSet      as FS
-import           Text.ParserCombinators.ReadP (readP_to_S)
 
 --------------------------------------------------------------------------------
 
@@ -347,7 +348,7 @@ withBoundedIntegral name f (Number x) =
         _      -> fail' . T.buildText $ do
             "converting "
             T.text name
-            "failed, value is either floating or will cause over or underflow "
+            "failed, value is either floating or will cause over or underflow: "
             T.scientific x
 withBoundedIntegral name _ v = typeMismatch name "Number" v
 
@@ -1159,6 +1160,25 @@ instance ToValue () where
 instance EncodeJSON () where
     {-# INLINE encodeJSON #-}
     encodeJSON () = "[]"
+
+instance FromValue ExitCode where
+    {-# INLINE fromValue #-}
+    fromValue (String "ExitSuccess") = return ExitSuccess
+    fromValue (Number x) =
+        case toBoundedInteger x of
+            Just i -> return (ExitFailure i)
+            _      -> fail' . T.buildText $ do
+                "converting ExitCode failed, value is either floating or will cause over or underflow: "
+                T.scientific x
+    fromValue _ =  fail' "converting ExitCode failed, expected a string or number"
+instance ToValue ExitCode where
+    {-# INLINE toValue #-}
+    toValue ExitSuccess = String "ExitSuccess"
+    toValue (ExitFailure n) = Number (fromIntegral n)
+instance EncodeJSON ExitCode where
+    {-# INLINE encodeJSON #-}
+    encodeJSON ExitSuccess = "ExitSuccess"
+    encodeJSON (ExitFailure n) = B.int n
 
 instance FromValue Version where
     {-# INLINE fromValue #-}

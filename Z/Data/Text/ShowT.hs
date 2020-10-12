@@ -74,6 +74,8 @@ import           GHC.Natural
 import           GHC.Generics
 import           GHC.Stack
 import           Data.Version
+import           System.Exit
+import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 import           Data.Primitive.Types
 import qualified Z.Data.Builder.Base            as B
 import qualified Z.Data.Builder.Numeric         as B
@@ -81,7 +83,6 @@ import qualified Z.Data.Text.Base               as T
 import           Z.Data.Text.Base               (Text(..))
 import qualified Z.Data.Array                   as A
 import qualified Z.Data.Vector.Base             as V
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
 #define DOUBLE_QUOTE 34
 
@@ -650,6 +651,7 @@ deriving newtype instance ShowT CSUSeconds
 deriving newtype instance ShowT CFloat
 deriving newtype instance ShowT CDouble
 
+deriving anyclass instance ShowT ExitCode
 deriving anyclass instance ShowT a => ShowT (Semigroup.Min a)
 deriving anyclass instance ShowT a => ShowT (Semigroup.Max a)
 deriving anyclass instance ShowT a => ShowT (Semigroup.First a)
