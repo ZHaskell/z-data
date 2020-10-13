@@ -1,6 +1,6 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.1.6.1
+version:                    0.1.6.2
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause

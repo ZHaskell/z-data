@@ -1,7 +1,3 @@
-<p align=center>
-  <img src="https://github.com/haskell-Z/Z/raw/master/projectZ.svg">
-</p>
-
 ## Z-Data
 
 [![Linux Build Status](https://github.com/haskell-Z/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![Windows Build Status](https://github.com/haskell-Z/z-data/workflows/win-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)

@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.1.6.2  -- 2020-10-13
+
+* Change `defaultChunkSize` from 32K to 16K to reduce memory overhead.
+
 ## 0.1.6.1  -- 2020-10-09
 
 * Remove `Str` newtype.
