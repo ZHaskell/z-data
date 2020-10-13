@@ -1268,10 +1268,10 @@ iPairFromTuple :: (Int, a) -> IPair a
 {-# INLINE iPairFromTuple #-}
 iPairFromTuple (i, v) = IPair i v
 
--- | The chunk size used for I\/O. Currently set to @32k-chunkOverhead@
+-- | The chunk size used for I\/O. Currently set to @16k-chunkOverhead@
 defaultChunkSize :: Int
 {-# INLINE defaultChunkSize #-}
-defaultChunkSize = 32 * 1024 - chunkOverhead
+defaultChunkSize = 16 * 1024 - chunkOverhead
 
 -- | The recommended chunk size. Currently set to @4k - chunkOverhead@.
 smallChunkSize :: Int
