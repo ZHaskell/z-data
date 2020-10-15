@@ -15,11 +15,11 @@ Portability : non-portable
 module Z.Data.CBytes
   ( CBytes(CB)
   , rawPrimArray, fromPrimArray
+  , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , pack
   , unpack
   , null , length
   , empty, append, concat, intercalate, intercalateElem
-  , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   -- re-export

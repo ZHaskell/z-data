@@ -114,7 +114,7 @@ decodeText :: FromValue a => T.Text -> (T.Text, Either DecodeError a)
 {-# INLINE decodeText #-}
 decodeText t =
     let (rest, r) = decode (T.getUTF8Bytes t)
-    in (T.Text rest, r) -- ^ JSON parser consume bytes in unit of UTF8 codepoint
+    in (T.Text rest, r) -- JSON parser consume bytes in unit of UTF8 codepoint
 
 -- | Decode a JSON doc, only trailing JSON whitespace are allowed.
 decode' :: FromValue a => V.Bytes -> Either DecodeError a
