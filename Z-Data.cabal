@@ -121,7 +121,6 @@ library
                           , template-haskell        >= 2.14.0
                           , unordered-containers    == 0.2.*
                           , tagged                  == 0.8.*
-                          , time                    >= 1.8
 
     if flag(integer-simple)
         cpp-options:        -DINTEGER_SIMPLE

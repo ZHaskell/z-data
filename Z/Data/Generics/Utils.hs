@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide a helper class to compute product size via 'Generic' instance, e.g. This class is
+This module provides a helper class to compute product size via 'Generic' instance, e.g. This class is
 useful during JSON deserializing, to decide the array length used to store record KVs.
 -}
 
