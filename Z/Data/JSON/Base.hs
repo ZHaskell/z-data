@@ -15,7 +15,7 @@ user define 'FromValue', 'ToValue' and 'EncodeJSON' instance.
 module Z.Data.JSON.Base
   ( -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
+  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
   -- * Re-export 'Value' type
   , Value(..)
     -- * parse into JSON Value
@@ -86,6 +86,7 @@ import qualified Z.Data.JSON.Value          as JV
 import qualified Z.Data.JSON.Builder        as JB
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Parser.Numeric      as P
+import qualified Z.Data.Text.Base           as T
 import qualified Z.Data.Text                as T
 import qualified Z.Data.Text.ShowT          as T
 import qualified Z.Data.Vector.Base         as V
@@ -104,7 +105,18 @@ import qualified Z.Data.Vector.FlatSet      as FS
 type DecodeError = Either P.ParseError ConvertError
 
 -- | Decode a JSON doc, only trailing JSON whitespace are allowed.
---
+decodeText' :: FromValue a => T.Text -> Either DecodeError a
+{-# INLINE decodeText' #-}
+decodeText' = decode' . T.getUTF8Bytes
+
+-- | Decode a JSON text, return any trailing text.
+decodeText :: FromValue a => T.Text -> (T.Text, Either DecodeError a)
+{-# INLINE decodeText #-}
+decodeText t =
+    let (rest, r) = decode (T.getUTF8Bytes t)
+    in (T.Text rest, r) -- ^ JSON parser consume bytes in unit of UTF8 codepoint
+
+-- | Decode a JSON doc, only trailing JSON whitespace are allowed.
 decode' :: FromValue a => V.Bytes -> Either DecodeError a
 {-# INLINE decode' #-}
 decode' bs = case P.parse_ (JV.value <* JV.skipSpaces <* P.endOfInput) bs of
@@ -1090,9 +1102,9 @@ instance EncodeJSON Bool where {{-# INLINE encodeJSON #-}; encodeJSON True = "tr
 instance FromValue Char where
     {-# INLINE fromValue #-}
     fromValue = withText "Char" $ \ t ->
-        case T.headMaybe t of
-            Just c -> pure c
-            _      -> fail' (T.concat ["converting Char failed, expected a string of length 1"])
+        if (T.length t == 1)
+        then pure (T.head t)
+        else fail' (T.concat ["converting Char failed, expected a string of length 1"])
 instance ToValue Char where
     {-# INLINE toValue #-}
     toValue = String . T.singleton
