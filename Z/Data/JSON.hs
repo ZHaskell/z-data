@@ -46,7 +46,7 @@ The 'Generic' instances convert(encode) Haskell data with following rules:
 These rules apply to user defined ADTs, but some built-in instances have different behaviour, namely:
 
   * @Maybe a@ are encoded as JSON @null@ in 'Nothing' case, or directly encoded to its payload in 'Just' case.
-  * @[a]@ are encoded to JSON array, including @[Char]@, i.e. there's no special treatment to "Prelude.String". To get JSON string, use 'T.Text'.
+  * @[a]@ are encoded to JSON array, including @[Char]@, i.e. there's no special treatment to 'String'. To get JSON string, use 'T.Text'.
   * 'NonEmpty', 'Vector', 'PrimVector', 'HashSet', 'FlatSet', 'FlatIntSet' are also encoded to JSON array.
   * 'HashMap', 'FlatMap', 'FlatIntMap' are encoded to JSON object.
 
@@ -111,7 +111,7 @@ If you don't particularly care for fast encoding, you can also use 'toValue' tog
 module Z.Data.JSON
   ( -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
+  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
     -- * Value type
   , Value(..)
     -- * parse into JSON Value

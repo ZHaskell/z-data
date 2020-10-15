@@ -4,7 +4,8 @@
 
 * Change `defaultChunkSize` from 32K to 16K to reduce memory overhead.
 * Change `CBytes` to use null terminated byte array, add JSON instances.
-* Add JSON instances to various arrays.
+* Add JSON instances to various arrays, Fix `Char`'s JSON instance to reject string length > 1.
+* Add `decodeText` and `decodeText'` to `Z.Data.JSON`.
 
 ## 0.1.6.1  -- 2020-10-09
 
