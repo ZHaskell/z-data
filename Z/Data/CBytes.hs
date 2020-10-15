@@ -14,7 +14,7 @@ Portability : non-portable
 
 module Z.Data.CBytes
   ( CBytes(CB)
-  , toPrimArray
+  , rawPrimArray, fromPrimArray
   , pack
   , unpack
   , null , length
@@ -73,8 +73,8 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- interface, e.g. libuv do this when deal with file paths.
 --
 -- 'CBytes' don't support O(1) slicing, it's not suitable to use it to store large byte
--- chunk, If you need advance editing, convert 'CBytes' to \/ from 'PrimArray' with 'CB',
--- or 'V.Bytes' with 'toBytes\/fromBytes' if you need O(1) slicing, then use vector combinators.
+-- chunk, If you need advance editing, convert 'CBytes' to 'V.Bytes' with 'CB' pattern or
+-- 'toBytes\/fromBytes', then use vector combinators.
 --
 -- When textual represatation is needed(conver to 'String', 'T.Text', 'Show' instance, etc.),
 -- we assume 'CBytes' using UTF-8 encodings, 'CBytes' can be used with @OverloadedString@,
@@ -87,27 +87,30 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- --
 newtype CBytes = CBytes
     {
-        -- | Convert to 'PrimArray',
+        -- | Convert to a @\NUL@ terminated 'PrimArray',
         --
-        -- there's an invariance that this array never contains @\NUL@
-        toPrimArray :: PrimArray Word8
+        -- there's an invariance that this array never contains extra @\NUL@ except terminator.
+        rawPrimArray :: PrimArray Word8
     }
 
--- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first byte before @\NUL@ byte if there's any.
-pattern CB :: PrimArray Word8 -> CBytes
-pattern CB arr <- CBytes arr where
-    CB arr = fromPrimArray arr
-
+-- | Constuctor a 'CBytes' from arbitrary array, result will be trimmed down to first byte before @\NUL@ byte if there's any.
 fromPrimArray :: PrimArray Word8 -> CBytes
 {-# INLINE fromPrimArray #-}
-fromPrimArray arr = runST (
-    case V.elemIndex 0 arr of
-        Just i -> do
-            mpa <- newPrimArray i
-            copyPrimArray mpa 0 arr 0 i
-            pa <- unsafeFreezePrimArray mpa
-            return (CBytes pa)
-        _ -> return (CBytes arr))
+fromPrimArray arr = runST (do
+    let l = case V.elemIndex 0 arr of
+            Just i -> i
+            _ -> sizeofPrimArray arr
+    mpa <- newPrimArray (l+1)
+    copyPrimArray mpa 0 arr 0 l
+    -- write \NUL terminator
+    writePrimArray mpa l 0
+    pa <- unsafeFreezePrimArray mpa
+    return (CBytes pa))
+
+-- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first byte before @\NUL@ byte if there's any.
+pattern CB :: V.Bytes -> CBytes
+pattern CB bs <- (toBytes -> bs) where
+    CB bs = fromBytes bs
 
 instance Show CBytes where
     showsPrec p t = showsPrec p (unpack t)
@@ -121,10 +124,12 @@ instance NFData CBytes where
 
 instance Eq CBytes where
     {-# INLINE (==) #-}
+    -- \NUL does not affect equality
     CBytes ba == CBytes bb = ba == bb
 
 instance Ord CBytes where
     {-# INLINE compare #-}
+    -- \NUL does not affect ordering
     CBytes ba `compare` CBytes bb = ba `compare` bb
 
 instance Semigroup CBytes where
@@ -140,7 +145,7 @@ instance Monoid CBytes where
 
 instance Hashable CBytes where
     hashWithSalt salt (CBytes pa@(PrimArray ba#)) = unsafeDupablePerformIO $ do
-        V.c_fnv_hash_ba ba# 0 (sizeofPrimArray pa) salt
+        V.c_fnv_hash_ba ba# 0 (sizeofPrimArray pa - 1) salt
 
 instance Arbitrary CBytes where
     arbitrary = pack <$> arbitrary
@@ -152,15 +157,17 @@ instance CoArbitrary CBytes where
 -- | This instance peek bytes until @\NUL@(or input chunk ends), poke bytes with an extra \NUL terminator.
 instance Unaligned CBytes where
     {-# INLINE unalignedSize #-}
-    unalignedSize (CBytes arr) = sizeofPrimArray arr + 1
+    unalignedSize (CBytes arr) = sizeofPrimArray arr
     {-# INLINE peekMBA #-}
     peekMBA mba# i = do
         b <- getSizeofMutableByteArray (MutableByteArray mba#)
         let rest = b-i
         l <- c_memchr mba# i 0 rest
         let l' = if l == -1 then rest else l
-        mpa <- newPrimArray l'
+        mpa <- newPrimArray (l'+1)
         copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
+        -- write \NUL terminator
+        writePrimArray mpa l' 0
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
 
@@ -168,7 +175,6 @@ instance Unaligned CBytes where
     pokeMBA mba# i (CBytes pa) = do
         let l = sizeofPrimArray pa
         copyPrimArray (MutablePrimArray mba# :: MutablePrimArray RealWorld Word8) i pa 0 l
-        writePrimArray (MutablePrimArray mba# :: MutablePrimArray RealWorld Word8) (i+l) 0
 
     {-# INLINE indexBA #-}
     indexBA ba# i = runST (do
@@ -176,8 +182,9 @@ instance Unaligned CBytes where
             rest = b-i
             l = V.c_memchr ba# i 0 rest
             l' = if l == -1 then rest else l
-        mpa <- newPrimArray l'
+        mpa <- newPrimArray (l'+1)
         copyPrimArray mpa 0 (PrimArray ba#) i l'
+        writePrimArray mpa l' 0
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa))
 
@@ -192,9 +199,10 @@ append strA@(CBytes pa) strB@(CBytes pb)
     | lenA == 0 = strB
     | lenB == 0 = strA
     | otherwise = unsafeDupablePerformIO $ do
-        mpa <- newPrimArray (lenA+lenB)
+        mpa <- newPrimArray (lenA+lenB+1)
         copyPrimArray mpa 0    pa 0 lenA
         copyPrimArray mpa lenA pb 0 lenB
+        writePrimArray mpa (lenA + lenB) 0     -- the \NUL terminator
         pa' <- unsafeFreezePrimArray mpa
         return (CBytes pa')
   where
@@ -204,7 +212,7 @@ append strA@(CBytes pa) strB@(CBytes pb)
 -- | An empty 'CBytes'
 empty :: CBytes
 {-# NOINLINE empty #-}
-empty = CBytes (V.empty)
+empty = CBytes (V.singleton 0)
 
 concat :: [CBytes] -> CBytes
 {-# INLINABLE concat #-}
@@ -212,8 +220,9 @@ concat bss = case pre 0 0 bss of
     (0, _) -> empty
     (1, _) -> let Just b = List.find (not . null) bss in b -- there must be a not empty CBytes
     (_, l) -> runST $ do
-        buf <- newPrimArray l
+        buf <- newPrimArray (l+1)
         copy bss 0 buf
+        writePrimArray buf l 0 -- the \NUL terminator
         CBytes <$> unsafeFreezePrimArray buf
   where
     -- pre scan to decide if we really need to copy and calculate total length
@@ -252,8 +261,9 @@ intercalateElem 0 (bs:_) = bs
 intercalateElem w8 bss = case len bss 0 of
     0 -> empty
     l -> runST $ do
-        buf <- newPrimArray l
+        buf <- newPrimArray (l+1)
         copy bss 0 buf
+        writePrimArray buf l 0 -- the \NUL terminator
         CBytes <$> unsafeFreezePrimArray buf
   where
     len []     !acc = acc
@@ -287,7 +297,7 @@ instance IsString CBytes where
 packAddr :: Addr# -> CBytes
 packAddr addr0# = go addr0#
   where
-    len = (fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#)
+    len = (fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#) + 1
     go addr# = runST $ do
         marr <- newPrimArray len
         copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
@@ -302,7 +312,8 @@ pack :: String -> CBytes
 pack s = runST $ do
     mba <- newPrimArray V.defaultInitSize
     (SP2 i mba') <- foldlM go (SP2 0 mba) s
-    shrinkMutablePrimArray mba' i
+    writePrimArray mba' i 0     -- the \NUL terminator
+    shrinkMutablePrimArray mba' (i+1)
     ba <- unsafeFreezePrimArray mba'
     return (CBytes ba)
   where
@@ -311,7 +322,7 @@ pack s = runST $ do
     go :: SP2 s -> Char -> ST s (SP2 s)
     go (SP2 i mba) !c     = do
         siz <- getSizeofMutablePrimArray mba
-        if i < siz - 3  -- we need at least 4 bytes for safety
+        if i < siz - 4  -- we need at least 4 bytes for safety due to extra '\0' byte
         then do
             i' <- encodeCharModifiedUTF8 mba i c
             return (SP2 i' mba)
@@ -336,7 +347,7 @@ unpack :: CBytes -> String
 {-# INLINE [1] unpack #-}
 unpack (CBytes arr) = go 0
   where
-    !end = sizeofPrimArray arr
+    !end = sizeofPrimArray arr - 1
     go !idx
         | idx >= end = []
         | otherwise = let (# c, i #) = decodeChar arr idx in c : go (idx + i)
@@ -345,7 +356,7 @@ unpackFB :: CBytes -> (Char -> a -> a) -> a -> a
 {-# INLINE [0] unpackFB #-}
 unpackFB (CBytes arr) k z = go 0
   where
-    !end = sizeofPrimArray arr
+    !end = sizeofPrimArray arr - 1
     go !idx
         | idx >= end = z
         | otherwise = let (# c, i #) = decodeChar arr idx in c `k` go (idx + i)
@@ -361,37 +372,37 @@ unpackFB (CBytes arr) k z = go 0
 --
 null :: CBytes -> Bool
 {-# INLINE null #-}
-null (CBytes pa) = sizeofPrimArray pa == 0
+null (CBytes pa) = indexPrimArray pa 0 == 0
 
 -- | Return the BTYE length of 'CBytes'.
 --
 length :: CBytes -> Int
 {-# INLINE length #-}
-length (CBytes pa) = sizeofPrimArray pa
+length (CBytes pa) = sizeofPrimArray pa - 1
 
 -- | /O(1)/, convert to 'V.Bytes', which can be processed by vector combinators.
 toBytes :: CBytes -> V.Bytes
 {-# INLINABLE toBytes #-}
-toBytes (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr)
+toBytes (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr - 1)
 
 -- | /O(n)/, convert from 'V.Bytes'
 --
 -- Result will be trimmed down to first byte before @\NUL@ byte if there's any.
 fromBytes :: V.Bytes -> CBytes
 {-# INLINABLE fromBytes #-}
-fromBytes v@(V.PrimVector arr s l) = runST (do
-    case V.elemIndex 0 v of
-        Just i -> do
-            mpa <- newPrimArray i
-            copyPrimArray mpa 0 arr s i
-            pa <- unsafeFreezePrimArray mpa
-            return (CBytes pa)
-        _ | s == 0 && sizeofPrimArray arr == l -> return (CBytes arr)
-          | otherwise -> do
-                mpa <- newPrimArray l
-                copyPrimArray mpa 0 arr s l
-                pa <- unsafeFreezePrimArray mpa
-                return (CBytes pa))
+fromBytes v@(V.PrimVector arr s l)
+        -- already a \NUL terminated bytes
+    | s == 0 && sizeofPrimArray arr == (l+1) && indexPrimArray arr l == 0 =
+        CBytes arr
+    | otherwise = runST (do
+        let l' = case V.elemIndex 0 v of
+                Just i -> i
+                _ -> l
+        mpa <- newPrimArray (l'+1)
+        copyPrimArray mpa 0 arr s l'
+        writePrimArray mpa l' 0      -- the \NUL terminator
+        pa <- unsafeFreezePrimArray mpa
+        return (CBytes pa))
 
 -- | /O(n)/, convert to 'T.Text' using UTF8 encoding assumption.
 --
@@ -413,7 +424,6 @@ toTextMaybe = T.validateMaybe . toBytes
 fromText :: T.Text -> CBytes
 {-# INLINABLE fromText #-}
 fromText = fromBytes . T.getUTF8Bytes
-
 
 -- | Write 'CBytes' \'s byte sequence to buffer.
 --
@@ -438,8 +448,9 @@ fromCString cstring = do
     then return empty
     else do
         len <- fromIntegral <$> c_strlen_ptr cstring
-        mpa <- newPrimArray len
-        copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
+        let len' = len + 1
+        mpa <- newPrimArray len'
+        copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len'
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
 
@@ -454,8 +465,9 @@ fromCStringN cstring len0 = do
     else do
         len1 <- fromIntegral <$> c_strlen_ptr cstring
         let len = min len0 len1
-        mpa <- newPrimArray len
+        mpa <- newPrimArray (len+1)
         copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
+        writePrimArray mpa len 0     -- the \NUL terminator
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
 
@@ -464,26 +476,14 @@ fromCStringN cstring len0 = do
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 withCBytesUnsafe :: CBytes -> (BA# Word8 -> IO a) -> IO a
 {-# INLINABLE withCBytesUnsafe #-}
-withCBytesUnsafe (CBytes pa) f = do
-    let l = sizeofPrimArray pa
-    mpa <- newPrimArray (l+1)
-    copyPrimArray mpa 0 pa 0 l
-    writePrimArray mpa l 0
-    pa' <- unsafeFreezePrimArray mpa
-    withPrimArrayUnsafe pa' (\ p _ -> f p)
+withCBytesUnsafe (CBytes pa) f = withPrimArrayUnsafe pa (\ p _ -> f p)
 
 -- | Pass 'CBytes' to foreign function as a @const char*@.
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withCBytes :: CBytes -> (Ptr Word8 -> IO a) -> IO a
 {-# INLINABLE withCBytes #-}
-withCBytes (CBytes pa) f = do
-    let l = sizeofPrimArray pa
-    mpa <- newPinnedPrimArray (l+1)
-    copyPrimArray mpa 0 pa 0 l
-    writePrimArray mpa l 0
-    pa' <- unsafeFreezePrimArray mpa
-    withPrimArraySafe pa' (\ p _ -> f p)
+withCBytes (CBytes pa) f = withPrimArraySafe pa (\ p _ -> f p)
 
 -- | Create a 'CBytes' with IO action.
 --
@@ -503,7 +503,9 @@ allocCBytesUnsafe n fill | n <= 0 = withPrimUnsafe (0::Word8) fill >>=
     mba@(MutablePrimArray mba#) <- newPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     a <- fill mba#
     l <- fromIntegral <$> (c_memchr mba# 0 0 n)
-    shrinkMutablePrimArray mba (if l == -1 then n else l)
+    let l' = if l == -1 then (n-1) else l
+    shrinkMutablePrimArray mba (l'+1)
+    writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
     return (CBytes bs, a)
 
@@ -523,7 +525,9 @@ allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
     mba@(MutablePrimArray mba#) <- newPinnedPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     a <- withMutablePrimArrayContents mba (fill . castPtr)
     l <- fromIntegral <$> (c_memchr mba# 0 0 n)
-    shrinkMutablePrimArray mba (if l == -1 then n else l)
+    let l' = if l == -1 then (n-1) else l
+    shrinkMutablePrimArray mba (l'+1)
+    writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
     return (CBytes bs, a)
 
