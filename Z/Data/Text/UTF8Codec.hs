@@ -86,7 +86,7 @@ encodeChar# mba# i# c# = case (int2Word# (ord# c#)) of
 
 -- | Encode a 'Char' into bytes with non-standard UTF-8 encoding(Used in "Data.CBytes").
 --
--- '\NUL' is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
+-- @\\NUL@ is encoded as two bytes @C0 80@ , @\\xD800@ ~ @\\xDFFF@ is encoded as a three bytes normal UTF-8 codepoint.
 -- This function assumed there're enough space for encoded bytes, and return the advanced index.
 encodeCharModifiedUTF8 :: (PrimMonad m) => MutablePrimArray (PrimState m) Word8 -> Int -> Char -> m Int
 {-# INLINE encodeCharModifiedUTF8 #-}

@@ -13,7 +13,6 @@ INTERNAL MODULE, provides utf8rewind constants
 
 module Z.Data.Text.UTF8Rewind where
 
-import Data.Bits
 import Foreign.C.Types
 import GHC.Generics
 
