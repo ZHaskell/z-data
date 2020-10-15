@@ -1,9 +1,10 @@
 # Revision history for Z-Data
 
-## 0.1.6.2  -- 2020-10-13
+## 0.1.7.0  -- 2020-10-15
 
 * Change `defaultChunkSize` from 32K to 16K to reduce memory overhead.
-* Change `CBytes` to use null terminated byte array.
+* Change `CBytes` to use null terminated byte array, add JSON instances.
+* Add JSON instances to various arrays.
 
 ## 0.1.6.1  -- 2020-10-09
 

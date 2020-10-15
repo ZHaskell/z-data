@@ -9,6 +9,7 @@ import qualified GHC.Exts                   as List
 import           Data.Word
 import           Data.Hashable              (hashWithSalt, hash)
 import qualified Z.Data.CBytes              as CB
+import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
 import qualified Z.Data.Vector.Base         as V
 import           System.IO.Unsafe
@@ -35,6 +36,11 @@ spec = describe "CBytes-base" $ do
             in hash (CB.pack ys) === hash (V.packASCII ys)
         prop "CBytes a's hash should be equal to literal's hash" $
             hash ("hello world!" :: CB.CBytes) === hash (CB.fromBytes "hello world!")
+
+    describe "CBytes JSON instance property" $ do
+        prop "CBytes decodeJSON . encodeJSON === id" $ \ xs ->
+            let bs = CB.fromBytes (V.pack xs)
+            in Right bs === JSON.decode' (JSON.encodeBytes bs)
 
     describe "CBytes IsString instance property" $ do
         prop "ASCII string" $

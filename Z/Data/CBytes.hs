@@ -58,6 +58,8 @@ import           Z.Data.Array.Unaligned
 import qualified Z.Data.Builder        as B
 import qualified Z.Data.Text           as T
 import qualified Z.Data.Text.ShowT     as T
+import qualified Z.Data.JSON.Base      as JSON
+import           Z.Data.JSON.Base      ((<?>))
 import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
 import qualified Z.Data.Vector.Base    as V
 import           Z.Foreign
@@ -192,6 +194,38 @@ instance Unaligned CBytes where
 instance T.ShowT CBytes where
     {-# INLINE toTextBuilder #-}
     toTextBuilder _ = T.stringUTF8 . show . unpack
+
+-- | JSON instances check if 'CBytes' is proper UTF8 encoded,
+-- if it is, decode/encode it as 'T.Text', otherwise as 'V.Bytes'.
+--
+-- @
+-- > encodeText ("hello" :: CBytes)
+-- "\"hello\""
+-- > encodeText ("hello\NUL" :: CBytes)     -- \NUL is encoded as C0 80
+-- "[104,101,108,108,111,192,128]"
+-- @
+instance JSON.FromValue CBytes where
+    {-# INLINE fromValue #-}
+    fromValue value =
+        case value of
+            JSON.String t ->
+                return (fromText t)
+            JSON.Array arr ->
+                fromBytes <$> V.traverseWithIndex
+                    (\ k v -> JSON.fromValue v <?> JSON.Index k) arr
+            _ -> JSON.fail'
+                    "converting Z.Data.CBytes.CBytes failed, expected array or string"
+
+instance JSON.ToValue CBytes where
+    {-# INLINE toValue #-}
+    toValue cbytes = case toTextMaybe cbytes of
+        Just t -> JSON.toValue t
+        Nothing -> JSON.toValue (toBytes cbytes)
+instance JSON.EncodeJSON CBytes where
+    {-# INLINE encodeJSON #-}
+    encodeJSON cbytes = case toTextMaybe cbytes of
+        Just t -> JSON.encodeJSON t
+        Nothing -> B.square . JSON.commaVec' . toBytes $ cbytes
 
 append :: CBytes -> CBytes -> CBytes
 {-# INLINABLE append #-}

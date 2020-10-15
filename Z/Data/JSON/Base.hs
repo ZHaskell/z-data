@@ -36,6 +36,9 @@ module Z.Data.JSON.Base
   , Field, GWriteFields(..), GMergeFields(..), GConstrToValue(..)
   , LookupTable, GFromFields(..), GBuildLookup(..), GConstrFromValue(..)
   , GAddPunctuation(..), GConstrEncodeJSON(..)
+  -- * Internal Helper
+  , commaList'
+  , commaVec'
   ) where
 
 import           Control.Applicative
@@ -59,12 +62,13 @@ import           Data.List.NonEmpty           (NonEmpty (..))
 import qualified Data.List.NonEmpty           as NonEmpty
 import qualified Data.Monoid                  as Monoid
 import           Data.Primitive.Types         (Prim)
-import qualified Data.Primitive.SmallArray    as A
 import           Data.Proxy                   (Proxy(..))
 import           Data.Ratio                   (Ratio, (%), numerator, denominator)
 import           Data.Scientific              (Scientific, base10Exponent, toBoundedInteger)
 import qualified Data.Scientific              as Scientific
 import qualified Data.Semigroup               as Semigroup
+import qualified Data.Primitive.ByteArray     as A
+import qualified Data.Primitive.SmallArray    as A
 import           Data.Tagged                  (Tagged (..))
 import           Data.Version                 (Version, parseVersion)
 import           Data.Word
@@ -74,6 +78,7 @@ import           GHC.Generics
 import           GHC.Natural
 import           System.Exit
 import           Text.ParserCombinators.ReadP (readP_to_S)
+import qualified Z.Data.Array               as A
 import qualified Z.Data.Builder             as B
 import           Z.Data.Generics.Utils
 import           Z.Data.JSON.Value          (Value(..))
@@ -474,7 +479,7 @@ commaVec' = B.intercalateVec B.comma encodeJSON
 
 -- | Generic encode/decode Settings
 --
--- There should be no control charactors in formatted texts since we don't escaping those
+-- There should be no control characters in formatted texts since we don't escaping those
 -- field names or constructor names ('defaultSettings' relys on Haskell's lexical property).
 -- Otherwise 'encodeJSON' will output illegal JSON string.
 data Settings = Settings
@@ -959,6 +964,66 @@ instance ToValue FIS.FlatIntSet where
 instance EncodeJSON FIS.FlatIntSet where
     {-# INLINE encodeJSON #-}
     encodeJSON = encodeJSON . FIS.sortedValues
+
+instance FromValue a => FromValue (A.Array a) where
+    {-# INLINE fromValue #-}
+    fromValue = withArray "Z.Data.Array.Array"
+        (V.traverseWithIndex $ \ k v -> fromValue v <?> Index k)
+instance ToValue a => ToValue (A.Array a) where
+    {-# INLINE toValue #-}
+    toValue = Array . V.map toValue
+instance EncodeJSON a => EncodeJSON (A.Array a) where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.square . commaVec'
+
+instance FromValue a => FromValue (A.SmallArray a) where
+    {-# INLINE fromValue #-}
+    fromValue = withArray "Z.Data.Array.SmallArray"
+        (V.traverseWithIndex $ \ k v -> fromValue v <?> Index k)
+instance ToValue a => ToValue (A.SmallArray a) where
+    {-# INLINE toValue #-}
+    toValue = Array . V.map toValue
+instance EncodeJSON a => EncodeJSON (A.SmallArray a) where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.square . commaVec'
+
+instance (Prim a, FromValue a) => FromValue (A.PrimArray a) where
+    {-# INLINE fromValue #-}
+    fromValue = withArray "Z.Data.Array.PrimArray"
+        (V.traverseWithIndex $ \ k v -> fromValue v <?> Index k)
+instance (Prim a, ToValue a) => ToValue (A.PrimArray a) where
+    {-# INLINE toValue #-}
+    toValue = Array . V.map toValue
+instance (Prim a, EncodeJSON a) => EncodeJSON (A.PrimArray a) where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.square . commaVec'
+
+instance FromValue A.ByteArray where
+    {-# INLINE fromValue #-}
+    fromValue value = do
+        (A.PrimArray ba# :: A.PrimArray Word8) <-
+                withArray "Data.Primitive.ByteArray"
+                    (V.traverseWithIndex $ \ k v -> fromValue v <?> Index k) value
+        return (A.ByteArray ba#)
+instance ToValue A.ByteArray where
+    {-# INLINE toValue #-}
+    toValue (A.ByteArray ba#) =
+        Array (V.map toValue (A.PrimArray ba# :: A.PrimArray Word8))
+instance EncodeJSON A.ByteArray where
+    {-# INLINE encodeJSON #-}
+    encodeJSON (A.ByteArray ba#) =
+        B.square (commaVec' (A.PrimArray ba# :: A.PrimArray Word8))
+
+instance (A.PrimUnlifted a, FromValue a) => FromValue (A.UnliftedArray a) where
+    {-# INLINE fromValue #-}
+    fromValue = withArray "Z.Data.Array.UnliftedArray"
+        (V.traverseWithIndex $ \ k v -> fromValue v <?> Index k)
+instance (A.PrimUnlifted a, ToValue a) => ToValue (A.UnliftedArray a) where
+    {-# INLINE toValue #-}
+    toValue = Array . V.map toValue
+instance (A.PrimUnlifted a, EncodeJSON a) => EncodeJSON (A.UnliftedArray a) where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.square . commaVec'
 
 instance FromValue a => FromValue (V.Vector a) where
     {-# INLINE fromValue #-}
