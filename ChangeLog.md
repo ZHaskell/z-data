@@ -3,6 +3,7 @@
 ## 0.1.6.2  -- 2020-10-13
 
 * Change `defaultChunkSize` from 32K to 16K to reduce memory overhead.
+* Change `CBytes` to use null terminated byte array.
 
 ## 0.1.6.1  -- 2020-10-09
 
