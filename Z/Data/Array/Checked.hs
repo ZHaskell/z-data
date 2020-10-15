@@ -17,7 +17,17 @@ module Z.Data.Array.Checked
   ( -- * Arr typeclass re-export
     A.Arr
   , RealWorld
-    -- * Bound checked array operations
+  -- * Boxed array type
+  , A.Array(..)
+  , A.MutableArray(..)
+  , A.SmallArray(..)
+  , A.SmallMutableArray(..)
+  , A.uninitialized
+  -- * Primitive array type
+  , A.PrimArray(..)
+  , A.MutablePrimArray(..)
+  , Prim(..)
+  -- * Bound checked array operations
   , newArr
   , newArrWith
   , readArr
@@ -42,15 +52,6 @@ module Z.Data.Array.Checked
   , A.sizeofArr
   , A.sizeofMutableArr
   , A.sameArr
-  -- * Boxed array type
-  , A.Array(..)
-  , A.MutableArray(..)
-  , A.SmallArray(..)
-  , A.SmallMutableArray(..)
-  , A.uninitialized
-  -- * Primitive array type
-  , A.PrimArray(..)
-  , A.MutablePrimArray(..)
   -- * Bound checked primitive array operations
   , newPinnedPrimArray, newAlignedPinnedPrimArray
   , copyPrimArrayToPtr, copyMutablePrimArrayToPtr, copyPtrToMutablePrimArray
@@ -63,6 +64,10 @@ module Z.Data.Array.Checked
   , A.PrimUnlifted(..)
   -- * The 'ArrayException' type
   , ArrayException(..)
+  -- * Cast between primitive arrays
+  , A.Cast
+  , A.castArray
+  , A.castMutableArray
   ) where
 
 import           Control.Exception       (ArrayException (..), throw)

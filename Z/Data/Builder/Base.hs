@@ -537,7 +537,7 @@ text (T.Text bs) = bytes bs
 #define OPEN_SQUARE 91
 #define SINGLE_QUOTE 39
 
--- | add @{...}@ to original builder.
+-- | add @(...)@ to original builder.
 paren :: Builder () -> Builder ()
 {-# INLINE paren #-}
 paren b = encodePrim @Word8 OPEN_PAREN >> b >> encodePrim @Word8 CLOSE_PAREN
@@ -552,17 +552,17 @@ square :: Builder () -> Builder ()
 {-# INLINE square #-}
 square b = encodePrim @Word8 OPEN_SQUARE >> b >> encodePrim @Word8 CLOSE_SQUARE
 
--- | add @<...>@ to original builder.
+-- | add @/<.../>@ to original builder.
 angle :: Builder () -> Builder ()
 {-# INLINE angle #-}
 angle b = encodePrim @Word8 OPEN_ANGLE >> b >> encodePrim @Word8 CLOSE_ANGLE
 
--- | add @"..."@ to original builder.
+-- | add @/".../"@ to original builder.
 quotes :: Builder () -> Builder ()
 {-# INLINE quotes #-}
 quotes b = encodePrim @Word8 DOUBLE_QUOTE >> b >> encodePrim @Word8 DOUBLE_QUOTE
 
--- | add @'...'@ to original builder.
+-- | add @/'.../'@ to original builder.
 squotes :: Builder () -> Builder ()
 {-# INLINE squotes #-}
 squotes b = encodePrim @Word8 SINGLE_QUOTE >> b >> encodePrim @Word8 SINGLE_QUOTE
@@ -578,6 +578,15 @@ comma :: Builder ()
 comma = encodePrim @Word8 COMMA
 
 -- | Use separator to connect a vector of builders.
+--
+-- @
+-- import Z.Data.Builder as B
+-- import Z.Data.Text    as T
+-- import Z.Data.Vector  as V
+--
+-- > T.validate . B.buildBytes $ B.intercalateVec "," B.int (V.pack [1,2,3,4] :: V.PrimVector Int)
+-- "1,2,3,4"
+-- @
 intercalateVec :: (V.Vec v a)
             => Builder ()           -- ^ the seperator
             -> (a -> Builder ())    -- ^ value formatter
@@ -589,6 +598,15 @@ intercalateVec s f v = do
     forM_ (V.lastMaybe v) f
 
 -- | Use separator to connect list of builders.
+--
+-- @
+-- import Z.Data.Builder as B
+-- import Z.Data.Text    as T
+-- import Z.Data.Vector  as V
+--
+-- T.validate . B.buildBytes $ B.intercalateList "," B.int ([1,2,3,4] :: [Int])
+-- "1,2,3,4"
+-- @
 intercalateList :: Builder ()           -- ^ the seperator
                 -> (a -> Builder ())    -- ^ value formatter
                 -> [a]                  -- ^ value list
