@@ -103,8 +103,8 @@ type BuildStep s = Buffer s -> ST s [V.Bytes]
 -- Notes on 'IsString' instance: @Builder ()@'s 'IsString' instance use 'stringModifiedUTF8',
 -- which is different from 'stringUTF8' in that it DOES NOT PROVIDE UTF8 GUARANTEES! :
 --
--- * @\NUL@ will be written as @\xC0 \x80@.
--- * @\xD800@ ~ @\xDFFF@ will be encoded in three bytes as normal UTF-8 codepoints.
+-- * @\\NUL@ will be written as @\xC0 \x80@.
+-- * @\\xD800@ ~ @\\xDFFF@ will be encoded in three bytes as normal UTF-8 codepoints.
 --
 newtype Builder a = Builder
     { runBuilder :: forall s. AllocateStrategy s -> (a -> BuildStep s) -> BuildStep s}
@@ -170,7 +170,7 @@ stringModifiedUTF8 = mapM_ charModifiedUTF8
 
 -- | Turn 'Char' into 'Builder' with Modified UTF8 encoding
 --
--- '\NUL' is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
+-- @\\NUL@ is encoded as two bytes @C0 80@ , @\\xD800@ ~ @\\xDFFF@ is encoded as a three bytes normal UTF-8 codepoint.
 charModifiedUTF8 :: Char -> Builder ()
 {-# INLINE charModifiedUTF8 #-}
 charModifiedUTF8 chr = do

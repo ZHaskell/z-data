@@ -82,7 +82,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- When textual represatation is needed e.g. converting to 'String', 'T.Text', 'Show' instance, etc.,
 -- we assume 'CBytes' using UTF-8 encodings, 'CBytes' can be used with @OverloadedString@,
 -- literal encoding is UTF-8 with some modifications: @\\NUL@ is encoded to 'C0 80',
--- and '\xD800' ~ '\xDFFF' is encoded as a three bytes normal utf-8 codepoint.
+-- and @\\xD800@ ~ @\\xDFFF@ is encoded as a three bytes normal utf-8 codepoint.
 --
 -- Note most of the unix API is not unicode awared though, you may find a `scandir` call
 -- return a filename which is not proper encoded in any unicode encoding at all.
@@ -341,7 +341,7 @@ packAddr addr0# = go addr0#
 
 -- | Pack a 'String' into 'CBytes'.
 --
--- @\\NUL@ is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
+-- @\\NUL@ is encoded as two bytes @C0 80@ , @\\xD800@ ~ @\\xDFFF@ is encoded as a three bytes normal UTF-8 codepoint.
 pack :: String -> CBytes
 {-# INLINE CONLIKE [1] pack #-}
 pack s = runST $ do
