@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-Unified unboxed and boxed array operations using functional dependencies.
+Unified unboxed and boxed array operations using type family.
 
 All operations are NOT bound checked, if you need checked operations please use "Z.Data.Array.Checked".
 It exports exactly same APIs so that you can switch between without pain.
@@ -37,6 +37,7 @@ module Z.Data.Array (
   , PrimArray(..)
   , MutablePrimArray(..)
   , Prim(..)
+  -- * Array operations
   , newPinnedPrimArray, newAlignedPinnedPrimArray
   , copyPrimArrayToPtr, copyMutablePrimArrayToPtr, copyPtrToMutablePrimArray
   , primArrayContents, mutablePrimArrayContents, withPrimArrayContents, withMutablePrimArrayContents

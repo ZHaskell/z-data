@@ -98,6 +98,19 @@ int :: (Integral a, Bounded a) => a -> Builder ()
 int = intWith defaultIFormat
 
 -- | Format a 'Bounded' 'Integral' type like @Int@ or @Word16@ into decimal ASCII digits.
+--
+-- @
+-- import Z.Data.Builder as B
+-- import Z.Data.Text    as T
+--
+-- > T.validate . B.buildBytes $ B.intWith defaultIFormat  (12345 :: Int)
+-- "12345"
+-- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=RightSpacePadding} (12345 :: Int)
+-- "12345     "
+-- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=ZeroPadding} (12345 :: Int)
+-- "0000012345"
+-- @
+--
 intWith :: (Integral a, Bounded a) => IFormat -> a -> Builder ()
 intWith = hs_intWith
 {-# INLINE[0] intWith #-}
@@ -484,6 +497,21 @@ i2wHeX v
 --------------------------------------------------------------------------------
 
 -- | Format a 'FiniteBits' 'Integral' type into hex nibbles.
+--
+-- @
+-- import Z.Data.Builder as B
+-- import Z.Data.Text    as T
+-- import Data.Word
+-- import Data.Int
+--
+-- > T.validate . B.buildBytes $ B.hex (125 :: Int8)
+-- "7d"
+-- > T.validate . B.buildBytes $ B.hex (-1 :: Int8)
+-- "ff"
+-- > T.validate . B.buildBytes $ B.hex (125 :: Word16)
+-- "007d"
+-- @
+--
 hex :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
 {-# INLINE hex #-}
 hex w = writeN hexSiz (go w (hexSiz-2))

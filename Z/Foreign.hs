@@ -133,7 +133,7 @@ clearMBA mba# len = do
 
 -- | Pass primitive array to unsafe FFI as pointer.
 --
--- Enable 'UnliftedFFITypes' extension in your haskell code, use proper pointer type and @CSize/CSsize@
+-- Enable 'UnliftedFFITypes' extension in your haskell code, use proper pointer type and @HsInt@
 -- to marshall @ByteArray#@ and @Int@ arguments on C side.
 --
 -- The second 'Int' arguement is the element size not the bytes size.
@@ -222,7 +222,7 @@ allocPrimUnsafe f = do
 
 -- | Pass primitive array to safe FFI as pointer.
 --
--- Use proper pointer type and @CSize/CSsize@ to marshall @Ptr a@ and @Int@ arguments on C side.
+-- Use proper pointer type and @HsInt@ to marshall @Ptr a@ and @Int@ arguments on C side.
 -- The memory pointed by 'Ptr a' will not moved during call. After call returned, pointer is no longer valid.
 --
 -- The second 'Int' arguement is the element size not the bytes size.

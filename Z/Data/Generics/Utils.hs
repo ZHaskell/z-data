@@ -1,3 +1,16 @@
+{-|
+Module      : Z.Data.Generics.Utils
+Description : Compute Generic product size during compile time
+Copyright   : (c) Dong Han, 2017-2020
+License     : BSD
+Maintainer  : winterland1989@gmail.com
+Stability   : experimental
+Portability : non-portable
+
+This module provide a helper class to compute product size via 'Generic' instance, e.g. This class is
+useful during JSON deserializing, to decide the array length used to store record KVs.
+-}
+
 {-# LANGUAGE UndecidableInstances #-}
 
 module Z.Data.Generics.Utils

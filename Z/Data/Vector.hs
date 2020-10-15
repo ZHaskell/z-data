@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide fast boxed and unboxed vector with unified interface.
+This module provides fast boxed and unboxed vector with unified interface.
 The API is similar to bytestring and vector. If you find missing functions, please report!
 
 Performance consideration:
@@ -26,11 +26,11 @@ Performance consideration:
   * The 'Functor' instance for 'Vector' are lazy in order to abid 'Functor' law.
     namely @fmap id vectorConatinBottom == vectorContainBottom@, if you need strict mapping
     for lifted 'Vector', use 'map'' ('PrimVector' will never contain bottom thus it's not
-    a problem). THIS MAY COME AS A SURPRISE SO MAKE SURE YOU USE THE CORRECT 'map' s.
+    a problem). THIS MAY COME AS A SURPRISE SO MAKE SURE YOU USE THE CORRECT 'map'.
 
-  * The 'Foldable' instance for 'Vector' is fine, use 'Prelude' functions such as
-    'null', 'length', etc. should not incur performance overhead, though there're
-    partial functions you should avoid, i.e. foldl1, foldr1, maximum, minimum. Use
+  * The 'Foldable' instance for 'Vector' is fine, you can use 'Prelude' functions such as
+    'null', 'length', etc. without incurring performance overhead, though there're
+    partial functions you should avoid, i.e. 'foldl1', 'foldr1', 'maximum', 'minimum'. Use
     'foldl1Maybe'', 'foldr1Maybe'', 'maximumMaybe', 'minmumMaybe' instead.
 
   * The 'Traversable' instance have specialized implementations for 'ST' and 'IO',

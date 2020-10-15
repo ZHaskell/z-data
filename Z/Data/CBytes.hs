@@ -7,13 +7,14 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
--- This module provide 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
--- short byte sequences, such as file path, environment variables, etc.
+This module provide 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
+short byte sequences, such as file path, environment variables, etc.
 
 -}
 
 module Z.Data.CBytes
-  ( CBytes(CB)
+  (  -- * The CBytes type
+    CBytes(CB)
   , rawPrimArray, fromPrimArray
   , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , pack
@@ -22,7 +23,7 @@ module Z.Data.CBytes
   , empty, append, concat, intercalate, intercalateElem
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
-  -- re-export
+  -- * re-export
   , CString
   , V.c2w, V.w2c
   ) where
@@ -76,26 +77,26 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 --
 -- 'CBytes' don't support O(1) slicing, it's not suitable to use it to store large byte
 -- chunk, If you need advance editing, convert 'CBytes' to 'V.Bytes' with 'CB' pattern or
--- 'toBytes\/fromBytes', then use vector combinators.
+-- 'toBytes'\/'fromBytes', then use vector combinators.
 --
--- When textual represatation is needed(conver to 'String', 'T.Text', 'Show' instance, etc.),
+-- When textual represatation is needed e.g. converting to 'String', 'T.Text', 'Show' instance, etc.,
 -- we assume 'CBytes' using UTF-8 encodings, 'CBytes' can be used with @OverloadedString@,
--- literal encoding is UTF-8 with some modifications: @\NUL@ is encoded to 'C0 80',
+-- literal encoding is UTF-8 with some modifications: @\\NUL@ is encoded to 'C0 80',
 -- and '\xD800' ~ '\xDFFF' is encoded as a three bytes normal utf-8 codepoint.
 --
 -- Note most of the unix API is not unicode awared though, you may find a `scandir` call
 -- return a filename which is not proper encoded in any unicode encoding at all.
 -- But still, UTF-8 is recommanded to be used when text represatation is needed.
--- --
+--
 newtype CBytes = CBytes
     {
-        -- | Convert to a @\NUL@ terminated 'PrimArray',
+        -- | Convert to a @\\NUL@ terminated 'PrimArray',
         --
-        -- there's an invariance that this array never contains extra @\NUL@ except terminator.
+        -- there's an invariance that this array never contains extra @\\NUL@ except terminator.
         rawPrimArray :: PrimArray Word8
     }
 
--- | Constuctor a 'CBytes' from arbitrary array, result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- | Constuctor a 'CBytes' from arbitrary array, result will be trimmed down to first @\\NUL@ byte if there's any.
 fromPrimArray :: PrimArray Word8 -> CBytes
 {-# INLINE fromPrimArray #-}
 fromPrimArray arr = runST (do
@@ -104,12 +105,12 @@ fromPrimArray arr = runST (do
             _ -> sizeofPrimArray arr
     mpa <- newPrimArray (l+1)
     copyPrimArray mpa 0 arr 0 l
-    -- write \NUL terminator
+    -- write \\NUL terminator
     writePrimArray mpa l 0
     pa <- unsafeFreezePrimArray mpa
     return (CBytes pa))
 
--- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first @\\NUL@ byte if there's any.
 pattern CB :: V.Bytes -> CBytes
 pattern CB bs <- (toBytes -> bs) where
     CB bs = fromBytes bs
@@ -126,12 +127,12 @@ instance NFData CBytes where
 
 instance Eq CBytes where
     {-# INLINE (==) #-}
-    -- \NUL does not affect equality
+    -- \\NUL does not affect equality
     CBytes ba == CBytes bb = ba == bb
 
 instance Ord CBytes where
     {-# INLINE compare #-}
-    -- \NUL does not affect ordering
+    -- \\NUL does not affect ordering
     CBytes ba `compare` CBytes bb = ba `compare` bb
 
 instance Semigroup CBytes where
@@ -156,7 +157,7 @@ instance Arbitrary CBytes where
 instance CoArbitrary CBytes where
     coarbitrary = coarbitrary . unpack
 
--- | This instance peek bytes until @\NUL@(or input chunk ends), poke bytes with an extra \NUL terminator.
+-- | This instance peek bytes until @\\NUL@(or input chunk ends), poke bytes with an extra \\NUL terminator.
 instance Unaligned CBytes where
     {-# INLINE unalignedSize #-}
     unalignedSize (CBytes arr) = sizeofPrimArray arr
@@ -168,7 +169,7 @@ instance Unaligned CBytes where
         let l' = if l == -1 then rest else l
         mpa <- newPrimArray (l'+1)
         copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
-        -- write \NUL terminator
+        -- write \\NUL terminator
         writePrimArray mpa l' 0
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
@@ -201,7 +202,7 @@ instance T.ShowT CBytes where
 -- @
 -- > encodeText ("hello" :: CBytes)
 -- "\"hello\""
--- > encodeText ("hello\NUL" :: CBytes)     -- \NUL is encoded as C0 80
+-- > encodeText ("hello\\NUL" :: CBytes)     -- @\\NUL@ is encoded as C0 80
 -- "[104,101,108,108,111,192,128]"
 -- @
 instance JSON.FromValue CBytes where
@@ -236,7 +237,7 @@ append strA@(CBytes pa) strB@(CBytes pb)
         mpa <- newPrimArray (lenA+lenB+1)
         copyPrimArray mpa 0    pa 0 lenA
         copyPrimArray mpa lenA pb 0 lenB
-        writePrimArray mpa (lenA + lenB) 0     -- the \NUL terminator
+        writePrimArray mpa (lenA + lenB) 0     -- the \\NUL terminator
         pa' <- unsafeFreezePrimArray mpa
         return (CBytes pa')
   where
@@ -256,7 +257,7 @@ concat bss = case pre 0 0 bss of
     (_, l) -> runST $ do
         buf <- newPrimArray (l+1)
         copy bss 0 buf
-        writePrimArray buf l 0 -- the \NUL terminator
+        writePrimArray buf l 0 -- the \\NUL terminator
         CBytes <$> unsafeFreezePrimArray buf
   where
     -- pre scan to decide if we really need to copy and calculate total length
@@ -287,7 +288,7 @@ intercalate s = concat . List.intersperse s
 
 -- | /O(n)/ An efficient way to join 'CByte' s with a byte.
 --
--- Intercalate bytes list with @\NUL@ will effectively leave the first bytes in the list.
+-- Intercalate bytes list with @\\NUL@ will effectively leave the first bytes in the list.
 intercalateElem :: Word8 -> [CBytes] -> CBytes
 {-# INLINABLE intercalateElem #-}
 intercalateElem 0 [] = empty
@@ -297,7 +298,7 @@ intercalateElem w8 bss = case len bss 0 of
     l -> runST $ do
         buf <- newPrimArray (l+1)
         copy bss 0 buf
-        writePrimArray buf l 0 -- the \NUL terminator
+        writePrimArray buf l 0 -- the \\NUL terminator
         CBytes <$> unsafeFreezePrimArray buf
   where
     len []     !acc = acc
@@ -340,13 +341,13 @@ packAddr addr0# = go addr0#
 
 -- | Pack a 'String' into 'CBytes'.
 --
--- @\NUL@ is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
+-- @\\NUL@ is encoded as two bytes @C0 80@ , '\xD800' ~ '\xDFFF' is encoded as a three bytes normal UTF-8 codepoint.
 pack :: String -> CBytes
 {-# INLINE CONLIKE [1] pack #-}
 pack s = runST $ do
     mba <- newPrimArray V.defaultInitSize
     (SP2 i mba') <- foldlM go (SP2 0 mba) s
-    writePrimArray mba' i 0     -- the \NUL terminator
+    writePrimArray mba' i 0     -- the \\NUL terminator
     shrinkMutablePrimArray mba' (i+1)
     ba <- unsafeFreezePrimArray mba'
     return (CBytes ba)
@@ -421,11 +422,11 @@ toBytes (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr - 1)
 
 -- | /O(n)/, convert from 'V.Bytes'
 --
--- Result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- Result will be trimmed down to first @\\NUL@ byte if there's any.
 fromBytes :: V.Bytes -> CBytes
 {-# INLINABLE fromBytes #-}
 fromBytes v@(V.PrimVector arr s l)
-        -- already a \NUL terminated bytes
+        -- already a \\NUL terminated bytes
     | s == 0 && sizeofPrimArray arr == (l+1) && indexPrimArray arr l == 0 =
         CBytes arr
     | otherwise = runST (do
@@ -434,7 +435,7 @@ fromBytes v@(V.PrimVector arr s l)
                 _ -> l
         mpa <- newPrimArray (l'+1)
         copyPrimArray mpa 0 arr s l'
-        writePrimArray mpa l' 0      -- the \NUL terminator
+        writePrimArray mpa l' 0      -- the \\NUL terminator
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa))
 
@@ -454,7 +455,7 @@ toTextMaybe = T.validateMaybe . toBytes
 
 -- | /O(n)/, convert from 'T.Text',
 --
--- Result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- Result will be trimmed down to first @\\NUL@ byte if there's any.
 fromText :: T.Text -> CBytes
 {-# INLINABLE fromText #-}
 fromText = fromBytes . T.getUTF8Bytes
@@ -466,7 +467,7 @@ fromText = fromBytes . T.getUTF8Bytes
 toBuilder :: CBytes -> B.Builder ()
 toBuilder = B.bytes . toBytes
 
--- | Build a 'CBytes' with builder, result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- | Build a 'CBytes' with builder, result will be trimmed down to first @\\NUL@ byte if there's any.
 buildCBytes :: B.Builder a -> CBytes
 buildCBytes = fromBytes . B.buildBytes
 
@@ -490,7 +491,7 @@ fromCString cstring = do
 
 -- | Same with 'fromCString', but only take at most N bytes.
 --
--- Result will be trimmed down to first byte before @\NUL@ byte if there's any.
+-- Result will be trimmed down to first @\\NUL@ byte if there's any.
 fromCStringN :: CString -> Int -> IO CBytes
 {-# INLINABLE fromCStringN #-}
 fromCStringN cstring len0 = do
@@ -501,7 +502,7 @@ fromCStringN cstring len0 = do
         let len = min len0 len1
         mpa <- newPrimArray (len+1)
         copyPtrToMutablePrimArray mpa 0 (castPtr cstring) len
-        writePrimArray mpa len 0     -- the \NUL terminator
+        writePrimArray mpa len 0     -- the \\NUL terminator
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa)
 
@@ -521,13 +522,13 @@ withCBytes (CBytes pa) f = withPrimArraySafe pa (\ p _ -> f p)
 
 -- | Create a 'CBytes' with IO action.
 --
--- If (<=0) capacity is provided, a pointer pointing to @\NUL@ is passed to initialize function
+-- If (<=0) capacity is provided, a pointer pointing to @\\NUL@ is passed to initialize function
 -- and 'empty' will be returned. This behavior is different from 'allocCBytes', which may cause
 -- trouble for some FFI functions.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 allocCBytesUnsafe :: HasCallStack
-                  => Int                   -- ^ capacity n(include the @\NUL@ terminator)
+                  => Int                   -- ^ capacity n(including the @\\NUL@ terminator)
                   -> (MBA# Word8 -> IO a)  -- ^ initialization function,
                   -> IO (CBytes, a)
 {-# INLINABLE allocCBytesUnsafe #-}
@@ -547,10 +548,10 @@ allocCBytesUnsafe n fill | n <= 0 = withPrimUnsafe (0::Word8) fill >>=
 -- | Create a 'CBytes' with IO action.
 --
 -- If (<=0) capacity is provided, a 'nullPtr' is passed to initialize function and
--- 'empty' will be returned. Other than that, User have to make sure a @\NUL@ ternimated
+-- 'empty' will be returned. Other than that, User have to make sure a @\\NUL@ ternimated
 -- string will be written.
 allocCBytes :: HasCallStack
-            => Int                -- ^ capacity n(include the @\NUL@ terminator)
+            => Int                -- ^ capacity n(including the @\\NUL@ terminator)
             -> (CString -> IO a)  -- ^ initialization function,
             -> IO (CBytes, a)
 {-# INLINABLE allocCBytes #-}
