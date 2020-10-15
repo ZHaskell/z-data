@@ -46,7 +46,7 @@ The 'Generic' instances convert(encode) Haskell data with following rules:
 These rules apply to user defined ADTs, but some built-in instances have different behaviour, namely:
 
   * @Maybe a@ are encoded as JSON @null@ in 'Nothing' case, or directly encoded to its payload in 'Just' case.
-  * @[a]@ are encoded to JSON array, including @[Char]@, i.e. there's no special treatment to 'String'. To get JSON string, use 'T.Text' or 'Z.Data.TextBuilder.Str'.
+  * @[a]@ are encoded to JSON array, including @[Char]@, i.e. there's no special treatment to "Prelude.String". To get JSON string, use 'T.Text'.
   * 'NonEmpty', 'Vector', 'PrimVector', 'HashSet', 'FlatSet', 'FlatIntSet' are also encoded to JSON array.
   * 'HashMap', 'FlatMap', 'FlatIntMap' are encoded to JSON object.
 
@@ -98,7 +98,7 @@ similar to aeson's.
 
 The 'Value' type is different from aeson's one in that we use @Vector (Text, Value)@ to represent JSON objects, thus
 we can choose different strategies on key duplication, the lookup map type, etc. so instead of a single 'withObject',
-we provide 'withHashMap', 'withHashMapR', 'withHashMap' and 'withHashMapR' which use different lookup map type, and different
+we provide 'withHashMap', 'withHashMapR', 'withFlatMap' and 'withFlatMapR' which use different lookup map type, and different
 key order piority. Most of time 'FlatMap' is faster than 'HashMap' since we only use the lookup map once, the cost of
 constructing a 'HashMap' is higher. If you want to directly working on key-values, 'withKeyValues' provide key-values
 vector access.
