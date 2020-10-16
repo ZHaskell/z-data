@@ -19,8 +19,8 @@ module Z.Data.CBytes
   , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , pack
   , unpack
-  , null , length
-  , empty, append, concat, intercalate, intercalateElem
+  , null, length
+  , empty, singleton, append, concat, intercalate, intercalateElem
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   -- * re-export
@@ -59,6 +59,7 @@ import           Z.Data.Array.Unaligned
 import qualified Z.Data.Builder        as B
 import qualified Z.Data.Text           as T
 import qualified Z.Data.Text.ShowT     as T
+import qualified Z.Data.Text.UTF8Codec as T
 import qualified Z.Data.JSON.Base      as JSON
 import           Z.Data.JSON.Base      ((<?>))
 import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
@@ -112,6 +113,7 @@ fromPrimArray arr = runST (do
 
 -- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first @\\NUL@ byte if there's any.
 pattern CB :: V.Bytes -> CBytes
+{-# COMPLETE CB #-}
 pattern CB bs <- (toBytes -> bs) where
     CB bs = fromBytes bs
 
@@ -228,6 +230,7 @@ instance JSON.EncodeJSON CBytes where
         Just t -> JSON.encodeJSON t
         Nothing -> B.square . JSON.commaVec' . toBytes $ cbytes
 
+-- | Concatenate two 'CBytes'.
 append :: CBytes -> CBytes -> CBytes
 {-# INLINABLE append #-}
 append strA@(CBytes pa) strB@(CBytes pb)
@@ -244,11 +247,23 @@ append strA@(CBytes pa) strB@(CBytes pb)
     lenA = length strA
     lenB = length strB
 
--- | An empty 'CBytes'
+-- | Empty 'CBytes'
 empty :: CBytes
 {-# NOINLINE empty #-}
 empty = CBytes (V.singleton 0)
 
+-- | Singleton 'CBytes'.
+singleton :: Word8 -> CBytes
+{-# INLINE singleton #-}
+singleton w = runST (do
+    buf <- newPrimArray 2
+    writePrimArray buf 0 w
+    writePrimArray buf 1 0
+    pa <- unsafeFreezePrimArray buf
+    return (CBytes pa))
+
+-- | /O(n)/ Concatenate a list of 'CBytes'.
+--
 concat :: [CBytes] -> CBytes
 {-# INLINABLE concat #-}
 concat bss = case pre 0 0 bss of
@@ -385,6 +400,7 @@ unpack (CBytes arr) = go 0
     !end = sizeofPrimArray arr - 1
     go !idx
         | idx >= end = []
+        | idx + T.decodeCharLen arr idx > end = [T.replacementChar]
         | otherwise = let (# c, i #) = decodeChar arr idx in c : go (idx + i)
 
 unpackFB :: CBytes -> (Char -> a -> a) -> a -> a
@@ -394,6 +410,7 @@ unpackFB (CBytes arr) k z = go 0
     !end = sizeofPrimArray arr - 1
     go !idx
         | idx >= end = z
+        | idx + T.decodeCharLen arr idx > end = T.replacementChar `k` z
         | otherwise = let (# c, i #) = decodeChar arr idx in c `k` go (idx + i)
 
 {-# RULES
@@ -409,7 +426,7 @@ null :: CBytes -> Bool
 {-# INLINE null #-}
 null (CBytes pa) = indexPrimArray pa 0 == 0
 
--- | Return the BTYE length of 'CBytes'.
+-- | /O(1)/, Return the BTYE length of 'CBytes'.
 --
 length :: CBytes -> Int
 {-# INLINE length #-}
