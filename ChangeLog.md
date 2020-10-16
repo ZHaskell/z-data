@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.1.7.1  -- 2020-10-17
+
+* Add `singleton` to `Z.IO.CBytes`, fix `unpack` when there're trailing illegal UTF8 codepoints.
+
 ## 0.1.7.0  -- 2020-10-15
 
 * Change `defaultChunkSize` from 32K to 16K to reduce memory overhead.
