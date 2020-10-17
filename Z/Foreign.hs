@@ -145,7 +145,7 @@ type MBA# a = MutableByteArray# RealWorld
 -- #include "Rts.h"
 -- // GHC 8.10 changes the way how ArrayArray# is passed to C, so...
 -- #if \_\_GLASGOW_HASKELL\_\_ < 810
--- HsInt sum_first_unsafe (StgMutArrPtrs *arr, HsInt len) {
+-- HsInt sum_first (StgMutArrPtrs *arr, HsInt len) {
 --   StgArrBytes **bufs = (StgArrBytes**)arr->payload;
 -- #else
 -- HsInt sum_first_unsafe (StgArrBytes **bufs, HsInt len) {
