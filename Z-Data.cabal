@@ -229,6 +229,8 @@ test-suite Z-Data-Test
                             Z.Data.Vector.SortSpec
                             Z.Data.Vector.FlatMapSpec
                             Z.Data.Vector.FlatSetSpec
+                            Z.ForeignSpec
+
     build-depends:          Z-Data
                           , base
                           , hspec                   >= 2.5.4
@@ -239,6 +241,8 @@ test-suite Z-Data-Test
                           , word8
                           , scientific
                           , primitive
+
+    c-sources:              test/cbits/ffi.c
 
     if flag(integer-simple)
         cpp-options:        -DINTEGER_SIMPLE
