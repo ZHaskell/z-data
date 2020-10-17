@@ -533,7 +533,9 @@ withCBytesUnsafe (CBytes pa) f = withPrimArrayUnsafe pa (\ p _ -> f p)
 
 -- | Pass 'CBytes' list to foreign function as a @StgArrBytes**@.
 --
--- Check "Z.Foreign" module for more detail on how to marshall params in C side.
+-- Enable 'UnliftedFFITypes' extension in your haskell code, use @StgArrBytes**@(>=8.10)
+-- or @StgMutArrPtrs*@(<8.10) pointer type and @HsInt@
+-- to marshall @BAArray#@ and @Int@ arguments on C side, check the example with 'BAArray#'.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 withCBytesListUnsafe :: [CBytes] -> (BAArray# Word8 -> Int -> IO a) -> IO a

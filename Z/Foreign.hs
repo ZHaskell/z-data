@@ -135,24 +135,31 @@ type MBA# a = MutableByteArray# RealWorld
 -- | Type alias for 'ArrayArray#'.
 --
 -- Describe a array of 'ByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
--- extension, At C side you should use @StgArrBytes**@ type from "Rts.h", example code modified from
+-- extension, At C side you should use @StgArrBytes**@(>=8.10) or @StgMutArrPtrs*@(<8.10) type from "Rts.h",
+-- example code modified from
 -- <https://downloads.haskell.org/ghc/latest/docs/html/users_guide/ffi-chap.html#unlifted-ffi-types GHC manual>:
 --
 -- @
 -- \/\/ C source, must include the RTS to make the struct StgArrBytes
 -- \/\/ available along with its fields: ptrs and payload.
 -- #include "Rts.h"
--- int sum_first_word8 (StgArrBytes** bufs, HsInt len) {
+-- // GHC 8.10 changes the way how ArrayArray# is passed to C, so...
+-- #if \_\_GLASGOW_HASKELL\_\_ < 810
+-- HsInt sum_first_unsafe (StgMutArrPtrs *arr, HsInt len) {
+--   StgArrBytes **bufs = (StgArrBytes**)arr->payload;
+-- #else
+-- HsInt sum_first_unsafe (StgArrBytes **bufs, HsInt len) {
+-- #endif
 --   int res = 0;
 --   for(StgWord ix = 0;ix < len;ix++) {
---      // take first four bytes as int and sum
---      res = res + ((int*)(bufs[ix]->payload))[0];
+--      // payload pointer type is StgWord*, cast it before use!
+--      res = res + ((HsInt*)(bufs[ix]->payload))[0];
 --   }
 --   return res;
 -- }
 --
 -- -- Haskell source, all elements in the argument array must be
--- -- either ByteArray# or MutableByteArray#. This is not enforced
+-- -- either ByteArray\# or MutableByteArray\#. This is not enforced
 -- -- by the type system in this example since ArrayArray is untyped.
 -- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# -> Int -> IO CInt
 -- @
@@ -181,8 +188,9 @@ withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
 
 -- | Pass primitive array list to unsafe FFI as @StgArrBytes**@.
 --
--- Enable 'UnliftedFFITypes' extension in your haskell code, use @StgArrBytes**@ pointer type and @HsInt@
--- to marshall @BAArray#@ and @Int@ arguments on C side.
+-- Enable 'UnliftedFFITypes' extension in your haskell code, use @StgArrBytes**@(>=8.10)
+-- or @StgMutArrPtrs*@(<8.10) pointer type and @HsInt@
+-- to marshall @BAArray#@ and @Int@ arguments on C side, check the example with 'BAArray#'.
 --
 -- The second 'Int' arguement is the list size.
 --

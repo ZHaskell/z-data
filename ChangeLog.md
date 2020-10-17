@@ -1,9 +1,12 @@
 # Revision history for Z-Data
 
+## 0.1.7.2  -- 2020-10-17
+
+* Add `withPrimArrayListUnsafe`, `withPrimArrayListSafe`, `withCBytesUnsafe`, `withCBytesListSafe`.
+
 ## 0.1.7.1  -- 2020-10-17
 
 * Add `singleton` to `Z.IO.CBytes`, fix `unpack` when there're trailing illegal UTF8 codepoints.
-* Add `withPrimArrayListUnsafe`, `withPrimArrayListSafe`, `withCBytesUnsafe`, `withCBytesListSafe`.
 
 ## 0.1.7.0  -- 2020-10-15
 

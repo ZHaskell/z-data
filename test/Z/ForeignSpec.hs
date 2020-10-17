@@ -32,7 +32,7 @@ spec = describe "Foreign" $ do
                 s = sum (List.map (List.head . getNonEmpty) xss)
             in unsafeDupablePerformIO (withPrimArrayListSafe pas sum_first_safe) === s
 
-
 --------------------------------------------------------------------------------
+
 foreign import ccall unsafe sum_first_unsafe :: BAArray# Int -> Int -> IO Int
-foreign import ccall unsafe sum_first_safe :: Ptr (Ptr Int) -> Int -> IO Int
+foreign import ccall safe sum_first_safe :: Ptr (Ptr Int) -> Int -> IO Int
