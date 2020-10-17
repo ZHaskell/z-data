@@ -23,6 +23,7 @@ module Z.Data.CBytes
   , empty, singleton, append, concat, intercalate, intercalateElem
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
+  , withCBytesListUnsafe, withCBytesListSafe
   -- * re-export
   , CString
   , V.c2w, V.w2c
@@ -530,12 +531,28 @@ withCBytesUnsafe :: CBytes -> (BA# Word8 -> IO a) -> IO a
 {-# INLINABLE withCBytesUnsafe #-}
 withCBytesUnsafe (CBytes pa) f = withPrimArrayUnsafe pa (\ p _ -> f p)
 
+-- | Pass 'CBytes' list to foreign function as a @StgArrBytes**@.
+--
+-- Check "Z.Foreign" module for more detail on how to marshall params in C side.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
+withCBytesListUnsafe :: [CBytes] -> (BAArray# Word8 -> Int -> IO a) -> IO a
+{-# INLINABLE withCBytesListUnsafe #-}
+withCBytesListUnsafe pas = withPrimArrayListUnsafe (List.map rawPrimArray pas)
+
 -- | Pass 'CBytes' to foreign function as a @const char*@.
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withCBytes :: CBytes -> (Ptr Word8 -> IO a) -> IO a
 {-# INLINABLE withCBytes #-}
 withCBytes (CBytes pa) f = withPrimArraySafe pa (\ p _ -> f p)
+
+-- | Pass 'CBytes' list to foreign function as a @const char**@.
+--
+-- Check "Z.Foreign" module for more detail on how to marshall params in C side.
+withCBytesListSafe :: [CBytes] -> (Ptr (Ptr Word8) -> Int -> IO a) -> IO a
+{-# INLINABLE withCBytesListSafe #-}
+withCBytesListSafe pas = withPrimArrayListSafe (List.map rawPrimArray pas)
 
 -- | Create a 'CBytes' with IO action.
 --

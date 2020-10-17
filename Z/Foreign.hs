@@ -7,9 +7,10 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide functions for using 'PrimArray' and 'PrimVector' with GHC FFI(Foreign function interface).
-Since GHC runtime is garbaged collected, we have a quite complex story when passing primitive arrays to FFI.
-We have two types of primitive array in GHC, with the objective to minimize overall memory management cost:
+This module provide functions for using 'PrimArray' and 'PrimVector' with GHC FFI(Foreign function interface),
+Some functions are designed to be used with <https://downloads.haskell.org/ghc/latest/docs/html/users_guide/ffi-chap.html#unlifted-ffi-types UnliftedFFITypes> extension.
+
+GHC runtime is garbaged collected, there're two types of primitive array in GHC, with the objective to minimize overall memory management cost:
 
   * Small primitive arrays created with 'newPrimArray' are directly allocated on GHC heap, which can be moved
     by GHC garbage collector, we call these arrays @unpinned@. Allocating these array is cheap, we only need
@@ -21,7 +22,7 @@ We have two types of primitive array in GHC, with the objective to minimize over
     Allocating these arrays are bit more expensive since it's more like how @malloc@ works, but we don't have to
     pay for GC cost.
 
-Beside the @pinned/unpinned@ difference, we also have two types of FFI calls in GHC:
+Beside the @pinned/unpinned@ difference, we have two types of FFI calls in GHC:
 
   * Safe FFI call annotated with @safe@ keyword. These calls are executed on separated OS thread, which can be
     running concurrently with GHC garbage collector, thus we want to make sure only pinned arrays are passed.
@@ -32,8 +33,8 @@ Beside the @pinned/unpinned@ difference, we also have two types of FFI calls in 
     running the haskell side FFI code, which will in turn stop GHC from doing a garbage collection. We can pass
     both 'pinned' and 'unpinned' arrays in this case. The use case for @unsafe@ FFIs are short/small functions,
     which can be treated like a fat primitive operations, such as @memcpy@, @memcmp@. Using @unsafe@ FFI with
-    long running functions will effectively block GHC runtime thread from running any other haskell thread, which
-    is dangerous. Even if you use threaded runtime and expect your haskell thread can be stolen by other OS thread,
+    long running functions will effectively block GHC runtime thread from running any other haskell threads, which
+    is dangerous. Even if you use threaded runtime and expect your haskell thread can be stolen by other OS threads,
     but this will not work since GHC garbage collector will refuse to run if one of the OS thread is blocked by
     FFI calls.
 
@@ -48,7 +49,7 @@ Base on above analysis, we have following FFI strategy table.
   +--------------+---------------+---------------+
 
 In this module, we separate safe and unsafe FFI handling due to the strategy difference: if the user can guarantee
-the FFI are unsafe, we can save an extra copy and pinned allocation. Mistakenly using unsafe function with safe FFI
+a FFI call is unsafe, we can save an extra copy and pinned allocation. Mistakenly using unsafe function with safe FFI
 will result in segfault.
 
 -}
@@ -62,6 +63,7 @@ module Z.Foreign
   , allocBytesUnsafe
   , withPrimUnsafe
   , allocPrimUnsafe
+  , withPrimArrayListUnsafe
     -- ** Safe FFI
   , withPrimArraySafe
   , allocPrimArraySafe
@@ -70,10 +72,11 @@ module Z.Foreign
   , allocBytesSafe
   , withPrimSafe
   , allocPrimSafe
+  , withPrimArrayListSafe
   , pinPrimArray
   , pinPrimVector
     -- ** Pointer helpers
-  , BA#, MBA#
+  , BA#, MBA#, BAArray#
   , clearMBA
   , clearPtr
   , castPtr
@@ -86,16 +89,20 @@ module Z.Foreign
   , module Z.Data.Array.Unaligned
   ) where
 
+import           Control.Monad
 import           Control.Monad.Primitive
 import           Data.Primitive
 import           Data.Word
+import qualified Data.List                  as List
 import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
 import           Foreign.C.Types
 import           GHC.Ptr
+import           GHC.Exts
 import           Z.Data.Array
 import           Z.Data.Array.Unaligned
+import           Z.Data.Array.UnliftedArray
 import           Z.Data.Vector.Base
 
 -- | Type alias for 'ByteArray#'.
@@ -104,7 +111,7 @@ import           Z.Data.Vector.Base
 -- extension, At C side you should use a proper const pointer type.
 --
 -- Don't cast 'BA#' to 'Addr#' since the heap object offset is hard-coded in code generator:
--- <https://github.com/ghc/ghc/blob/master/compiler/codeGen/StgCmmForeign.hs#L520>
+-- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
 --
 -- In haskell side we use type system to distinguish immutable / mutable arrays, but in C side we can't.
 -- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
@@ -122,6 +129,35 @@ type BA# a = ByteArray#
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type MBA# a = MutableByteArray# RealWorld
+
+
+
+-- | Type alias for 'ArrayArray#'.
+--
+-- Describe a array of 'ByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
+-- extension, At C side you should use @StgArrBytes**@ type from "Rts.h", example code modified from
+-- <https://downloads.haskell.org/ghc/latest/docs/html/users_guide/ffi-chap.html#unlifted-ffi-types GHC manual>:
+--
+-- @
+-- \/\/ C source, must include the RTS to make the struct StgArrBytes
+-- \/\/ available along with its fields: ptrs and payload.
+-- #include "Rts.h"
+-- int sum_first_word8 (StgArrBytes** bufs, HsInt len) {
+--   int res = 0;
+--   for(StgWord ix = 0;ix < len;ix++) {
+--      // take first four bytes as int and sum
+--      res = res + ((int*)(bufs[ix]->payload))[0];
+--   }
+--   return res;
+-- }
+--
+-- -- Haskell source, all elements in the argument array must be
+-- -- either ByteArray# or MutableByteArray#. This is not enforced
+-- -- by the type system in this example since ArrayArray is untyped.
+-- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# -> Int -> IO CInt
+-- @
+--
+type BAArray# a = ArrayArray#
 
 -- | Clear 'MBA#' with given length to zero.
 clearMBA :: MBA# a
@@ -142,6 +178,22 @@ clearMBA mba# len = do
 withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> IO b) -> IO b
 {-# INLINE withPrimArrayUnsafe #-}
 withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
+
+-- | Pass primitive array list to unsafe FFI as @StgArrBytes**@.
+--
+-- Enable 'UnliftedFFITypes' extension in your haskell code, use @StgArrBytes**@ pointer type and @HsInt@
+-- to marshall @BAArray#@ and @Int@ arguments on C side.
+--
+-- The second 'Int' arguement is the list size.
+--
+-- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
+withPrimArrayListUnsafe :: [PrimArray a] -> (BAArray# a -> Int -> IO b) -> IO b
+withPrimArrayListUnsafe pas f = do
+    let l = List.length pas
+    mla <- unsafeNewUnliftedArray l
+    foldM_ (\ !i pa -> writeUnliftedArray mla i pa >> return (i+1)) 0 pas
+    (UnliftedArray la#) <- unsafeFreezeUnliftedArray mla
+    f la# l
 
 -- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimArray'.
 --
@@ -188,7 +240,6 @@ allocBytesUnsafe :: Int  -- ^ number of bytes
                  -> (MBA# a -> IO b) -> IO (Bytes, b)
 {-# INLINE allocBytesUnsafe #-}
 allocBytesUnsafe = allocPrimVectorUnsafe
-
 
 
 -- | Create an one element primitive array and use it as a pointer to the primitive element.
@@ -239,6 +290,29 @@ withPrimArraySafe arr f
         buf <- newPinnedPrimArray siz
         copyPrimArray buf 0 arr 0 siz
         withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
+
+-- | Pass primitive array list to safe FFI as pointer.
+--
+-- Use proper pointer type and @HsInt@ to marshall @Ptr (Ptr a)@ and @Int@ arguments on C side.
+-- The memory pointed by 'Ptr a' will not moved during call. After call returned, pointer is no longer valid.
+--
+-- The second 'Int' arguement is the list size.
+--
+-- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
+withPrimArrayListSafe :: Prim a => [PrimArray a] -> (Ptr (Ptr a) -> Int -> IO b) -> IO b
+withPrimArrayListSafe pas0 f = do
+    let l = List.length pas0
+    ptrs <- newPinnedPrimArray l
+    go ptrs 0 pas0
+  where
+    go ptrs !_ [] = do
+        pa <- unsafeFreezePrimArray ptrs
+        withPrimArraySafe pa f
+    go ptrs !i (pa:pas) =
+        -- It's important to nest 'withPrimArraySafe' calls to keep all pointers alive
+        withPrimArraySafe pa $ \ ppa _ -> do
+            writePrimArray ptrs i ppa
+            go ptrs (i+1) pas
 
 -- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
 allocPrimArraySafe :: forall a b . Prim a
