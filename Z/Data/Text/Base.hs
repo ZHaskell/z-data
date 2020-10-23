@@ -119,27 +119,28 @@ import           Control.Exception
 import           Control.Monad.ST
 import           Control.Monad
 import           Data.Bits
-import           Data.Char          hiding (toLower, toUpper, toTitle)
-import           Data.Foldable            (foldlM)
-import           Data.Hashable            (Hashable(..))
-import qualified Data.List                as List
+import           Data.Char                 hiding (toLower, toUpper, toTitle)
+import qualified Data.CaseInsensitive      as CI
+import           Data.Foldable             (foldlM)
+import           Data.Hashable             (Hashable(..))
+import qualified Data.List                 as List
 import           Data.Primitive.PrimArray
 import           Data.Typeable
 import           Data.Word
-import           Foreign.C.Types          (CSize(..))
+import           Foreign.C.Types           (CSize(..))
 import           GHC.Exts
 import           GHC.Types
 import           GHC.Stack
-import           GHC.CString              (unpackCString#, unpackCStringUtf8#)
+import           GHC.CString               (unpackCString#, unpackCStringUtf8#)
 import           Z.Data.Array
 import           Z.Data.Text.UTF8Codec
 import           Z.Data.Text.UTF8Rewind
-import           Z.Data.Vector.Base     (Bytes, PrimVector(..), c_strlen)
-import qualified Z.Data.Vector.Base     as V
-import qualified Z.Data.Vector.Search   as V
-import           System.IO.Unsafe (unsafeDupablePerformIO)
+import           Z.Data.Vector.Base        (Bytes, PrimVector(..), c_strlen)
+import qualified Z.Data.Vector.Base        as V
+import qualified Z.Data.Vector.Search      as V
+import           System.IO.Unsafe          (unsafeDupablePerformIO)
 
-import           Prelude                       hiding (concat, concatMap,
+import           Prelude                   hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
@@ -200,6 +201,11 @@ instance Hashable Text where
 instance IsString Text where
     {-# INLINE fromString #-}
     fromString = pack
+
+-- | case fold with default locale.
+instance CI.FoldCase Text where
+    {-# INLINE foldCase #-}
+    foldCase = caseFold
 
 -- | /O(n)/ Get the nth codepoint from 'Text', throw 'IndexOutOfTextRange'
 -- when out of bound.

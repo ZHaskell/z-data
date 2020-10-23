@@ -119,7 +119,7 @@ decodeText t =
 -- | Decode a JSON doc, only trailing JSON whitespace are allowed.
 decode' :: FromValue a => V.Bytes -> Either DecodeError a
 {-# INLINE decode' #-}
-decode' bs = case P.parse_ (JV.value <* JV.skipSpaces <* P.endOfInput) bs of
+decode' bs = case P.parse' (JV.value <* JV.skipSpaces <* P.endOfInput) bs of
     Left pErr -> Left (Left pErr)
     Right v -> case convert fromValue v of
         Left cErr -> Left (Right cErr)
@@ -948,7 +948,7 @@ instance FromValue a => FromValue (FIM.FlatIntMap a) where
     fromValue = withFlatMapR "Z.Data.Vector.FlatIntMap.FlatIntMap" $ \ m ->
         let kvs = FM.sortedKeyValues m
         in FIM.packVectorR <$> (forM kvs $ \ (k, v) -> do
-            case P.parse_ P.int (T.getUTF8Bytes k) of
+            case P.parse' P.int (T.getUTF8Bytes k) of
                 Right k' -> do
                     v' <- fromValue v <?> Key k
                     return (V.IPair k' v')

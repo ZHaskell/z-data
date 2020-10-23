@@ -19,7 +19,7 @@ module Z.Data.Parser.Base
   , Parser(..)
   , (<?>)
     -- * Running a parser
-  , parse, parse_, parseChunk, parseChunks, finishParsing
+  , parse, parse', parseChunk, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
@@ -28,7 +28,7 @@ module Z.Data.Parser.Base
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , word8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeTill, takeWhile, takeWhile1, bytes, bytesCI
+  , take, takeN, takeTill, takeWhile, takeWhile1, bytes, bytesCI
   , text
     -- * Misc
   , isSpace
@@ -150,9 +150,9 @@ fail' :: T.Text -> Parser a
 fail' msg = Parser (\ kf _ inp -> kf [msg] inp)
 
 -- | Parse the complete input, without resupplying
-parse_ :: Parser a -> V.Bytes -> Either ParseError a
-{-# INLINE parse_ #-}
-parse_ (Parser p) inp = snd $ finishParsing (p Failure Success inp)
+parse' :: Parser a -> V.Bytes -> Either ParseError a
+{-# INLINE parse' #-}
+parse' (Parser p) inp = snd $ finishParsing (p Failure Success inp)
 
 -- | Parse the complete input, without resupplying, return the rest bytes
 parse :: Parser a -> V.Bytes -> (V.Bytes, Either ParseError a)
@@ -617,6 +617,21 @@ takeWhile1 p = do
     if V.null bs
     then fail' "Z.Data.Parser.Base.takeWhile1: no satisfied byte"
     else return bs
+
+-- | Similar to 'take', but requires the predicate to succeed on next N bytes
+-- of input, and take N bytes(no matter if N+1 byte satisfy predicate or not).
+--
+takeN :: (Word8 -> Bool) -> Int -> Parser V.Bytes
+{-# INLINE takeN #-}
+takeN p n = do
+    bs <- take n
+    if go bs 0
+    then return bs
+    else fail' "Z.Data.Parser.Base.takeWhileN: byte does not satisfy"
+  where
+    go bs@(V.PrimVector _ _ l) !i
+        | i < l = p (V.unsafeIndex bs i) && go bs (i+1)
+        | otherwise = True
 
 -- | @bytes s@ parses a sequence of bytes that identically match @s@.
 --

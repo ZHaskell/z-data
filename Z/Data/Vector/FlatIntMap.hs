@@ -325,7 +325,8 @@ foldlWithKey' :: (a -> Int -> v -> a) -> a -> FlatIntMap v -> a
 foldlWithKey' f a (FlatIntMap vs) = V.foldl' (\ a' (V.IPair k v) -> f a' k v) a vs
 
 -- | /O(n)/.
--- @'traverseWithKey' f s == 'pack' <$> 'traverse' (\(k, v) -> (,) k <$> f k v) ('unpack' m)@
+--
+-- @'traverseWithKey' f s == 'pack' \<$\> 'traverse' (\(k, v) -> (,) k \<$\> f k v) ('unpack' m)@
 -- That is, behaves exactly like a regular 'traverse' except that the traversing
 -- function also has access to the key associated with a value.
 traverseWithKey :: Applicative t => (Int -> a -> t b) -> FlatIntMap a -> t (FlatIntMap b)

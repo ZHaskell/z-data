@@ -23,7 +23,7 @@ module Z.Data.CBytes
   , empty, singleton, append, concat, intercalate, intercalateElem
   , fromCString, fromCStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
-  , withCBytesListUnsafe, withCBytesListSafe
+  , withCBytesListUnsafe, withCBytesList
   -- * re-export
   , CString
   , V.c2w, V.w2c
@@ -79,7 +79,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 --
 -- 'CBytes' don't support O(1) slicing, it's not suitable to use it to store large byte
 -- chunk, If you need advance editing, convert 'CBytes' to 'V.Bytes' with 'CB' pattern or
--- 'toBytes'\/'fromBytes', then use vector combinators.
+-- 'toBytes' \/ 'fromBytes', then use vector combinators.
 --
 -- When textual represatation is needed e.g. converting to 'String', 'T.Text', 'Show' instance, etc.,
 -- we assume 'CBytes' using UTF-8 encodings, 'CBytes' can be used with @OverloadedString@,
@@ -94,7 +94,7 @@ newtype CBytes = CBytes
     {
         -- | Convert to a @\\NUL@ terminated 'PrimArray',
         --
-        -- there's an invariance that this array never contains extra @\\NUL@ except terminator.
+        -- There's an invariance that this array never contains extra @\\NUL@ except terminator.
         rawPrimArray :: PrimArray Word8
     }
 
@@ -480,7 +480,7 @@ fromText = fromBytes . T.getUTF8Bytes
 
 -- | Write 'CBytes' \'s byte sequence to buffer.
 --
--- This function is different from 'ShowT' instance in that it directly write byte sequence without
+-- This function is different from 'T.ShowT' instance in that it directly write byte sequence without
 -- checking if it's UTF8 encoded.
 toBuilder :: CBytes -> B.Builder ()
 toBuilder = B.bytes . toBytes
@@ -552,9 +552,9 @@ withCBytes (CBytes pa) f = withPrimArraySafe pa (\ p _ -> f p)
 -- | Pass 'CBytes' list to foreign function as a @const char**@.
 --
 -- Check "Z.Foreign" module for more detail on how to marshall params in C side.
-withCBytesListSafe :: [CBytes] -> (Ptr (Ptr Word8) -> Int -> IO a) -> IO a
-{-# INLINABLE withCBytesListSafe #-}
-withCBytesListSafe pas = withPrimArrayListSafe (List.map rawPrimArray pas)
+withCBytesList :: [CBytes] -> (Ptr (Ptr Word8) -> Int -> IO a) -> IO a
+{-# INLINABLE withCBytesList #-}
+withCBytesList pas = withPrimArrayListSafe (List.map rawPrimArray pas)
 
 -- | Create a 'CBytes' with IO action.
 --
