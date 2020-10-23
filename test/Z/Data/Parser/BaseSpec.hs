@@ -20,7 +20,7 @@ import           Test.Hspec.QuickCheck
 
 
 parse' :: P.Parser a -> [Word8] -> Maybe a
-parse' p str = case P.parse_ p (V.pack str) of
+parse' p str = case P.parse' p (V.pack str) of
     Left msg -> Nothing
     Right a  -> Just a
 
