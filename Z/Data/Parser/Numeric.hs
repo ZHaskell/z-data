@@ -198,14 +198,14 @@ int = "Z.Data.Parser.Numeric.int" <?> do
         bs <- P.takeWhile1 isDigit
         if V.length bs <= INT64_MAX_DIGITS_LEN
         then do
-            let i64 = decLoop @Int64 0 bs
-            if i64 <= negate (fromIntegral (minBound :: a))
-            then return (fromIntegral (negate i64))
+            let i64 = negate (decLoop @Int64 0 bs)
+            if i64 >= fromIntegral (minBound :: a)
+            then return (fromIntegral i64)
             else P.fail' "decimal numeric value overflow"
         else do
-            let i64 = decLoop @Integer 0 bs
-            if i64 <= negate (fromIntegral (minBound :: a))
-            then return (fromIntegral (negate i64))
+            let i64 = negate (decLoop @Integer 0 bs)
+            if i64 >= fromIntegral (minBound :: a)
+            then return (fromIntegral i64)
             else P.fail' "decimal numeric value overflow"
 
 -- | Same with 'int', but sliently cast if overflow happens.
