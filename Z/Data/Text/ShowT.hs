@@ -17,7 +17,7 @@ based instances deriving.
 
 module Z.Data.Text.ShowT
   ( -- * ShowT class
-  ShowT(..), showT, toBuilder, toBytes, toString
+    ShowT(..), showT, toBuilder, toBytes, toString
   -- * Textual Builder
   , TextBuilder
   , getBuilder
@@ -65,14 +65,15 @@ import qualified Data.Monoid                    as Monoid
 import           Data.Proxy                     (Proxy(..))
 import           Data.Ratio                     (Ratio, numerator, denominator)
 import           Data.Tagged                    (Tagged (..))
-import           Data.Word
 import qualified Data.Semigroup                 as Semigroup
 import           Data.Typeable
 import           Foreign.C.Types
 import           GHC.Exts
-import           GHC.Natural
+import           GHC.ForeignPtr
 import           GHC.Generics
+import           GHC.Natural
 import           GHC.Stack
+import           GHC.Word
 import           Data.Version
 import           System.Exit
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
@@ -651,7 +652,17 @@ deriving newtype instance ShowT CSUSeconds
 deriving newtype instance ShowT CFloat
 deriving newtype instance ShowT CDouble
 
+instance ShowT (Ptr a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ (Ptr a) =
+        "0x" >> hex (W# (int2Word#(addr2Int# a)))
+instance ShowT (ForeignPtr a) where
+    {-# INLINE toTextBuilder #-}
+    toTextBuilder _ (ForeignPtr a _) =
+        "0x" >> hex (W# (int2Word#(addr2Int# a)))
+
 deriving anyclass instance ShowT ExitCode
+
 deriving anyclass instance ShowT a => ShowT (Semigroup.Min a)
 deriving anyclass instance ShowT a => ShowT (Semigroup.Max a)
 deriving anyclass instance ShowT a => ShowT (Semigroup.First a)

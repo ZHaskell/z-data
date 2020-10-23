@@ -137,7 +137,7 @@ parseValue = P.parse value
 -- bytes left, parsing will fail.
 parseValue' :: V.Bytes -> Either P.ParseError Value
 {-# INLINE parseValue' #-}
-parseValue' = P.parse_ (value <* skipSpaces <* P.endOfInput)
+parseValue' = P.parse' (value <* skipSpaces <* P.endOfInput)
 
 -- | Increamental parse 'Value' without consuming trailing bytes.
 parseValueChunks :: Monad m => m V.Bytes -> V.Bytes -> m (V.Bytes, Either P.ParseError Value)

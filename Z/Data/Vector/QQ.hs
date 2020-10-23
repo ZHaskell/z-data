@@ -7,13 +7,25 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provides functions for writing vector literals using 'QuasiQuote'.
+This module provides functions for writing vector literals using 'QuasiQuote' similar to "Z.Data.Array.QQ" module.
+
+@
+> :set -XQuasiQuotes
+> :t [vecASCII|asdfg|]
+[vecASCII|asdfg|] :: Z.Data.Vector.Base.PrimVector GHC.Word.Word8
+> [vecASCII|asdfg|]
+[97,115,100,102,103]
+> :t [vecI16|1,2,3,4,5|]
+[vecI16|1,2,3,4,5|] :: Z.Data.Vector.Base.PrimVector GHC.Int.Int16
+> [vecI16|1,2,3,4,5|]
+[1,2,3,4,5]
+@
 
 -}
 
 module Z.Data.Vector.QQ (
   -- * QuasiQuoters
-    ascii
+    vecASCII
   , vecW8, vecW16, vecW32, vecW64, vecWord
   , vecI8, vecI16, vecI32, vecI64, vecInt
   ) where
@@ -25,12 +37,12 @@ import           Z.Data.Vector.Base
 --------------------------------------------------------------------------------
 -- Quoters
 
-ascii :: QQ.QuasiQuoter
-ascii = QQ.QuasiQuoter
+vecASCII :: QQ.QuasiQuoter
+vecASCII = QQ.QuasiQuoter
     (asciiLiteral $ \ len addr -> [| PrimVector (QQ.word8ArrayFromAddr $(len) $(addr)) 0 $(len) |])
-    (error "Cannot use ascii as a pattern")
-    (error "Cannot use ascii as a type")
-    (error "Cannot use ascii as a dec")
+    (error "Cannot use vecASCII as a pattern")
+    (error "Cannot use vecASCII as a type")
+    (error "Cannot use vecASCII as a dec")
 
 vecW8 :: QQ.QuasiQuoter
 vecW8 = QQ.QuasiQuoter
@@ -107,4 +119,3 @@ vecInt = QQ.QuasiQuoter
     (error "Cannot use vecInt as a pattern")
     (error "Cannot use vecInt as a type")
     (error "Cannot use vecInt as a dec")
-

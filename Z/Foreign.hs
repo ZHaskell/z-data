@@ -82,6 +82,7 @@ module Z.Foreign
   , castPtr
   , fromNullTerminated, fromPtr, fromPrimPtr
   -- ** re-export
+  , RealWorld
   , module Data.Primitive.ByteArray
   , module Data.Primitive.PrimArray
   , module Foreign.C.Types
@@ -129,8 +130,6 @@ type BA# a = ByteArray#
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
 type MBA# a = MutableByteArray# RealWorld
-
-
 
 -- | Type alias for 'ArrayArray#'.
 --
@@ -430,7 +429,7 @@ clearPtr dest nbytes = memset dest 0 (fromIntegral nbytes)
 
 -- | Copy some bytes from a null terminated pointer(without copying the null terminator).
 --
--- You should consider using 'Z.Data.CBytes' type for storing NULL terminated bytes first,
+-- You should consider using 'Z.Data.CBytes.CBytes' type for storing NULL terminated bytes first,
 -- This method is provided if you really need to read 'Bytes', there's no encoding guarantee,
 -- result could be any bytes sequence.
 fromNullTerminated :: Ptr a -> IO Bytes
@@ -466,4 +465,3 @@ fromPrimPtr (Ptr addr#) len = do
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
     arr <- unsafeFreezePrimArray marr
     return (PrimVector arr 0 len)
-

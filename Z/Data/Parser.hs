@@ -30,7 +30,7 @@ module Z.Data.Parser
   , Parser
   , (<?>)
     -- * Running a parser
-  , parse, parse_, parseChunk, parseChunks, finishParsing
+  , parse, parse', parseChunk, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
@@ -43,9 +43,10 @@ module Z.Data.Parser
   , text
     -- * Numeric parsers
     -- ** Decimal
-  , uint, int
+  , uint, int, integer
+  , uint_, int_
     -- ** Hex
-  , hex
+  , hex, hex', hex_
     -- ** Fractional
   , rational
   , float, double

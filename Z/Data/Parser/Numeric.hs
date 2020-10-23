@@ -13,9 +13,10 @@ Textual numeric parsers.
 
 module Z.Data.Parser.Numeric
   ( -- * Decimal
-    uint, int
+    uint, int, integer
+  , uint_, int_
     -- * Hex
-  , hex
+  , hex, hex', hex_
     -- * Fractional
   , rational
   , float, double
@@ -48,7 +49,8 @@ import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
 import qualified Z.Data.Vector.Extra    as V
 
-#define WORD64_MAX_DIGITS_LEN 18
+#define WORD64_MAX_DIGITS_LEN 19
+#define INT64_MAX_DIGITS_LEN 18
 
 #define PLUS     43
 #define MINUS    45
@@ -57,16 +59,47 @@ import qualified Z.Data.Vector.Extra    as V
 #define BIG_E    69
 #define C_0 48
 
--- | Parse and decode an unsigned hex number.  The hex digits
+-- | Parse and decode an unsigned hex number, fail in case of overflow. The hex digits
 -- @\'a\'@ through @\'f\'@ may be upper or lower case.
 --
 -- This parser does not accept a leading @\"0x\"@ string, and consider
--- sign bit part of the binary hex nibbles, i.e.
--- 'parse hex "0xFF" == Right (-1 :: Int8)'
+-- sign bit part of the binary hex nibbles, e.g.
 --
-hex :: (Integral a, Bits a) => Parser a
+-- >>> parse' hex "FF" == Right (-1 :: Int8)
+-- >>> parse' hex "7F" == Right (127 :: Int8)
+-- >>> parse' hex "7Ft" == Right (127 :: Int8)
+-- >>> parse' hex "7FF" == Left ["Z.Data.Parser.Numeric.hex","hex numeric number overflow"]
+--
+hex :: forall a.(Integral a, FiniteBits a) => Parser a
 {-# INLINE hex #-}
-hex = "Z.Data.Parser.Numeric.hex" <?> hexLoop 0 <$> P.takeWhile1 isHexDigit
+hex = "Z.Data.Parser.Numeric.hex" <?> do
+    bs <- P.takeWhile1 isHexDigit
+    if V.length bs <= finiteBitSize (undefined :: a) `unsafeShiftR` 2
+    then return (hexLoop 0 bs)
+    else P.fail' "hex numeric number overflow"
+
+-- | Same with 'hex', but only take as many as (bit_size/4) bytes.
+--
+-- >>> parse' hex "FF" == Right (-1 :: Int8)
+-- >>> parse' hex "7F" == Right (127 :: Int8)
+-- >>> parse' hex "7Ft" == Right (127 :: Int8)
+-- >>> parse' hex "7FF" == Right (127 :: Int8)
+hex' :: forall a.(Integral a, FiniteBits a) => Parser a
+{-# INLINE hex' #-}
+hex' = "Z.Data.Parser.Numeric.hex'" <?> do
+    hexLoop 0 <$>
+        P.takeN isHexDigit (finiteBitSize (undefined :: a) `unsafeShiftR` 2)
+  where
+
+-- | Same with 'hex', but silently cast in case of overflow.
+--
+-- >>> parse' hex "FF" == Right (-1 :: Int8)
+-- >>> parse' hex "7F" == Right (127 :: Int8)
+-- >>> parse' hex "7Ft" == Right (127 :: Int8)
+-- >>> parse' hex "7FF" == Right (-1 :: Int8)
+hex_ :: (Integral a, Bits a) => Parser a
+{-# INLINE hex_ #-}
+hex_ = "Z.Data.Parser.Numeric.hex_" <?> hexLoop 0 <$> P.takeWhile1 isHexDigit
 
 -- | decode hex digits sequence within an array.
 hexLoop :: (Integral a, Bits a)
@@ -87,12 +120,33 @@ isHexDigit :: Word8 -> Bool
 {-# INLINE isHexDigit #-}
 isHexDigit w = w - 48 <= 9 || w - 65 <= 5 || w - 97 <= 5
 
--- | Parse and decode an unsigned decimal number.
-uint :: (Integral a) => Parser a
-{-# INLINE uint #-}
-uint = "Z.Data.Parser.Numeric.uint" <?> decLoop 0 <$> P.takeWhile1 isDigit
+-- | Same with 'uint', but sliently cast in case of overflow.
+uint_ :: forall a. (Integral a, Bounded a) => Parser a
+{-# INLINE uint_ #-}
+uint_ = "Z.Data.Parser.Numeric.uint_" <?> decLoop 0 <$> P.takeWhile1 isDigit
 
--- | decode digits sequence within an array.
+-- | Parse and decode an unsigned decimal number.
+--
+-- Will fail in case of overflow.
+uint :: forall a. (Integral a, Bounded a) => Parser a
+{-# INLINE uint #-}
+uint = "Z.Data.Parser.Numeric.uint" <?> do
+    bs <- P.takeWhile1 isDigit
+    if V.length bs <= WORD64_MAX_DIGITS_LEN
+    then do
+        let w64 = decLoop @Word64 0 bs
+        if w64 <= fromIntegral (maxBound :: a)
+        then return (fromIntegral w64)
+        else P.fail' "decimal numeric value overflow"
+    else do
+        let w64 = decLoop @Integer 0 bs
+        if w64 <= fromIntegral (maxBound :: a)
+        then return (fromIntegral w64)
+        else P.fail' "decimal numeric value overflow"
+
+-- | Decode digits sequence within an array.
+--
+-- This function may overflow if result can't fit into type.
 decLoop :: Integral a
         => a    -- ^ accumulator, usually start from 0
         -> V.Bytes
@@ -117,16 +171,65 @@ isDigit w = w - 48 <= 9
 
 -- | Parse a decimal number with an optional leading @\'+\'@ or @\'-\'@ sign
 -- character.
-int :: (Integral a) => Parser a
+--
+-- This parser will fail if overflow happens.
+int :: forall a. (Integral a, Bounded a) => Parser a
 {-# INLINE int #-}
 int = "Z.Data.Parser.Numeric.int" <?> do
     w <- P.peek
     if w == MINUS
-    then P.skipWord8 *> (negate <$> uint')
-    else if w == PLUS then P.skipWord8 *> uint' else uint'
+    then P.skipWord8 *> loopNe
+    else if w == PLUS then P.skipWord8 *> loop else loop
   where
-    -- strip uint's message
-    uint' = decLoop 0 <$> P.takeWhile1 isDigit
+    loop = do
+        bs <- P.takeWhile1 isDigit
+        if V.length bs <= WORD64_MAX_DIGITS_LEN
+        then do
+            let w64 = decLoop @Word64 0 bs
+            if w64 <= fromIntegral (maxBound :: a)
+            then return (fromIntegral w64)
+            else P.fail' "decimal numeric value overflow"
+        else do
+            let w64 = decLoop @Integer 0 bs
+            if w64 <= fromIntegral (maxBound :: a)
+            then return (fromIntegral w64)
+            else P.fail' "decimal numeric value overflow"
+    loopNe = do
+        bs <- P.takeWhile1 isDigit
+        if V.length bs <= INT64_MAX_DIGITS_LEN
+        then do
+            let i64 = decLoop @Int64 0 bs
+            if i64 <= negate (fromIntegral (minBound :: a))
+            then return (fromIntegral (negate i64))
+            else P.fail' "decimal numeric value overflow"
+        else do
+            let i64 = decLoop @Integer 0 bs
+            if i64 <= negate (fromIntegral (minBound :: a))
+            then return (fromIntegral (negate i64))
+            else P.fail' "decimal numeric value overflow"
+
+-- | Same with 'int', but sliently cast if overflow happens.
+int_ :: (Integral a, Bounded a) => Parser a
+{-# INLINE int_ #-}
+int_ = "Z.Data.Parser.Numeric.int_" <?> do
+    w <- P.peek
+    if w == MINUS
+    then P.skipWord8 *> (negate <$> loop)
+    else if w == PLUS then P.skipWord8 *> loop else loop
+  where
+    loop = decLoop 0 <$> P.takeWhile1 isDigit
+
+-- | Parser specifically optimized for 'Integer'.
+--
+integer :: Parser Integer
+integer =  "Z.Data.Parser.Numeric.integer" <?> do
+    w <- P.peek
+    if w == MINUS
+    then P.skipWord8 *> (negate <$> integer')
+    else if w == PLUS then P.skipWord8 *> integer' else integer'
+  where
+    -- strip integer's message
+    integer' = decLoopIntegerFast <$> P.takeWhile1 isDigit
 
 -- | Parse a rational number.
 --
@@ -153,19 +256,19 @@ rational = "Z.Data.Parser.Numeric.rational" <?> scientificallyInternal realToFra
 --
 -- Examples with behaviour identical to 'read':
 --
--- >parse_ double "3"     == ("", Right 3.0)
--- >parse_ double "3.1"   == ("", Right 3.1)
--- >parse_ double "3e4"   == ("", Right 30000.0)
--- >parse_ double "3.1e4" == ("", Right 31000.0)
+-- >parse' double "3"     == ("", Right 3.0)
+-- >parse' double "3.1"   == ("", Right 3.1)
+-- >parse' double "3e4"   == ("", Right 30000.0)
+-- >parse' double "3.1e4" == ("", Right 31000.0)
 --
--- >parse_ double ".3"    == (".3", Left ParserError)
--- >parse_ double "e3"    == ("e3", Left ParserError)
+-- >parse' double ".3"    == (".3", Left ParserError)
+-- >parse' double "e3"    == ("e3", Left ParserError)
 --
 -- Examples of differences from 'read':
 --
--- >parse_ double "3.foo" == (".foo", Right 3.0)
--- >parse_ double "3e"    == ("e",    Right 3.0)
--- >parse_ double "-3e"   == ("e",    Right -3.0)
+-- >parse' double "3.foo" == (".foo", Right 3.0)
+-- >parse' double "3e"    == ("e",    Right 3.0)
+-- >parse' double "-3e"   == ("e",    Right -3.0)
 --
 -- This function does not accept string representations of \"NaN\" or
 -- \"Infinity\".
@@ -252,13 +355,13 @@ rational' = "Z.Data.Parser.Numeric.rational'" <?> scientificallyInternal' realTo
 -- non-backtrack strict number parser separately using LL(1) lookahead. This parser also
 -- agree with 'read' on extra dot or e handling:
 --
--- >parse_ double "3.foo" == Left ParseError
--- >parse_ double "3e"    == Left ParseError
+-- >parse' double "3.foo" == Left ParseError
+-- >parse' double "3e"    == Left ParseError
 --
 -- Leading zeros or @+@ sign is also not allowed:
 --
--- >parse_ double "+3.14" == Left ParseError
--- >parse_ double "0014" == Left ParseError
+-- >parse' double "+3.14" == Left ParseError
+-- >parse' double "0014" == Left ParseError
 --
 -- If you have a similar grammer, you can use this parser to save considerable time.
 --

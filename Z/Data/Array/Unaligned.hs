@@ -50,10 +50,18 @@ import           Foreign.C.Types
 -- @
 --
 class Unaligned a where
-    {-# MINIMAL unalignedSize, indexWord8ArrayAs#, writeWord8ArrayAs#, readWord8ArrayAs# |
-        unalignedSize, indexBA, peekMBA, pokeMBA #-}
+    {-# MINIMAL (unalignedSize# | unalignedSize),
+                (indexWord8ArrayAs# | indexBA),
+                (writeWord8ArrayAs# | peekMBA),
+                (readWord8ArrayAs# | pokeMBA) #-}
     -- | byte size
     unalignedSize :: a -> Int
+    {-# INLINE unalignedSize #-}
+    unalignedSize a = I# (unalignedSize# a)
+
+    unalignedSize# :: a -> Int#
+    {-# INLINE unalignedSize# #-}
+    unalignedSize# a = case unalignedSize a of I# siz_a# -> siz_a#
 
     -- | index element off byte array with offset in bytes(maybe unaligned)
     indexWord8ArrayAs# :: ByteArray# -> Int# -> a
@@ -895,6 +903,46 @@ instance Unaligned (BE Char) where
         in BE (C# (chr# x#))
 #endif
 
+{- not really useful
+instance (Unaligned a, Unaligned b) => Unaligned (a, b) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize (a, b) = unalignedSize a + unalignedSize b
+    {-# INLINE writeWord8ArrayAs# #-}
+    writeWord8ArrayAs# mba# i# (a, b) s0 =
+        let s1 = writeWord8ArrayAs# mba# i# a s0
+        in writeWord8ArrayAs# mba# (i# +# unalignedSize# a) b s1
+    {-# INLINE readWord8ArrayAs# #-}
+    readWord8ArrayAs# mba# i# s0 =
+        let !(# s1, a #) = readWord8ArrayAs# mba# i# s0
+            !(# s2, b #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a) s1
+        in (# s2, (a, b) #)
+    {-# INLINE indexWord8ArrayAs# #-}
+    indexWord8ArrayAs# ba# i# =
+        let a = indexWord8ArrayAs# ba# i#
+            b = indexWord8ArrayAs# ba# (i# +# unalignedSize# a)
+        in (a, b)
+
+instance (Unaligned a, Unaligned b, Unaligned c) => Unaligned (a, b, c) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize (a, b, c) = unalignedSize a + unalignedSize b + unalignedSize c
+    {-# INLINE writeWord8ArrayAs# #-}
+    writeWord8ArrayAs# mba# i# (a, b, c) s0 =
+        let s1 = writeWord8ArrayAs# mba# i# a s0
+            s2 = writeWord8ArrayAs# mba# (i# +# unalignedSize# a) b s1
+        in writeWord8ArrayAs# mba# (i# +# unalignedSize# a +# unalignedSize# b) c s2
+    {-# INLINE readWord8ArrayAs# #-}
+    readWord8ArrayAs# mba# i# s0 =
+        let !(# s1, a #) = readWord8ArrayAs# mba# i# s0
+            !(# s2, b #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a) s1
+            !(# s3, c #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a +# unalignedSize# b) s2
+        in (# s3, (a, b, c) #)
+    {-# INLINE indexWord8ArrayAs# #-}
+    indexWord8ArrayAs# ba# i# =
+        let a = indexWord8ArrayAs# ba# i#
+            b = indexWord8ArrayAs# ba# (i# +# unalignedSize# a)
+            c = indexWord8ArrayAs# ba# (i# +# unalignedSize# a +# unalignedSize# b)
+        in (a, b, c)
+-}
 --------------------------------------------------------------------------------
 
 -- Prim instances for newtypes in Foreign.C.Types

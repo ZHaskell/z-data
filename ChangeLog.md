@@ -1,5 +1,13 @@
 # Revision history for Z-Data
 
+## 0.1.8.0  -- 2020-10-23
+
+* Rename `ascii` to `vecASCII` in `Z.Data.Vector.QQ` to match array QQ.
+* Add `FoldCase` instance to `Text`.
+* Add `hex'`, `hex_`, `uint_`, `int_`, `integer` to `Z.Data.Parser`, change `hex`, `uint`, `int` to fail in case of overflow.
+* Add `takeN` to `Z.Data.Parser`.
+* Rename `withCBytesListSafe` to `withCBytesList` to match rest of the module.
+
 ## 0.1.7.2  -- 2020-10-17
 
 * Add `withPrimArrayListUnsafe`, `withPrimArrayListSafe`, `withCBytesUnsafe`, `withCBytesListSafe`.
