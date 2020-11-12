@@ -15,7 +15,8 @@ user define 'FromValue', 'ToValue' and 'EncodeJSON' instance.
 module Z.Data.JSON.Base
   ( -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
+  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
+  , encodeBytes, encodeBytesList, encodeText, encodeTextBuilder
   -- * Re-export 'Value' type
   , Value(..)
     -- * parse into JSON Value
@@ -86,8 +87,8 @@ import qualified Z.Data.JSON.Value          as JV
 import qualified Z.Data.JSON.Builder        as JB
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Parser.Numeric      as P
-import qualified Z.Data.Text.Base           as T
 import qualified Z.Data.Text                as T
+import qualified Z.Data.Text.HexBytes       as T
 import qualified Z.Data.Text.ShowT          as T
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Extra        as V
@@ -160,6 +161,11 @@ decodeChunks' mb bs = do
 encodeBytes :: EncodeJSON a => a -> V.Bytes
 {-# INLINE encodeBytes #-}
 encodeBytes = B.buildBytes . encodeJSON
+
+-- | Encode data to JSON bytes chunks.
+encodeBytesList :: EncodeJSON a => a -> [V.Bytes]
+{-# INLINE encodeBytesList #-}
+encodeBytesList = B.buildBytesList . encodeJSON
 
 -- | Text version 'encodeBytes'.
 encodeText :: EncodeJSON a => a -> T.Text
@@ -906,6 +912,19 @@ instance EncodeJSON T.Text where {{-# INLINE encodeJSON #-}; encodeJSON = JB.str
 instance FromValue Scientific where {{-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;}
 instance ToValue Scientific where {{-# INLINE toValue #-}; toValue = Number;}
 instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = B.scientific;}
+
+instance FromValue T.HexBytes where
+    {-# INLINE fromValue #-}
+    fromValue = withText "Z.Data.Text.HexBytes" $ \ t ->
+        case T.hexDecodeText t of
+            Just bs -> return (T.HexBytes bs)
+            Nothing -> fail' "illegal hex encoding bytes"
+instance ToValue T.HexBytes where
+    {-# INLINE toValue #-}
+    toValue (T.HexBytes bs) = String (T.hexEncodeUpperText bs)
+instance EncodeJSON T.HexBytes where
+    {-# INLINE encodeJSON #-}
+    encodeJSON (T.HexBytes bs) = B.hexBytesUpper bs
 
 -- | default instance prefer later key
 instance FromValue a => FromValue (FM.FlatMap T.Text a) where

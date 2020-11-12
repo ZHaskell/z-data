@@ -83,6 +83,7 @@ library
                             Z.Data.Text
                             Z.Data.Text.Base
                             Z.Data.Text.Extra
+                            Z.Data.Text.HexBytes
                             Z.Data.Text.Search
                             Z.Data.Text.ShowT
                             Z.Data.Text.UTF8Codec
@@ -168,6 +169,7 @@ library
                             -Wno-incomplete-patterns
                             -- ploymorphic pattern synonym messed exhaustiveness checker
     default-extensions:     BangPatterns
+                            BinaryLiterals
                             CApiFFI
                             ConstraintKinds
                             CPP 
@@ -220,9 +222,10 @@ test-suite Z-Data-Test
                             Z.Data.Parser.NumericSpec
                             Z.Data.Array.UnalignedSpec
                             Z.Data.Text.BaseSpec
-                            Z.Data.Text.ShowTSpec
+                            Z.Data.Text.HexBytesSpec
                             Z.Data.Text.ExtraSpec
                             Z.Data.Text.SearchSpec
+                            Z.Data.Text.ShowTSpec
                             Z.Data.Vector.BaseSpec
                             Z.Data.Vector.ExtraSpec
                             Z.Data.Vector.SearchSpec

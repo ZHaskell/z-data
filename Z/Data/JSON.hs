@@ -111,7 +111,8 @@ If you don't particularly care for fast encoding, you can also use 'toValue' tog
 module Z.Data.JSON
   ( -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
+  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
+  , encodeBytes, encodeBytesList, encodeText, encodeTextBuilder
     -- * Value type
   , Value(..)
     -- * parse into JSON Value

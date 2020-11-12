@@ -147,7 +147,7 @@ type MBA# a = MutableByteArray# RealWorld
 -- HsInt sum_first (StgMutArrPtrs *arr, HsInt len) {
 --   StgArrBytes **bufs = (StgArrBytes**)arr->payload;
 -- #else
--- HsInt sum_first_unsafe (StgArrBytes **bufs, HsInt len) {
+-- HsInt sum_first (StgArrBytes **bufs, HsInt len) {
 -- #endif
 --   int res = 0;
 --   for(StgWord ix = 0;ix < len;ix++) {
@@ -160,7 +160,7 @@ type MBA# a = MutableByteArray# RealWorld
 -- -- Haskell source, all elements in the argument array must be
 -- -- either ByteArray\# or MutableByteArray\#. This is not enforced
 -- -- by the type system in this example since ArrayArray is untyped.
--- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# -> Int -> IO CInt
+-- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# Int -> Int -> IO CInt
 -- @
 --
 type BAArray# a = ArrayArray#

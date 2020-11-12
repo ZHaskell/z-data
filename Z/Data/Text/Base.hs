@@ -764,8 +764,8 @@ The result of the check will be YES if the string is stable and MAYBE or NO
 if it is unstable. If the result is MAYBE, the string does not necessarily
 have to be normalized.
 
-For more information, please review [Unicode Standard Annex #15 - Unicode
-Normalization Forms](http://www.unicode.org/reports/tr15/).
+For more information, please review <http://www.unicode.org/reports/tr15/ Unicode Standard Annex #15 - Unicode
+Normalization Forms>.
 -}
 isNormalizedTo :: NormalizeMode -> Text -> NormalizationResult
 isNormalizedTo nmode (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
@@ -895,7 +895,7 @@ Case mapping is not reversible. That is, @toUpper(toLower(x)) != toLower(toUpper
 Certain code points (or combinations of code points) apply rules
 based on the locale. For more information about these exceptional
 code points, please refer to the Unicode standard:
-ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+<ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt>
 -}
 toLowerWith :: Locale -> Text -> Text
 toLowerWith locale (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
@@ -933,7 +933,7 @@ Case mapping is not reversible. That is, @toUpper(toLower(x)) != toLower(toUpper
 Certain code points (or combinations of code points) apply rules
 based on the locale. For more information about these exceptional
 code points, please refer to the Unicode standard:
-ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+<ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt>
 -}
 toUpperWith :: Locale -> Text -> Text
 toUpperWith locale (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
@@ -983,7 +983,7 @@ converted to titlecase.
 Certain code points (or combinations of code points) apply rules
 based on the locale. For more information about these exceptional
 code points, please refer to the Unicode standard:
-ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+<ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt>
 -}
 
 toTitleWith :: Locale -> Text -> Text

@@ -84,4 +84,4 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 --
 string :: T.Text -> B.Builder ()
 {-# INLINE string #-}
-string = T.escapeTextJSON
+string = T.toBuilder . T.escapeTextJSON

@@ -23,7 +23,7 @@ module Z.Data.Builder
   , buildAndRun
   , buildAndRunWith
     -- * Basic buiders
-  , bytes
+  , bytes, hexBytes, hexBytesUpper
   , ensureN
   , atMost
   , writeN
@@ -42,7 +42,7 @@ module Z.Data.Builder
   , intWith
   , integer
   -- ** Fixded size hexidecimal formatting
-  , hex, heX
+  , hex, hexUpper
   -- ** IEEE float formating
   , FFormat(..)
   , double

@@ -21,7 +21,7 @@ module Z.Data.Builder.Numeric (
   , intWith
   , integer
   -- * Fixded size hexidecimal formatting
-  , hex, heX
+  , hex, hexUpper
   -- * IEEE float formating
   , FFormat(..)
   , double
@@ -534,9 +534,9 @@ hex w = writeN hexSiz (go w (hexSiz-2))
 
 
 -- | The UPPERCASED version of 'hex'.
-heX :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# INLINE heX #-}
-heX w = writeN hexSiz (go w (hexSiz-2))
+hexUpper :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
+{-# INLINE hexUpper #-}
+hexUpper w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)
     hexSiz = (bitSiz+3) `unsafeShiftR` 2

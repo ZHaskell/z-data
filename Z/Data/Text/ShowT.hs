@@ -22,7 +22,7 @@ module Z.Data.Text.ShowT
   , TextBuilder
   , getBuilder
   , unsafeFromBuilder
-  , buildText
+  , buildText, buildBytes
   -- * Basic UTF8 builders
   , stringUTF8, charUTF8, string7, char7, text, escapeTextJSON
   -- * Numeric builders
@@ -34,7 +34,7 @@ module Z.Data.Text.ShowT
   , intWith
   , integer
   -- ** Fixded size hexidecimal formatting
-  , hex, heX
+  , hex, hexUpper
   -- ** IEEE float formating
   , B.FFormat(..)
   , double
@@ -127,6 +127,11 @@ buildText :: TextBuilder a -> Text
 {-# INLINE buildText #-}
 buildText = Text . B.buildBytes . getBuilder
 
+-- | Build a 'Bytes' using 'TextBuilder', which provide UTF-8 encoding guarantee.
+buildBytes :: TextBuilder a -> V.Bytes
+{-# INLINE buildBytes #-}
+buildBytes = B.buildBytes . getBuilder
+
 -- | Unsafely turn a 'B.Builder' into 'TextBuilder', thus it's user's responsibility to
 -- ensure only UTF-8 complied bytes are written.
 unsafeFromBuilder :: B.Builder a -> TextBuilder a
@@ -198,9 +203,9 @@ hex :: (FiniteBits a, Integral a) => a -> TextBuilder ()
 hex = TextBuilder . B.hex
 
 -- | The UPPERCASED version of 'hex'.
-heX :: (FiniteBits a, Integral a) => a -> TextBuilder ()
-{-# INLINE heX #-}
-heX = TextBuilder . B.heX
+hexUpper :: (FiniteBits a, Integral a) => a -> TextBuilder ()
+{-# INLINE hexUpper #-}
+hexUpper = TextBuilder . B.hexUpper
 
 -- | Decimal encoding of an IEEE 'Float'.
 --
@@ -485,7 +490,7 @@ instance ShowT Version where
 -- | The escaping rules is same with 'Show' instance: we reuse JSON escaping rules here, so it will be faster.
 instance ShowT Text where
     {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = TextBuilder . escapeTextJSON
+    toTextBuilder _ = escapeTextJSON
 
 -- | Escape text using JSON string escaping rules and add double quotes, escaping rules:
 --
@@ -501,9 +506,9 @@ instance ShowT Text where
 --    other chars <= 0x1F: "\\u00XX"
 -- @
 --
-escapeTextJSON :: T.Text -> B.Builder ()
+escapeTextJSON :: T.Text -> TextBuilder ()
 {-# INLINE escapeTextJSON #-}
-escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
+escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = TextBuilder $ do
     let siz = escape_json_string_length ba# s l
     B.ensureN siz
     B.Builder (\ _  k (B.Buffer mba@(MutablePrimArray mba#) i) -> do

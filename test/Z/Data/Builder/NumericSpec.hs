@@ -159,30 +159,30 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
         prop "hex roundtrip" $ \ i ->
             i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int8 i)
 
-    describe "heX roundtrip" $ do
+    describe "hexUpper roundtrip" $ do
 
         let read' s = read $ "0x" ++ s
 
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word64 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int64 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word32 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int32 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word16 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int16 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word8 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int8 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word64 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int64 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word32 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int32 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word16 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int16 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word8 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int8 i)
 
     describe "int === show" $ do
         prop "int === show" $ \ i ->

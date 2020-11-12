@@ -500,3 +500,4 @@ HsInt utf8_totitle_length(const char* p, HsInt off, HsInt len, size_t locale){
 HsInt utf8_iscategory(const char* p, HsInt off, HsInt len, size_t flags){
     return (HsInt)utf8iscategory(p+off, len, flags);
 }
+

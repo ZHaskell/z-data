@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
+This module provides 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
 short byte sequences, such as file path, environment variables, etc.
 
 -}
@@ -78,7 +78,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- interface, e.g. libuv do this when deal with file paths.
 --
 -- 'CBytes' don't support O(1) slicing, it's not suitable to use it to store large byte
--- chunk, If you need advance editing, convert 'CBytes' to 'V.Bytes' with 'CB' pattern or
+-- chunk, If you need advance editing, convert 'CBytes' to\/from 'V.Bytes' with 'CB' pattern or
 -- 'toBytes' \/ 'fromBytes', then use vector combinators.
 --
 -- When textual represatation is needed e.g. converting to 'String', 'T.Text', 'Show' instance, etc.,
