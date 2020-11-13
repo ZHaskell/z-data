@@ -134,13 +134,13 @@ c_intWith (IFormat{..}) x
     | x < 0 =
         let !x' = (fromIntegral (complement x) :: Word64) + 1
         in atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec x' (-1) width pad (unsafeCoerce# mba#) i))
+            (c_int_dec x' (-1) width pad (unsafeCoerce# mba#) i))
     | posSign =
         atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec (fromIntegral x) 1 width pad (unsafeCoerce# mba#) i))
+            (c_int_dec (fromIntegral x) 1 width pad (unsafeCoerce# mba#) i))
     | otherwise =
         atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec (fromIntegral x) 0 width pad (unsafeCoerce# mba#) i))
+            (c_int_dec (fromIntegral x) 0 width pad (unsafeCoerce# mba#) i))
   where
     width' = max 21 width
     pad = case padding of NoPadding          -> 0
@@ -323,11 +323,11 @@ positiveInt (IFormat width padding ps) i =
                     writePositiveDec marr off n i                        -- digits
 
 writePositiveDec :: (Integral a)
-                => forall s. MutablePrimArray s Word8       -- ^ The buffer
+                => MutablePrimArray RealWorld Word8       -- ^ The buffer
                 -> Int                                      -- ^ writing offset
                 -> Int                                      -- ^ total digits
                 -> a                                        -- ^ the value
-                -> ST s ()
+                -> IO ()
 {-# INLINE writePositiveDec #-}
 writePositiveDec marr off0 ds = go (off0 + ds - 1)
   where

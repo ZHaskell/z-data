@@ -29,8 +29,8 @@ but in case of rolling something shining from the ground, keep an eye on correct
 
 module Z.Data.Builder.Base
   ( -- * Builder type
-    AllocateStrategy(..)
-  , Buffer(..)
+    Buffer(..)
+  , BuildResult(..)
   , BuildStep
   , Builder(..)
   , append
@@ -39,17 +39,11 @@ module Z.Data.Builder.Base
   , buildBytesWith
   , buildBytesList
   , buildBytesListWith
-  , buildAndRun
-  , buildAndRunWith
     -- * Basic buiders
-  , bytes, hexBytes, hexBytesUpper
+  , bytes -- hexBytes, hexBytesUpper
   , ensureN
   , atMost
   , writeN
-   -- * Boundary handling
-  , doubleBuffer
-  , insertChunk
-  , oneShotAction
    -- * Pritimive builders
   , encodePrim
   , encodePrimLE
@@ -64,9 +58,8 @@ module Z.Data.Builder.Base
 
 import           Control.Monad
 import           Control.Monad.Primitive
-import           Control.Monad.ST
-import           Control.Monad.ST.Unsafe            (unsafeInterleaveST, unsafeIOToST)
 import           Data.Bits                          (unsafeShiftL, unsafeShiftR, (.&.))
+import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
 import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
@@ -81,26 +74,29 @@ import           Z.Foreign
 import           System.IO.Unsafe
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
--- | 'AllocateStrategy' will decide how each 'BuildStep' proceed when previous buffer is not enough.
---
-data AllocateStrategy s
-    = DoubleBuffer
-    -- ^ Double the buffer and continue building
-    | InsertChunk {-# UNPACK #-} !Int
-    -- ^ Insert a new chunk and continue building
-    | OneShotAction (V.Bytes -> ST s ())
-    -- ^ Freeze current chunk and perform action with it.
-    -- Use the 'V.Bytes' argument outside the action is dangerous
-    -- since we will reuse the buffer after action finished.
-
 -- | Helper type to help ghc unpack
 --
-data Buffer s = Buffer {-# UNPACK #-} !(A.MutablePrimArray s Word8)  -- ^ the buffer content
-                       {-# UNPACK #-} !Int  -- ^ writing offset
+data Buffer = Buffer {-# UNPACK #-} !(A.MutablePrimArray RealWorld Word8)  -- ^ the buffer content
+                     {-# UNPACK #-} !Int  -- ^ writing offset
+
+freezeBuffer :: Buffer -> IO V.Bytes
+{-# INLINE freezeBuffer #-}
+freezeBuffer (Buffer buf offset) = do
+    siz <- A.getSizeofMutablePrimArray buf
+    when (offset < siz) (A.shrinkMutablePrimArray buf offset)
+    !arr <- A.unsafeFreezePrimArray buf
+    return (V.PrimVector arr 0 offset)
 
 -- | @BuilderStep@ is a function that fill buffer under given conditions.
 --
-type BuildStep s = Buffer s -> ST s [V.Bytes]
+type BuildStep = Buffer -> IO BuildResult
+
+-- | 'BuildSignal's abstract signals to the caller of a 'BuildStep'. There are
+-- three signals: 'done', 'bufferFull', or 'insertChunks signals
+data BuildResult
+    = Done {-# UNPACK #-} !Buffer
+    | BufferFull {-# UNPACK #-} !Buffer {-# UNPACK #-} !Int BuildStep
+    | InsertBytes {-# UNPACK #-} !Buffer V.Bytes BuildStep
 
 -- | @Builder@ is a monad to help compose @BuilderStep@. With next @BuilderStep@ continuation,
 -- we can do interesting things like perform some action, or interleave the build process.
@@ -112,28 +108,28 @@ type BuildStep s = Buffer s -> ST s [V.Bytes]
 -- * @\\xD800@ ~ @\\xDFFF@ will be encoded in three bytes as normal UTF-8 codepoints.
 --
 newtype Builder a = Builder
-    { runBuilder :: forall s. AllocateStrategy s -> (a -> BuildStep s) -> BuildStep s}
+    { runBuilder :: (a -> BuildStep) -> BuildStep }
 
 instance Show (Builder a) where
     show = show . buildBytes
 
 instance Functor Builder where
     {-# INLINE fmap #-}
-    fmap f (Builder b) = Builder (\ al k -> b al (k . f))
+    fmap f (Builder b) = Builder (\ k -> b (k . f))
     {-# INLINE (<$) #-}
-    a <$ (Builder b) = Builder (\ al k -> b al (\ _ -> k a))
+    a <$ (Builder b) = Builder (\ k -> b (\ _ -> k a))
 
 instance Applicative Builder where
     {-# INLINE pure #-}
-    pure x = Builder (\ _ k -> k x)
+    pure x = Builder (\ k -> k x)
     {-# INLINE (<*>) #-}
-    (Builder f) <*> (Builder b) = Builder (\ al k -> f al ( \ ab -> b al (k . ab)))
+    (Builder f) <*> (Builder b) = Builder (\ k -> f ( \ ab -> b (k . ab)))
     {-# INLINE (*>) #-}
     (*>) = append
 
 instance Monad Builder where
     {-# INLINE (>>=) #-}
-    (Builder b) >>= f = Builder (\ al k -> b al ( \ a -> runBuilder (f a) al k))
+    (Builder b) >>= f = Builder (\ k -> b ( \ a -> runBuilder (f a) k))
     {-# INLINE (>>) #-}
     (>>) = append
 
@@ -180,7 +176,7 @@ charModifiedUTF8 :: Char -> Builder ()
 {-# INLINE charModifiedUTF8 #-}
 charModifiedUTF8 chr = do
     ensureN 4
-    Builder (\ _  k (Buffer mba i) -> do
+    Builder (\ k (Buffer mba i) -> do
         i' <- T.encodeCharModifiedUTF8 mba i chr
         k () (Buffer mba i'))
 
@@ -190,163 +186,35 @@ packAddrModified addr0# = copy addr0#
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
     copy addr# = do
         ensureN len
-        Builder (\ _  k (Buffer mba i) -> do
+        Builder (\ k (Buffer mba i) -> do
            copyPtrToMutablePrimArray mba i (Ptr addr#) len
            k () (Buffer mba (i + len)))
 
 append :: Builder a -> Builder b -> Builder b
 {-# INLINE append #-}
-append (Builder f) (Builder g) = Builder (\ al k -> f al ( \ _ ->  g al k))
+append (Builder f) (Builder g) = Builder (\ k -> f ( \ _ ->  g k))
 
 --------------------------------------------------------------------------------
 
 -- | Write a 'V.Bytes'.
 bytes :: V.Bytes -> Builder ()
 {-# INLINE bytes #-}
-bytes bs@(V.PrimVector arr s l) = Builder (\ strategy k buffer@(Buffer buf offset) -> do
+bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
     siz <- A.getSizeofMutablePrimArray buf
     if siz - offset >= l
     then do
         A.copyPrimArray buf offset arr s l
         k () (Buffer buf (offset+l))
-    else handleBoundary strategy bs k buffer)
-  where
-    {-# NOINLINE handleBoundary #-}
-    handleBoundary :: forall s. AllocateStrategy s -> V.Bytes -> (() -> BuildStep s) -> BuildStep s
-    handleBoundary DoubleBuffer (V.PrimVector arr s l) k buffer =
-        doubleBuffer l (\ (Buffer buf' offset') -> do
-            A.copyPrimArray buf' offset' arr s l
-            k () (Buffer buf' (offset'+l))
-        ) buffer
-    handleBoundary (InsertChunk chunkSiz) (V.PrimVector arr s l) k buffer@(Buffer buf offset)
-        | l <= chunkSiz `unsafeShiftR` 1 =
-             insertChunk chunkSiz l (\ (Buffer buf' offset') -> do
-                A.copyPrimArray buf' offset' arr s l
-                k () (Buffer buf' (offset'+l))) buffer
-        | offset /= 0 =
-             insertChunk chunkSiz 0 (\ buffer' -> (bs:) `fmap` (k () buffer')) buffer
-        | otherwise = (bs:) `fmap` k () buffer
-    handleBoundary (OneShotAction action) (V.PrimVector arr s l) k buffer@(Buffer buf offset) = do
-        chunkSiz <- A.getSizeofMutablePrimArray buf
-        case () of
-            _
-                | l <= chunkSiz `unsafeShiftR` 1 ->
-                     oneShotAction action l (\ (Buffer buf' offset') -> do
-                        A.copyPrimArray buf' offset' arr s l
-                        k () (Buffer buf' (offset'+l))) buffer
-                | offset /= 0 ->
-                    oneShotAction action 0 (\ buffer' -> action bs >> k () buffer') buffer
-                | otherwise -> action bs >> k () buffer
-
--- | Write a 'V.Bytes' in lowercase hex nibbles.
-hexBytes :: V.Bytes -> Builder ()
-{-# INLINE hexBytes #-}
-hexBytes = hexBytes_ False
-
--- | Write a 'V.Bytes' in uppercase HEX nibbles.
-hexBytesUpper :: V.Bytes -> Builder ()
-{-# INLINE hexBytesUpper #-}
-hexBytesUpper = hexBytes_ True
-
--- | Write a 'V.Bytes' in hex nibbles.
-hexBytes_ :: Bool -> V.Bytes -> Builder ()
-{-# INLINE hexBytes_ #-}
-hexBytes_ upper bs@(V.PrimVector arr s l) = Builder (\ strategy k buffer@(Buffer buf offset) ->
-    case strategy of
-        DoubleBuffer -> copy strategy k buffer
-        InsertChunk chunkSiz
-            | l <= chunkSiz `unsafeShiftR` 2 ->
-                copy strategy k buffer -- the copy limit is half the chunk size(hex encode will have 2*length)
-            | offset /= 0 ->
-                 insertChunk chunkSiz 0 (\ buffer' -> (bs':) `fmap` k () buffer') buffer
-            | otherwise -> (bs':) `fmap` k () buffer
-        OneShotAction action -> do
-            chunkSiz <- A.getSizeofMutablePrimArray buf
-            case () of
-                _
-                    | l <= chunkSiz `unsafeShiftR` 2 ->
-                        copy strategy k buffer
-                    | offset /= 0 ->
-                        oneShotAction action 0 (\ buffer' -> action bs' >> k () buffer') buffer
-                    | otherwise -> action bs' >> k () buffer)
-  where
-    copy :: forall s. AllocateStrategy s -> (() -> BuildStep s) -> BuildStep s
-    {-# INLINE copy #-}
-    copy strategy k =
-        let l' = l `unsafeShiftL` 1
-        in runBuilder (ensureN l') strategy ( \ _ (Buffer buf@(MutablePrimArray buf#) offset) -> do
-            unsafeIOToST . withPrimArrayUnsafe arr $ \ parr _ ->
-                if upper
-                then hs_hex_encode_upper (unsafeCoerce# buf#) offset parr s l
-                else hs_hex_encode (unsafeCoerce# buf#) offset parr s l
-            k () (Buffer buf (offset+l')))
-
-    bs' = hexEncodeBytes upper bs
+    else return (InsertBytes buffer bs (k ())))
 
 -- | Ensure that there are at least @n@ many elements available.
 ensureN :: Int -> Builder ()
 {-# INLINE ensureN #-}
-ensureN !n = Builder $ \ strategy k buffer@(Buffer buf offset) -> do
+ensureN !n = Builder (\ k buffer@(Buffer buf offset) -> do
     siz <- A.getSizeofMutablePrimArray buf
     if siz - offset >= n
     then k () buffer
-    else handleBoundary strategy n k buffer
-  where
-    {-# NOINLINE handleBoundary #-} -- Don't inline this branchy code
-    handleBoundary DoubleBuffer n' k buffer = doubleBuffer n' (k ()) buffer
-    handleBoundary (InsertChunk chunkSiz) n' k buffer = insertChunk chunkSiz n' (k ()) buffer
-    handleBoundary (OneShotAction action) n' k buffer = oneShotAction action n' (k ()) buffer
-
---------------------------------------------------------------------------------
---
--- Handle chunk boundary
-
-doubleBuffer :: Int -> BuildStep s -> BuildStep s
-doubleBuffer !wantSiz k (Buffer buf offset) = do
-    !siz <- A.getSizeofMutablePrimArray buf
-    let !siz' = max (offset + wantSiz `unsafeShiftL` 1)
-                    (siz `unsafeShiftL` 1)
-    buf' <- A.resizeMutablePrimArray buf siz'   -- double the buffer
-    k (Buffer buf' offset)                -- continue building
-{-# INLINE doubleBuffer #-}
-
-insertChunk :: Int -> Int -> BuildStep s -> BuildStep s
-{-# INLINE insertChunk #-}
-insertChunk !chunkSiz !wantSiz k (Buffer buf offset) = do
-    !siz <- A.getSizeofMutablePrimArray buf
-    case () of
-        _
-            | offset /= 0 -> do
-                when (offset < siz)
-                    (A.shrinkMutablePrimArray buf offset)            -- shrink old buffer if not full
-                arr <- A.unsafeFreezePrimArray buf                   -- popup old buffer
-                buf' <- A.newPrimArray (max wantSiz chunkSiz)        -- make a new buffer
-                xs <- unsafeInterleaveST (k (Buffer buf' 0))   -- delay the rest building process
-                let v = V.fromArr arr 0 offset
-                v `seq` pure (v : xs)
-            | wantSiz <= siz -> k (Buffer buf 0) -- this should certainly not hold, but we still guard it
-            | otherwise -> do
-                buf' <- A.newPrimArray (max wantSiz chunkSiz)        -- make a new buffer
-                k (Buffer buf' 0)
-
-oneShotAction :: (V.Bytes -> ST s ()) -> Int -> BuildStep s -> BuildStep s
-{-# INLINE oneShotAction #-}
-oneShotAction action !wantSiz k (Buffer buf offset) = do
-    !siz <- A.getSizeofMutablePrimArray buf
-    case () of
-        _
-            | offset /= 0 -> do
-                arr <- A.unsafeFreezePrimArray buf             -- popup old buffer
-                action (V.PrimVector arr 0 offset)
-                if wantSiz <= siz
-                then k (Buffer buf 0)                    -- continue building with old buf
-                else do
-                    buf' <- A.newPrimArray wantSiz             -- make a new buffer
-                    k (Buffer buf' 0)
-            | wantSiz <= siz -> k (Buffer buf 0)
-            | otherwise -> do
-                buf' <- A.newPrimArray wantSiz                -- make a new buffer
-                k (Buffer buf' 0 )
+    else return (BufferFull buffer n (k ())))
 
 --------------------------------------------------------------------------------
 
@@ -359,16 +227,25 @@ buildBytes = buildBytesWith V.defaultInitSize
 -- for building short bytes.
 buildBytesWith :: Int -> Builder a -> V.Bytes
 {-# INLINABLE buildBytesWith #-}
-buildBytesWith initSiz (Builder b) = runST $ do
+buildBytesWith initSiz (Builder b) = unsafePerformIO $ do
     buf <- A.newPrimArray initSiz
-    [bs] <- b DoubleBuffer lastStep (Buffer buf 0 )
-    pure bs
+    loop =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
-    lastStep _ (Buffer buf offset) = do
-        siz <- A.getSizeofMutablePrimArray buf
-        when (offset < siz) (A.shrinkMutablePrimArray buf offset)
-        arr <- A.unsafeFreezePrimArray buf
-        pure [V.PrimVector arr 0 offset]
+    loop r = case r of
+        Done buffer -> freezeBuffer buffer
+        BufferFull (Buffer buf offset) wantSiz k -> do
+            !siz <- A.getSizeofMutablePrimArray buf
+            let !siz' = max (offset + wantSiz `unsafeShiftL` 1)
+                            (siz `unsafeShiftL` 1)
+            buf' <- A.resizeMutablePrimArray buf siz'   -- grow buffer
+            loop =<< k (Buffer buf' offset)
+        InsertBytes (Buffer buf offset) (V.PrimVector arr s l) k -> do
+            !siz <- A.getSizeofMutablePrimArray buf
+            let !siz' = max (offset + l `unsafeShiftL` 1)
+                            (siz `unsafeShiftL` 1)
+            buf' <- A.resizeMutablePrimArray buf siz'   -- grow buffer
+            A.copyPrimArray buf' offset arr s l
+            loop =<< k (Buffer buf' (offset+l))
 
 -- | Shortcut to 'buildBytesListWith' 'V.defaultChunkSize'.
 buildBytesList :: Builder a -> [V.Bytes]
@@ -379,51 +256,52 @@ buildBytesList = buildBytesListWith  V.smallChunkSize V.defaultChunkSize
 -- for building lazy bytes chunks.
 buildBytesListWith :: Int -> Int -> Builder a -> [V.Bytes]
 {-# INLINABLE buildBytesListWith #-}
-buildBytesListWith initSiz chunkSiz (Builder b) = runST $ do
+buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
     buf <- A.newPrimArray initSiz
-    b (InsertChunk chunkSiz) lastStep (Buffer buf 0)
+    loop [] =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
-    lastStep _ (Buffer buf offset) = do
-        arr <- A.unsafeFreezePrimArray buf
-        pure [V.PrimVector arr 0 offset]
-
--- | Shortcut to 'buildAndRunWith' 'V.defaultChunkSize'.
-buildAndRun :: (V.Bytes -> IO ()) -> Builder a -> IO ()
-buildAndRun = buildAndRunWith V.defaultChunkSize
-
--- | Run Builder with 'OneShotAction' strategy, which is suitable
--- for doing effects while building.
-buildAndRunWith :: Int -> (V.Bytes -> IO ()) -> Builder a -> IO ()
-buildAndRunWith chunkSiz action (Builder b) = do
-    buf <- A.newPrimArray chunkSiz
-    _ <- stToIO (b (OneShotAction (\ bs -> ioToPrim (action bs))) lastStep (Buffer buf 0))
-    pure ()
-  where
-    lastStep :: a -> BuildStep RealWorld
-    lastStep _ (Buffer buf offset) = do
-        arr <- A.unsafeFreezePrimArray buf
-        ioToPrim (action (V.PrimVector arr 0 offset))
-        pure [] -- to match the silly pure type
-{-# INLINABLE buildAndRun #-}
+    loop acc r = case r of
+        Done buffer -> do
+            !v <- freezeBuffer buffer
+            return (reverse (v : acc))
+        BufferFull buffer@(Buffer buf offset) wantSiz k -> do
+            let !siz' = max chunkSiz wantSiz
+            buf' <- A.resizeMutablePrimArray buf siz'   -- new buffer
+            if (offset == 0)
+            then loop acc =<< k (Buffer buf' 0)
+            else do
+                !v <- freezeBuffer buffer
+                loop (v : acc) =<< k (Buffer buf' 0)
+        InsertBytes buffer@(Buffer buf offset) v@(V.PrimVector arr s l) k -> do
+            if (offset == 0)
+            then loop (v : acc) =<< k buffer
+            else do
+                !v' <- freezeBuffer buffer
+                buf' <- A.resizeMutablePrimArray buf chunkSiz   -- new buffer
+                if (l < chunkSiz `unsafeShiftR` 1)
+                then do
+                    A.copyPrimArray buf' 0 arr s l
+                    loop (v' : acc) =<< k (Buffer buf' l)
+                else loop (v : v' : acc) =<< k (Buffer buf' 0)
 
 --------------------------------------------------------------------------------
 
 atMost :: Int  -- ^ size bound
-       -> (forall s. A.MutablePrimArray s Word8 -> Int -> ST s Int)  -- ^ the writer which pure a new offset
+       -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which pure a new offset
                                                                        -- for next write
        -> Builder ()
 {-# INLINE atMost #-}
 atMost n f = ensureN n `append`
-    Builder (\ _  k (Buffer buf offset ) ->
+    Builder (\ k (Buffer buf offset ) ->
         f buf offset >>= \ offset' -> k () (Buffer buf offset'))
 
 writeN :: Int  -- ^ size bound
-       -> (forall s. A.MutablePrimArray s Word8 -> Int -> ST s ())  -- ^ the writer which pure a new offset
+       -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer which pure a new offset
                                                                     -- for next write
        -> Builder ()
 {-# INLINE writeN #-}
 writeN n f = ensureN n `append`
-    Builder (\ _  k (Buffer buf offset ) ->
+    Builder (\ k (Buffer buf offset ) ->
         f buf offset >> k () (Buffer buf (offset+n)))
 
 -- | write primitive types in host byte order.
@@ -441,7 +319,7 @@ encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrim :: Int8 -> Builder () #-}
 encodePrim x = do
     ensureN n
-    Builder (\ _  k (Buffer mpa i) -> do
+    Builder (\ k (Buffer mpa i) -> do
         writePrimWord8ArrayAs mpa i x
         k () (Buffer mpa (i + n)))
   where
@@ -500,7 +378,7 @@ packASCIIAddr addr0# = copy addr0#
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
     copy addr# = do
         ensureN len
-        Builder (\ _  k (Buffer mba i) -> do
+        Builder (\ k (Buffer mba i) -> do
            copyPtrToMutablePrimArray mba i (Ptr addr#) len
            k () (Buffer mba (i + len)))
 
@@ -513,7 +391,7 @@ packUTF8Addr addr0# = validateAndCopy addr0#
         | valid == 0 = mapM_ charUTF8 (unpackCString# addr#)
         | otherwise = do
             ensureN len
-            Builder (\ _  k (Buffer mba i) -> do
+            Builder (\ k (Buffer mba i) -> do
                copyPtrToMutablePrimArray mba i (Ptr addr#) len
                k () (Buffer mba (i + len)))
 
@@ -524,7 +402,7 @@ charUTF8 :: Char -> Builder ()
 {-# INLINE charUTF8 #-}
 charUTF8 chr = do
     ensureN 4
-    Builder (\ _  k (Buffer mba i) -> do
+    Builder (\ k (Buffer mba i) -> do
         i' <- T.encodeChar mba i chr
         k () (Buffer mba i'))
 
@@ -542,7 +420,7 @@ char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
 char7 chr = do
     ensureN 1
-    Builder (\ _  k (Buffer mpa i) -> do
+    Builder (\ k (Buffer mpa i) -> do
         let x = V.c2w chr .&. 0x7F
         writePrimWord8ArrayAs mpa i x
         k () (Buffer mpa (i+1)))
@@ -565,7 +443,7 @@ char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
 char8 chr = do
     ensureN 1
-    Builder (\ _  k (Buffer mpa i) -> do
+    Builder (\ k (Buffer mpa i) -> do
         let x = V.c2w chr
         writePrimWord8ArrayAs mpa i x
         k () (Buffer mpa (i+1)))

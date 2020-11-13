@@ -314,6 +314,10 @@ HsInt escape_json_string_length(const unsigned char *src, HsInt srcoff, HsInt sr
     const unsigned char *i = src + srcoff;
     const unsigned char *srcend = i + srclen;
     for (; i < srcend; i++) {
+        if (*i > 0x1F && *i != '\"' && *i != '\\' && *i != '/') {
+            rv += 1;
+            continue;
+        }
         switch (*i) {
             case '\b': rv += 2; break;
             case '\f': rv += 2; break;
@@ -344,6 +348,10 @@ HsInt escape_json_string(const unsigned char *src, HsInt srcoff, HsInt srclen, u
     unsigned char *j = dest + desoff;
     *j++ = '\"'; // start quote
     for (; i < srcend; i++){
+        if (*i > 0x1F && *i != '\"' && *i != '\\' && *i != '/') {
+            *j++ = *i;
+            continue;
+        }
         switch (*i) {
             case '\b': *j++ = '\\'; *j++ = 'b'; break;
             case '\f': *j++ = '\\'; *j++ = 'f'; break;
