@@ -41,3 +41,6 @@ HsInt hs_fnv_hash(const unsigned char* str, HsInt offset, HsInt len, HsInt salt)
 void hs_hex_encode(char* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length);
 void hs_hex_encode_upper(char* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length);
 HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length);
+
+void hs_base64_encode(char* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length);
+HsInt hs_base64_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length);

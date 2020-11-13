@@ -80,6 +80,7 @@ library
                             Z.Data.Vector.FlatMap
                             Z.Data.Vector.FlatSet
                             Z.Data.Vector.Hex
+                            Z.Data.Vector.Base64
 
                             Z.Data.Text
                             Z.Data.Text.Base
@@ -136,18 +137,19 @@ library
                             third_party/utf8rewind/source/internal
                             third_party/utf8rewind/source
                             third_party/fastvalidate-utf-8/include
+                            third_party/Turbo-Base64
     includes:               bytes.h
                             dtoa.h
                             text.h
                             utf8rewind.h
                             simdasciicheck.h
                             simdutf8check.h
+                            conf.h
+                            turbob64.h
+                            turbob64_.h
     install-includes:       bytes.h
                             dtoa.h
                             text.h
-                            utf8rewind.h
-                            simdasciicheck.h
-                            simdutf8check.h
     c-sources:              cbits/bytes.c
                             cbits/dtoa.c
                             cbits/text.c
@@ -160,6 +162,9 @@ library
                             third_party/utf8rewind/source/internal/seeking.c
                             third_party/utf8rewind/source/internal/streaming.c
                             third_party/utf8rewind/source/utf8rewind.c
+                            third_party/Turbo-Base64/turbob64c.c
+                            third_party/Turbo-Base64/turbob64d.c
+                            third_party/Turbo-Base64/turbob64sse.c
 
     default-language:       Haskell2010
     build-tool-depends:     hsc2hs:hsc2hs, hspec-discover:hspec-discover

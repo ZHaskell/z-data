@@ -10,53 +10,45 @@
 
 HsInt ascii_validate(const char* p, HsInt off, HsInt len){
     const char* q = p + off;
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(q, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_ascii_fast(q, (size_t)len);
 #else
     return (HsInt)ascii_u64(q, (size_t)len);
-#endif
 #endif
 }
 // for some reason unknown, on windows we have to supply a seperated version of ascii_validate
 // otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
 HsInt ascii_validate_addr(const char* p, HsInt len){
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(p, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_ascii_fast(p, (size_t)len);
 #else
     return (HsInt)ascii_u64(p, (size_t)len);
-#endif
 #endif
 }
 
 HsInt utf8_validate(const char* p, HsInt off, HsInt len){
     const char* q = p + off;
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(q, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_utf8_fast(q, (size_t)len);
 #else
     return utf8_validate_slow(q, (size_t)len);
-#endif
 #endif
 }
 // for some reason unknown, on windows we have to supply a seperated version of utf8_validate
 // otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
 HsInt utf8_validate_addr(const char* p, HsInt len){
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(p, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_utf8_fast(p, (size_t)len);
 #else
     return utf8_validate_slow(p, (size_t)len);
-#endif
 #endif
 }
 

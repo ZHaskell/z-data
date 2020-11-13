@@ -39,7 +39,7 @@ import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
 
 -- | New type wrapper for 'V.Bytes' with hex encoding(uppercase) Show\/JSON instances.
-newtype HexBytes = HexBytes { getHexBytes :: V.Bytes }
+newtype HexBytes = HexBytes { unHexBytes :: V.Bytes }
     deriving (Eq, Ord)
     deriving newtype (Monoid, Semigroup, Hashable)
 
@@ -93,6 +93,7 @@ hexEncodeText upper = T.Text . hexEncode upper
 -- | Decode a hex encoding string, return Nothing on illegal bytes or incomplete input.
 hexDecode :: V.Bytes -> Maybe V.Bytes
 hexDecode ba
+    | V.length ba == 0 = Just V.empty
     | V.length ba .&. 1 == 1 = Nothing
     | otherwise = unsafeDupablePerformIO $ do
         (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
@@ -111,6 +112,7 @@ instance Exception HexDecodeException
 -- | Decode a hex encoding string, throw 'HexDecodeException' on error.
 hexDecode' :: HasCallStack => V.Bytes -> V.Bytes
 hexDecode' ba
+    | V.length ba == 0 = V.empty
     | V.length ba .&. 1 == 1 = throw (IncompleteHexBytes ba callStack)
     | otherwise = unsafeDupablePerformIO $ do
         (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
