@@ -14,6 +14,3 @@ spec = describe "text-HexBytes" $ do
     describe "encoding props " $ do
         prop "hexDecode' . hexEncode === id" $ \ xs u ->
             (H.hexDecode' (H.hexEncode u xs) === xs)
-
-        prop "hexDecode . take (2*n+1) . hexEncode === Nothing" $ \ xs u n ->
-            (H.hexDecode (V.take (2*n+1) (H.hexEncode u xs)) === Nothing)
