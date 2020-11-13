@@ -58,7 +58,6 @@ import           GHC.Exts
 import           GHC.Float
 import           GHC.Integer
 import           Z.Data.Builder.Base
-import qualified Z.Data.Vector                       as V
 import           Z.Data.Builder.Numeric.DigitTable
 import           Z.Foreign
 import           System.IO.Unsafe
@@ -620,72 +619,75 @@ doFmt :: FFormat
       -> ([Int], Int) -- ^ List of digits and exponent
       -> Builder ()
 {-# INLINABLE doFmt #-}
-doFmt format decs (is, e) =
-    let ds = map i2wDec is
-    in case format of
-        Generic ->
-            doFmt (if e < 0 || e > 7 then Exponent else Fixed) decs (is,e)
-        Exponent ->
-            case decs of
-                Nothing ->
-                    case ds of
-                        [ZERO]     -> "0.0e0"
-                        [d]     -> encodePrim d >> ".0e" >> int (e-1)
-                        (d:ds') -> encodePrim d >> encodePrim DOT >>
-                                        bytes (V.pack ds') >> encodePrim LITTLE_E >> int (e-1)
-                        []      -> error "doFmt/Exponent: []"
-                Just dec
-                    | dec <= 0 ->
-                    -- decimal point as well (ghc trac #15115).
-                    -- Note that this handles negative precisions as well for consistency
-                    -- (see ghc trac #15509).
-                        case is of
-                            [0] -> "0e0"
-                            _ -> do
-                                let (ei,is') = roundTo 10 1 is
-                                    n:_ = map i2wDec (if ei > 0 then init is' else is')
-                                encodePrim n
-                                encodePrim LITTLE_E
-                                int (e-1+ei)
-                Just dec ->
-                    let dec' = max dec 1 in
-                    case is of
-                        [0] -> do
-                            "0." >> bytes (V.replicate dec' ZERO) >> "e0"
-                        _ -> do
-                            let (ei,is') = roundTo 10 (dec'+1) is
-                                (d:ds') = map i2wDec (if ei > 0 then init is' else is')
-                            encodePrim d
-                            encodePrim DOT
-                            bytes (V.pack ds')
-                            encodePrim LITTLE_E
-                            int (e-1+ei)
-        Fixed ->
-            let mk0 ls = case ls of { [] -> encodePrim ZERO ; _ -> bytes (V.pack ls)}
-            in case decs of
-                Nothing
-                    | e <= 0    -> do
-                                "0."
-                                bytes (V.replicate (-e) ZERO)
-                                bytes (V.pack ds)
-                    | otherwise ->
-                        let f 0 s    rs  = mk0 (reverse s) >> encodePrim DOT >> mk0 rs
-                            f n s    []  = f (n-1) (ZERO:s) []
-                            f n s (r:rs) = f (n-1) (r:s) rs
-                        in f e [] ds
-                Just dec ->
-                    let dec' = max dec 0
-                    in if e >= 0
-                        then
-                            let (ei,is') = roundTo 10 (dec' + e) is
-                                (ls,rs)  = splitAt (e+ei) (map i2wDec is')
-                            in mk0 ls >>
-                                (unless (List.null rs) $ encodePrim DOT >> bytes (V.pack rs))
-                        else
-                            let (ei,is') = roundTo 10 dec' (List.replicate (-e) 0 ++ is)
-                                d:ds' = map i2wDec (if ei > 0 then is' else 0:is')
-                            in encodePrim d >>
-                                (unless (List.null ds') $ encodePrim DOT >> bytes (V.pack ds'))
+doFmt format decs (is, e) = case format of
+    Generic -> doFmt (if e < 0 || e > 7 then Exponent else Fixed) decs (is,e)
+    Exponent -> case decs of
+        Nothing -> case is of
+            [0]     -> "0.0e0"
+            [i]     -> encodeDigit i >> ".0e" >> int (e-1)
+            (i:is') -> do
+                encodeDigit i
+                encodePrim DOT
+                encodeDigits is'
+                encodePrim LITTLE_E
+                int (e-1)
+            []      -> error "doFmt/Exponent: []"
+        Just dec
+            | dec <= 0 ->
+            -- decimal point as well (ghc trac #15115).
+            -- Note that this handles negative precisions as well for consistency
+            -- (see ghc trac #15509).
+                case is of
+                    [0] -> "0e0"
+                    _ -> do
+                        let (ei,is') = roundTo 10 1 is
+                            n:_ = if ei > 0 then List.init is' else is'
+                        encodeDigit n
+                        encodePrim LITTLE_E
+                        int (e-1+ei)
+        Just dec ->
+            let !dec' = max dec 1 in
+            case is of
+                [0] -> do
+                    "0." >> encodeZeros dec' >> "e0"
+                _ -> do
+                    let (ei,is') = roundTo 10 (dec'+1) is
+                        (d:ds') = if ei > 0 then List.init is' else is'
+                    encodeDigit d
+                    encodePrim DOT
+                    encodeDigits ds'
+                    encodePrim LITTLE_E
+                    int (e-1+ei)
+    Fixed -> case decs of
+        Nothing
+            | e <= 0    -> do
+                "0."
+                encodeZeros (-e)
+                encodeDigits is
+            | otherwise ->
+                let f 0 s    rs  = mk0 (reverse s) >> encodePrim DOT >> mk0 rs
+                    f n s    []  = f (n-1) (0:s) []
+                    f n s (r:rs) = f (n-1) (r:s) rs
+                in f e [] is
+        Just dec ->
+            let !dec' = max dec 0
+            in if e >= 0
+                then do
+                    let (ei,is') = roundTo 10 (dec' + e) is
+                        (ls,rs)  = splitAt (e+ei) is'
+                    mk0 ls
+                    (unless (List.null rs) $ encodePrim DOT >> encodeDigits rs)
+                else do
+                    let (ei,is') = roundTo 10 dec' (List.replicate (-e) 0 ++ is)
+                        d:ds' = if ei > 0 then is' else 0:is'
+                    encodeDigit d
+                    (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
+  where
+    encodeDigit = encodePrim . i2wDec
+    encodeDigits = mapM_ encodeDigit
+    encodeZeros n = replicateM_ n (encodePrim ZERO)
+    mk0 [] = encodePrim ZERO
+    mk0 ls = encodeDigits ls
 
  ------------------------------------------------------------------------------
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3

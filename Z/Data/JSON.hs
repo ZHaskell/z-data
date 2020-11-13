@@ -50,9 +50,7 @@ These rules apply to user defined ADTs, but some built-in instances have differe
   * 'NonEmpty', 'Vector', 'PrimVector', 'HashSet', 'FlatSet', 'FlatIntSet' are also encoded to JSON array.
   * 'HashMap', 'FlatMap', 'FlatIntMap' are encoded to JSON object.
 
-There're some modifying options if you providing a custom 'Settings', which allow you to modify field name or constructor
-name, but please don't produce control characters during your modification, since we assume field labels and constructor
-name won't contain them, thus we can save an extra escaping pass. To use constom 'Settings' just write:
+There're some modifying options if you providing a custom 'Settings', which allow you to modify field name or constructor name, but please don't produce control characters during your modification, since we assume field labels and constructor name won't contain them, thus we can save an extra escaping pass. To use constom 'Settings' just write:
 
 @
     data T = T {fooBar :: Int, fooQux :: [Int]} deriving (Generic)
@@ -64,15 +62,16 @@ name won't contain them, thus we can save an extra escaping pass. To use constom
 
 = Write instances manually.
 
-You can write 'ToValue' and 'FromValue' instances by hand if the 'Generic' based one doesn't suit you. Here is an example
-similar to aeson's.
+You can write 'ToValue' and 'FromValue' instances by hand if the 'Generic' based one doesn't suit you.
+Here is an example similar to aeson's.
 
 @
     import qualified Z.Data.Text          as T
     import qualified Z.Data.Vector        as V
     import qualified Z.Data.Builder       as B
     import qualified Z.Data.JSON          as JSON
-    import           Z.Data.JSON          ((.:), kv, FromValue(..), ToValue(..), EncodeJSON(..))
+    import           Z.Data.JSON          ((.:), kv, commaSepList,
+                                           FromValue(..), ToValue(..), EncodeJSON(..))
 
     data Person = Person { name :: T.Text , age  :: Int } deriving Show
 
@@ -85,7 +84,7 @@ similar to aeson's.
         toValue (Person n a) = JSON.Object $ V.pack [(\"name\", toValue n),(\"age\", toValue a)]
 
     instance EncodeJSON Person where
-        encodeJSON (Person n a) = B.curly . JSON.commaSepList $ [
+        encodeJSON (Person n a) = B.curly . commaSepList $ [
               \"name\" `kv` string n
             , \"age\" `kv` B.int a
             ]
@@ -100,12 +99,10 @@ similar to aeson's.
 
 The 'Value' type is different from aeson's one in that we use @Vector (Text, Value)@ to represent JSON objects, thus
 we can choose different strategies on key duplication, the lookup map type, etc. so instead of a single 'withObject',
-we provide 'withHashMap', 'withHashMapR', 'withFlatMap' and 'withFlatMapR' which use different lookup map type, and different
-key order piority. Most of time 'FlatMap' is faster than 'HashMap' since we only use the lookup map once, the cost of
-constructing a 'HashMap' is higher. If you want to directly working on key-values, 'withKeyValues' provide key-values
-vector access.
+we provide 'withHashMap', 'withHashMapR', 'withFlatMap' and 'withFlatMapR' which use different lookup map type, and different key order piority. Most of time 'FlatMap' is faster than 'HashMap' since we only use the lookup map once, the cost of constructing a 'HashMap' is higher. If you want to directly working on key-values, 'withKeyValues' provide key-values vector access.
 
 There're some useful tools to help write encoding code in "Z.Data.JSON.Builder" module, such as JSON string escaping tool, etc.
+
 If you don't particularly care for fast encoding, you can also use 'toValue' together with value builder, the overhead is usually very small.
 
 -}

@@ -48,6 +48,14 @@ module Z.Data.Builder
   , floatWith
   , scientific
   , scientificWith
+  -- * Patterns
+  , pattern PLUS
+  , pattern MINUS
+  , pattern ZERO
+  , pattern SPACE
+  , pattern DOT
+  , pattern LITTLE_E
+  , pattern BIG_E
     -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
   ) where

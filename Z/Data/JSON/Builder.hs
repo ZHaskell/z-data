@@ -25,6 +25,7 @@ module Z.Data.JSON.Builder
   , Value(..)
   ) where
 
+import           Control.Monad
 import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text                    as T
 import qualified Z.Data.Text.ShowT              as T
@@ -92,6 +93,10 @@ scientific :: Scientific -> B.Builder ()
 {-# INLINE scientific #-}
 scientific s
     | e < 0 || e >= 1024 = B.scientific s
-    | otherwise = B.integer (coefficient s * 10 ^ e)
+    | e == 0 = B.integer c
+    | otherwise = do
+        B.integer c
+        when (c /= 0) (replicateM_ e (B.encodePrim B.ZERO))
   where
     e = base10Exponent s
+    c = coefficient s

@@ -309,10 +309,18 @@ HsInt find_json_string_end(uint32_t* state, const unsigned char* ba, HsInt offse
     return (-1);
 }
 
+/* rfc8259
+ The representation of strings is similar to conventions used in the C
+ family of programming languages.  A string begins and ends with
+ quotation marks.  All Unicode characters may be placed within the
+ quotation marks, except for the characters that MUST be escaped:
+ quotation mark, reverse solidus, and the control characters (U+0000
+ through U+001F).
+*/
 static const int escape_char_length[256] =
   { 6,6,6,6,6,6,6,6,2,2,2,6,2,2,6,6,
     6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-    1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,
@@ -351,14 +359,17 @@ HsInt escape_json_string(const unsigned char *src, HsInt srcoff, HsInt srclen, u
             *j++ = *i;
         } else {
             switch (*i) {
+                case '\"': *j++ = '\\'; *j++ = '\"'; break;
+                case '\\': *j++ = '\\'; *j++ = '\\'; break;
                 case '\b': *j++ = '\\'; *j++ = 'b'; break;
                 case '\f': *j++ = '\\'; *j++ = 'f'; break;
                 case '\n': *j++ = '\\'; *j++ = 'n'; break;
                 case '\r': *j++ = '\\'; *j++ = 'r'; break;
                 case '\t': *j++ = '\\'; *j++ = 't'; break;
-                case '\"': *j++ = '\\'; *j++ = '\"'; break;
-                case '\\': *j++ = '\\'; *j++ = '\\'; break;
-                case '/': *j++ = '\\'; *j++ = '/'; break;
+                // case '/': *j++ = '\\'; *j++ = '/'; break;
+                // see note above, solidus is not required to be escaped by rfc8259
+                // it often appears in JSON(URL strings..)
+                // for performance consideration it's omitted 
                 default: 
                     *j++ = '\\';
                     *j++ = 'u';
