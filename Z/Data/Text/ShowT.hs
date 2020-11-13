@@ -506,13 +506,13 @@ escapeTextJSON :: T.Text -> B.Builder ()
 escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
     let siz = escape_json_string_length ba# s l
     B.ensureN siz
-    B.Builder (\ _  k (B.Buffer mba@(MutablePrimArray mba#) i) -> do
+    B.Builder (\ k (B.Buffer mba@(MutablePrimArray mba#) i) -> do
         if siz == l+2   -- no need to escape
         then do
             writePrimArray mba i DOUBLE_QUOTE
             copyPrimArray mba (i+1) ba s l
             writePrimArray mba (i+1+l) DOUBLE_QUOTE
-        else void $ unsafeIOToST (escape_json_string ba# s l (unsafeCoerce# mba#) i)
+        else void (escape_json_string ba# s l (unsafeCoerce# mba#) i)
         k () (B.Buffer mba (i+siz)))
 
 foreign import ccall unsafe escape_json_string_length
