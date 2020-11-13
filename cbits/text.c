@@ -309,31 +309,30 @@ HsInt find_json_string_end(uint32_t* state, const unsigned char* ba, HsInt offse
     return (-1);
 }
 
+static const int escape_char_length[256] =
+  { 6,6,6,6,6,6,6,6,2,2,2,6,2,2,6,6,
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+
 HsInt escape_json_string_length(const unsigned char *src, HsInt srcoff, HsInt srclen){
     HsInt rv = 2; // for start and end quotes 
     const unsigned char *i = src + srcoff;
     const unsigned char *srcend = i + srclen;
     for (; i < srcend; i++) {
-        if (*i > 0x1F && *i != '\"' && *i != '\\' && *i != '/') {
-            rv += 1;
-            continue;
-        }
-        switch (*i) {
-            case '\b': rv += 2; break;
-            case '\f': rv += 2; break;
-            case '\n': rv += 2; break;
-            case '\r': rv += 2; break;
-            case '\t': rv += 2; break;
-            case '\"': rv += 2; break;
-            case '\\': rv += 2; break;
-            case '/': rv += 2; break;
-            default:
-                if (*i <= 0x1F) {
-                    rv += 6;
-                } else {
-                    rv += 1;
-                }
-        }
+        rv += escape_char_length[*i];
     }
     return rv;
 }
@@ -348,30 +347,26 @@ HsInt escape_json_string(const unsigned char *src, HsInt srcoff, HsInt srclen, u
     unsigned char *j = dest + desoff;
     *j++ = '\"'; // start quote
     for (; i < srcend; i++){
-        if (*i > 0x1F && *i != '\"' && *i != '\\' && *i != '/') {
+        if (escape_char_length[*i] == 1) {
             *j++ = *i;
-            continue;
-        }
-        switch (*i) {
-            case '\b': *j++ = '\\'; *j++ = 'b'; break;
-            case '\f': *j++ = '\\'; *j++ = 'f'; break;
-            case '\n': *j++ = '\\'; *j++ = 'n'; break;
-            case '\r': *j++ = '\\'; *j++ = 'r'; break;
-            case '\t': *j++ = '\\'; *j++ = 't'; break;
-            case '\"': *j++ = '\\'; *j++ = '\"'; break;
-            case '\\': *j++ = '\\'; *j++ = '\\'; break;
-            case '/': *j++ = '\\'; *j++ = '/'; break;
-            default: 
-                if (*i <= 0x1F) {
+        } else {
+            switch (*i) {
+                case '\b': *j++ = '\\'; *j++ = 'b'; break;
+                case '\f': *j++ = '\\'; *j++ = 'f'; break;
+                case '\n': *j++ = '\\'; *j++ = 'n'; break;
+                case '\r': *j++ = '\\'; *j++ = 'r'; break;
+                case '\t': *j++ = '\\'; *j++ = 't'; break;
+                case '\"': *j++ = '\\'; *j++ = '\"'; break;
+                case '\\': *j++ = '\\'; *j++ = '\\'; break;
+                case '/': *j++ = '\\'; *j++ = '/'; break;
+                default: 
                     *j++ = '\\';
                     *j++ = 'u';
                     *j++ = '0';
                     *j++ = '0';
                     *j++ = DEC2HEX[*i >> 4];
                     *j++ = DEC2HEX[*i & 0xF];
-                } else {
-                    *j++ = *i;
-                }
+            }
         }
     }
     *j++ = '\"'; // end quote

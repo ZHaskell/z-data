@@ -40,9 +40,8 @@ module Z.Data.Builder.Base
   , buildBytesList
   , buildBytesListWith
     -- * Basic buiders
-  , bytes -- hexBytes, hexBytesUpper
+  , bytes
   , ensureN
-  , atMost
   , writeN
    -- * Pritimive builders
   , encodePrim
@@ -52,14 +51,11 @@ module Z.Data.Builder.Base
   , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, string8, char8, text
   -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
-  -- * Hex helpers
-  , hexEncodeBytes, hs_hex_encode, hs_hex_encode_upper
   ) where
 
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Data.Bits                          (unsafeShiftL, unsafeShiftR, (.&.))
-import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
 import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
@@ -92,7 +88,7 @@ freezeBuffer (Buffer buf offset) = do
 type BuildStep = Buffer -> IO BuildResult
 
 -- | 'BuildSignal's abstract signals to the caller of a 'BuildStep'. There are
--- three signals: 'done', 'bufferFull', or 'insertChunks signals
+-- three signals: 'Done', 'BufferFull', or 'InsertBytes' signals
 data BuildResult
     = Done {-# UNPACK #-} !Buffer
     | BufferFull {-# UNPACK #-} !Buffer {-# UNPACK #-} !Int BuildStep
@@ -175,20 +171,14 @@ stringModifiedUTF8 = mapM_ charModifiedUTF8
 charModifiedUTF8 :: Char -> Builder ()
 {-# INLINE charModifiedUTF8 #-}
 charModifiedUTF8 chr = do
-    ensureN 4
-    Builder (\ k (Buffer mba i) -> do
-        i' <- T.encodeCharModifiedUTF8 mba i chr
-        k () (Buffer mba i'))
+    ensureN 4 (\ mba i -> T.encodeCharModifiedUTF8 mba i chr)
 
 packAddrModified :: Addr# -> Builder ()
 packAddrModified addr0# = copy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
     copy addr# = do
-        ensureN len
-        Builder (\ k (Buffer mba i) -> do
-           copyPtrToMutablePrimArray mba i (Ptr addr#) len
-           k () (Buffer mba (i + len)))
+        writeN len (\ mba i -> copyPtrToMutablePrimArray mba i (Ptr addr#) len)
 
 append :: Builder a -> Builder b -> Builder b
 {-# INLINE append #-}
@@ -205,16 +195,7 @@ bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
     then do
         A.copyPrimArray buf offset arr s l
         k () (Buffer buf (offset+l))
-    else return (InsertBytes buffer bs (k ())))
-
--- | Ensure that there are at least @n@ many elements available.
-ensureN :: Int -> Builder ()
-{-# INLINE ensureN #-}
-ensureN !n = Builder (\ k buffer@(Buffer buf offset) -> do
-    siz <- A.getSizeofMutablePrimArray buf
-    if siz - offset >= n
-    then k () buffer
-    else return (BufferFull buffer n (k ())))
+    else return (InsertBytes buffer bs (k ()))) -- ^ bytes should be copied in outer handling
 
 --------------------------------------------------------------------------------
 
@@ -266,7 +247,7 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
             return (reverse (v : acc))
         BufferFull buffer@(Buffer buf offset) wantSiz k -> do
             let !siz' = max chunkSiz wantSiz
-            buf' <- A.resizeMutablePrimArray buf siz'   -- new buffer
+            buf' <- A.newPrimArray siz'   -- new buffer
             if (offset == 0)
             then loop acc =<< k (Buffer buf' 0)
             else do
@@ -277,7 +258,7 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
             then loop (v : acc) =<< k buffer
             else do
                 !v' <- freezeBuffer buffer
-                buf' <- A.resizeMutablePrimArray buf chunkSiz   -- new buffer
+                buf' <- A.newPrimArray chunkSiz   -- new buffer
                 if (l < chunkSiz `unsafeShiftR` 1)
                 then do
                     A.copyPrimArray buf' 0 arr s l
@@ -286,23 +267,29 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
 
 --------------------------------------------------------------------------------
 
-atMost :: Int  -- ^ size bound
+ensureN :: Int  -- ^ size bound
        -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which pure a new offset
                                                                        -- for next write
        -> Builder ()
-{-# INLINE atMost #-}
-atMost n f = ensureN n `append`
-    Builder (\ k (Buffer buf offset ) ->
-        f buf offset >>= \ offset' -> k () (Buffer buf offset'))
+{-# INLINE ensureN #-}
+ensureN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
+    siz <- A.getSizeofMutablePrimArray buf
+    if n + offset <= siz
+    then f buf offset >>= \ offset' -> k () (Buffer buf offset')
+    else return (BufferFull buffer n (\ (Buffer buf' offset') -> do
+        f buf' offset' >>= \ offset'' -> k () (Buffer buf' offset''))))
 
 writeN :: Int  -- ^ size bound
        -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer which pure a new offset
                                                                     -- for next write
        -> Builder ()
 {-# INLINE writeN #-}
-writeN n f = ensureN n `append`
-    Builder (\ k (Buffer buf offset ) ->
-        f buf offset >> k () (Buffer buf (offset+n)))
+writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
+    siz <- A.getSizeofMutablePrimArray buf
+    if n + offset <= siz
+    then f buf offset >> k () (Buffer buf (offset+n))
+    else return (BufferFull buffer n (\ (Buffer buf' offset') -> do
+        f buf' offset' >> k () (Buffer buf' (offset'+n)))))
 
 -- | write primitive types in host byte order.
 encodePrim :: forall a. Unaligned a => a -> Builder ()
@@ -318,10 +305,7 @@ encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrim :: Int16 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrim :: Int8 -> Builder () #-}
 encodePrim x = do
-    ensureN n
-    Builder (\ k (Buffer mpa i) -> do
-        writePrimWord8ArrayAs mpa i x
-        k () (Buffer mpa (i + n)))
+    writeN n (\ mpa i -> writePrimWord8ArrayAs mpa i x)
   where
     n = unalignedSize (undefined :: a)
 
@@ -377,10 +361,7 @@ packASCIIAddr addr0# = copy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
     copy addr# = do
-        ensureN len
-        Builder (\ k (Buffer mba i) -> do
-           copyPtrToMutablePrimArray mba i (Ptr addr#) len
-           k () (Buffer mba (i + len)))
+        writeN len (\ mba i -> copyPtrToMutablePrimArray mba i (Ptr addr#) len)
 
 packUTF8Addr :: Addr# -> Builder ()
 packUTF8Addr addr0# = validateAndCopy addr0#
@@ -390,10 +371,7 @@ packUTF8Addr addr0# = validateAndCopy addr0#
     validateAndCopy addr#
         | valid == 0 = mapM_ charUTF8 (unpackCString# addr#)
         | otherwise = do
-            ensureN len
-            Builder (\ k (Buffer mba i) -> do
-               copyPtrToMutablePrimArray mba i (Ptr addr#) len
-               k () (Buffer mba (i + len)))
+            writeN len (\ mba i -> copyPtrToMutablePrimArray mba i (Ptr addr#) len)
 
 -- | Turn 'Char' into 'Builder' with UTF8 encoding
 --
@@ -401,10 +379,7 @@ packUTF8Addr addr0# = validateAndCopy addr0#
 charUTF8 :: Char -> Builder ()
 {-# INLINE charUTF8 #-}
 charUTF8 chr = do
-    ensureN 4
-    Builder (\ k (Buffer mba i) -> do
-        i' <- T.encodeChar mba i chr
-        k () (Buffer mba i'))
+    ensureN 4 (\ mba i -> T.encodeChar mba i chr)
 
 -- | Turn 'String' into 'Builder' with ASCII7 encoding
 --
@@ -419,11 +394,7 @@ string7 = mapM_ char7
 char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
 char7 chr = do
-    ensureN 1
-    Builder (\ k (Buffer mpa i) -> do
-        let x = V.c2w chr .&. 0x7F
-        writePrimWord8ArrayAs mpa i x
-        k () (Buffer mpa (i+1)))
+    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (V.c2w chr .&. 0x7F))
 
 -- | Turn 'String' into 'Builder' with ASCII8 encoding
 --
@@ -442,11 +413,7 @@ string8 = mapM_ char8
 char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
 char8 chr = do
-    ensureN 1
-    Builder (\ k (Buffer mpa i) -> do
-        let x = V.c2w chr
-        writePrimWord8ArrayAs mpa i x
-        k () (Buffer mpa (i+1)))
+    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (V.c2w chr))
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --
@@ -554,15 +521,3 @@ intercalateList s f xs = go xs
     go [x] = f x
     go (x:xs') = f x >> s >> go xs'
 
--- | Encode 'V.Bytes' using hex(base16) encoding.
-hexEncodeBytes :: Bool      -- ^ uppercase?
-               -> V.Bytes -> V.Bytes
-hexEncodeBytes upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
-    allocPrimVectorUnsafe (l `unsafeShiftL` 1) $ \ buf# ->
-        withPrimArrayUnsafe arr $ \ parr _ ->
-            if upper
-            then hs_hex_encode_upper buf# 0 parr s l
-            else hs_hex_encode buf# 0 parr s l
-
-foreign import ccall unsafe hs_hex_encode :: MBA# Word8 -> Int -> BA# Word8 -> Int -> Int -> IO ()
-foreign import ccall unsafe hs_hex_encode_upper :: MBA# Word8 -> Int -> BA# Word8 -> Int -> Int -> IO ()

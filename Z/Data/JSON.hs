@@ -71,6 +71,8 @@ similar to aeson's.
     import qualified Z.Data.Text          as T
     import qualified Z.Data.Vector        as V
     import qualified Z.Data.Builder       as B
+    import qualified Z.Data.JSON          as JSON
+    import           Z.Data.JSON          ((.:), kv, FromValue(..), ToValue(..), EncodeJSON(..))
 
     data Person = Person { name :: T.Text , age  :: Int } deriving Show
 
@@ -83,10 +85,10 @@ similar to aeson's.
         toValue (Person n a) = JSON.Object $ V.pack [(\"name\", toValue n),(\"age\", toValue a)]
 
     instance EncodeJSON Person where
-        encodeJSON (Person n a) = B.curly $ do
-            B.quotes \"name\" >> B.colon >> encodeJSON n
-            B.comma
-            B.quotes \"age\" >> B.colon >> encodeJSON a
+        encodeJSON (Person n a) = B.curly . JSON.commaSepList $ [
+              \"name\" `kv` string n
+            , \"age\" `kv` B.int a
+            ]
 
     > toValue (Person \"Joe\" 12)
     Object [(\"name\",String \"Joe\"),(\"age\",Number 12.0)]
@@ -130,6 +132,11 @@ module Z.Data.JSON
   , EncodeJSON(..)
   , defaultSettings, Settings(..), snakeCase, trainCase
   , gToValue, gFromValue, gEncodeJSON
+  -- * Helper for manually writing encoders
+  , kv, kv'
+  , string
+  , commaSepList
+  , commaSepVec
   ) where
 
 

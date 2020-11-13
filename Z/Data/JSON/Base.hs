@@ -37,9 +37,11 @@ module Z.Data.JSON.Base
   , Field, GWriteFields(..), GMergeFields(..), GConstrToValue(..)
   , LookupTable, GFromFields(..), GBuildLookup(..), GConstrFromValue(..)
   , GAddPunctuation(..), GConstrEncodeJSON(..)
-  -- * Internal Helper
-  , commaList'
-  , commaVec'
+  -- * Helper for manually writing encoders
+  , JB.kv, JB.kv'
+  , JB.string
+  , commaSepList
+  , commaSepVec
   ) where
 
 import           Control.Applicative
@@ -88,7 +90,6 @@ import qualified Z.Data.JSON.Builder        as JB
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Parser.Numeric      as P
 import qualified Z.Data.Text                as T
-import qualified Z.Data.Text.HexBytes       as T
 import qualified Z.Data.Text.ShowT          as T
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Extra        as V
@@ -484,14 +485,14 @@ convertFieldMaybe' p obj key = case FM.lookup key obj of
 --------------------------------------------------------------------------------
 
 -- | Use @,@ as separator to connect list of builders.
-commaList' :: EncodeJSON a => [a] -> B.Builder ()
-{-# INLINE commaList' #-}
-commaList' = B.intercalateList B.comma encodeJSON
+commaSepList :: EncodeJSON a => [a] -> B.Builder ()
+{-# INLINE commaSepList #-}
+commaSepList = B.intercalateList B.comma encodeJSON
 
 -- | Use @,@ as separator to connect a vector of builders.
-commaVec' :: (EncodeJSON a, V.Vec v a) => v a ->  B.Builder ()
-{-# INLINE commaVec' #-}
-commaVec' = B.intercalateVec B.comma encodeJSON
+commaSepVec :: (EncodeJSON a, V.Vec v a) => v a ->  B.Builder ()
+{-# INLINE commaSepVec #-}
+commaSepVec = B.intercalateVec B.comma encodeJSON
 
 --------------------------------------------------------------------------------
 
@@ -805,6 +806,7 @@ instance (GBuildLookup a, GBuildLookup b) => GBuildLookup (a :*: b) where
 instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
     {-# INLINE gBuildLookup #-}
     gBuildLookup _ siz name (Array v)
+        -- we have to check size here to use 'unsafeIndexM' later
         | siz' /= siz = fail' . T.buildText $ do
             "converting "
             T.text name
@@ -818,18 +820,9 @@ instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
 
 instance GBuildLookup (S1 ((MetaSel (Just l) u ss ds)) f) where
     {-# INLINE gBuildLookup #-}
-    gBuildLookup _ siz name (Object v)
-        | siz' /= siz = fail' . T.buildText $ do
-            "converting "
-            T.text name
-            " failed, product size mismatch, expected "
-            T.int siz
-            ", get"
-            T.int siz'
-        | otherwise = pure m
-      where siz' = FM.size m
-            m = FM.packVectorR v
-    gBuildLookup _ _   name x       = typeMismatch name "Object" x
+    -- we don't check size, so that duplicated keys are preserved
+    gBuildLookup _ _ _ (Object v) = pure $! FM.packVectorR v
+    gBuildLookup _ _ name x       = typeMismatch name "Object" x
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -909,22 +902,10 @@ instance FromValue T.Text   where {{-# INLINE fromValue #-}; fromValue = withTex
 instance ToValue T.Text     where {{-# INLINE toValue #-}; toValue = String;}
 instance EncodeJSON T.Text where {{-# INLINE encodeJSON #-}; encodeJSON = JB.string;}
 
+-- | Note this instance doesn't reject large input
 instance FromValue Scientific where {{-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;}
 instance ToValue Scientific where {{-# INLINE toValue #-}; toValue = Number;}
-instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = B.scientific;}
-
-instance FromValue T.HexBytes where
-    {-# INLINE fromValue #-}
-    fromValue = withText "Z.Data.Text.HexBytes" $ \ t ->
-        case T.hexDecodeText t of
-            Just bs -> return (T.HexBytes bs)
-            Nothing -> fail' "illegal hex encoding bytes"
-instance ToValue T.HexBytes where
-    {-# INLINE toValue #-}
-    toValue (T.HexBytes bs) = String (T.hexEncodeUpperText bs)
-instance EncodeJSON T.HexBytes where
-    {-# INLINE encodeJSON #-}
-    encodeJSON (T.HexBytes bs) = B.hexBytesUpper bs
+instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = JB.scientific;}
 
 -- | default instance prefer later key
 instance FromValue a => FromValue (FM.FlatMap T.Text a) where
@@ -1005,7 +986,7 @@ instance ToValue a => ToValue (A.Array a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (A.Array a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue a => FromValue (A.SmallArray a) where
     {-# INLINE fromValue #-}
@@ -1016,7 +997,7 @@ instance ToValue a => ToValue (A.SmallArray a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (A.SmallArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Prim a, FromValue a) => FromValue (A.PrimArray a) where
     {-# INLINE fromValue #-}
@@ -1027,7 +1008,7 @@ instance (Prim a, ToValue a) => ToValue (A.PrimArray a) where
     toValue = Array . V.map toValue
 instance (Prim a, EncodeJSON a) => EncodeJSON (A.PrimArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue A.ByteArray where
     {-# INLINE fromValue #-}
@@ -1043,7 +1024,7 @@ instance ToValue A.ByteArray where
 instance EncodeJSON A.ByteArray where
     {-# INLINE encodeJSON #-}
     encodeJSON (A.ByteArray ba#) =
-        B.square (commaVec' (A.PrimArray ba# :: A.PrimArray Word8))
+        B.square (commaSepVec (A.PrimArray ba# :: A.PrimArray Word8))
 
 instance (A.PrimUnlifted a, FromValue a) => FromValue (A.UnliftedArray a) where
     {-# INLINE fromValue #-}
@@ -1054,7 +1035,7 @@ instance (A.PrimUnlifted a, ToValue a) => ToValue (A.UnliftedArray a) where
     toValue = Array . V.map toValue
 instance (A.PrimUnlifted a, EncodeJSON a) => EncodeJSON (A.UnliftedArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue a => FromValue (V.Vector a) where
     {-# INLINE fromValue #-}
@@ -1065,7 +1046,7 @@ instance ToValue a => ToValue (V.Vector a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (V.Vector a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Prim a, FromValue a) => FromValue (V.PrimVector a) where
     {-# INLINE fromValue #-}
@@ -1076,7 +1057,7 @@ instance (Prim a, ToValue a) => ToValue (V.PrimVector a) where
     toValue = Array . V.map toValue
 instance (Prim a, EncodeJSON a) => EncodeJSON (V.PrimVector a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Eq a, Hashable a, FromValue a) => FromValue (HS.HashSet a) where
     {-# INLINE fromValue #-}
@@ -1099,7 +1080,7 @@ instance ToValue a => ToValue [a] where
     toValue = Array . V.pack . map toValue
 instance EncodeJSON a => EncodeJSON [a] where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaList'
+    encodeJSON = B.square . commaSepList
 
 instance FromValue a => FromValue (NonEmpty a) where
     {-# INLINE fromValue #-}

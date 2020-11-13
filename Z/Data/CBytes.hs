@@ -229,7 +229,7 @@ instance JSON.EncodeJSON CBytes where
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t -> JSON.encodeJSON t
-        Nothing -> B.square . JSON.commaVec' . toBytes $ cbytes
+        Nothing -> B.square . JSON.commaSepVec . toBytes $ cbytes
 
 -- | Concatenate two 'CBytes'.
 append :: CBytes -> CBytes -> CBytes

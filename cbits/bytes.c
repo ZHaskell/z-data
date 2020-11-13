@@ -232,14 +232,10 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
         const uint8_t hi = HEX_TO_BIN[input[i++]];
         const uint8_t lo = HEX_TO_BIN[input[i++]];
         if((hi | lo) & 0xF0) { 
-            if (hi & 0xF0) {
-                return 1-i;
-            } else {
-                return -i;
-            }
+            return -1;
         }
         else {
-         *(output++) = hi << 4 | lo;
+            *(output++) = hi << 4 | lo;
         }
     }
     return 0;

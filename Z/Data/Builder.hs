@@ -21,9 +21,8 @@ module Z.Data.Builder
   , buildBytesList
   , buildBytesListWith
     -- * Basic buiders
-  , bytes, hexBytes, hexBytesUpper
+  , bytes
   , ensureN
-  , atMost
   , writeN
    -- * Pritimive builders
   , encodePrim

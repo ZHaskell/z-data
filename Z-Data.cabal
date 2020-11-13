@@ -79,11 +79,11 @@ library
                             Z.Data.Vector.FlatIntSet
                             Z.Data.Vector.FlatMap
                             Z.Data.Vector.FlatSet
+                            Z.Data.Vector.Hex
 
                             Z.Data.Text
                             Z.Data.Text.Base
                             Z.Data.Text.Extra
-                            Z.Data.Text.HexBytes
                             Z.Data.Text.Search
                             Z.Data.Text.ShowT
                             Z.Data.Text.UTF8Codec
@@ -222,7 +222,6 @@ test-suite Z-Data-Test
                             Z.Data.Parser.NumericSpec
                             Z.Data.Array.UnalignedSpec
                             Z.Data.Text.BaseSpec
-                            Z.Data.Text.HexBytesSpec
                             Z.Data.Text.ExtraSpec
                             Z.Data.Text.SearchSpec
                             Z.Data.Text.ShowTSpec
@@ -232,6 +231,7 @@ test-suite Z-Data-Test
                             Z.Data.Vector.SortSpec
                             Z.Data.Vector.FlatMapSpec
                             Z.Data.Vector.FlatSetSpec
+                            Z.Data.Vector.HexSpec
                             Z.ForeignSpec
 
     build-depends:          Z-Data
