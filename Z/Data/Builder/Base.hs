@@ -195,7 +195,7 @@ bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
     then do
         A.copyPrimArray buf offset arr s l
         k () (Buffer buf (offset+l))
-    else return (InsertBytes buffer bs (k ()))) -- ^ bytes should be copied in outer handling
+    else return (InsertBytes buffer bs (k ()))) -- bytes should be copied in outer handling
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
         Done buffer -> do
             !v <- freezeBuffer buffer
             return (reverse (v : acc))
-        BufferFull buffer@(Buffer buf offset) wantSiz k -> do
+        BufferFull buffer@(Buffer _ offset) wantSiz k -> do
             let !siz' = max chunkSiz wantSiz
             buf' <- A.newPrimArray siz'   -- new buffer
             if (offset == 0)
@@ -253,7 +253,7 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
             else do
                 !v <- freezeBuffer buffer
                 loop (v : acc) =<< k (Buffer buf' 0)
-        InsertBytes buffer@(Buffer buf offset) v@(V.PrimVector arr s l) k -> do
+        InsertBytes buffer@(Buffer _ offset) v@(V.PrimVector arr s l) k -> do
             if (offset == 0)
             then loop (v : acc) =<< k buffer
             else do
