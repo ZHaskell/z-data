@@ -9,21 +9,16 @@ Stability   : experimental
 Portability : non-portable
 
 A 'Builder' records a buffer writing function, which can be 'mappend' in O(1) via composition.
-In Z-Data a 'Builder' are designed to deal with different 'AllocateStrategy', it affects how
-'Builder' react when writing across buffer boundaries:
 
-  * When building a short strict 'Bytes' with 'buildBytes'\/'buildByteswith',
-    we do a 'DoubleBuffer'.
+  * When building a short strict 'Bytes' with 'buildBytes'\/'buildBytesWith', we double the buffer
+    each time buffer is full.
 
-  * When building a large lazy @[Bytes]@ with 'buildBytesList'\/'buildBytesListwith',
-    we do an 'InsertChunk'.
+  * When building a large lazy @[Bytes]@ with 'buildBytesList'\/'buildBytesListWith',
+    we insert a new chunk when buffer is full.
 
-  * When building and consuming are interlaced with 'buildAndRun'\/'buildAndRunWith',
-    we do an 'OneShotAction'.
 
 Most of the time using combinators from this module to build 'Builder' s is enough,
-but in case of rolling something shining from the ground, keep an eye on correct
-'AllocateStrategy' handling.
+but in case of rolling something shining from the ground, keep an eye on correct 'BuildResult' handling.
 
 -}
 
@@ -31,7 +26,7 @@ module Z.Data.Builder.Base
   ( -- * Builder type
     Builder(..)
   , append
-  , Buffer(..)
+  , Buffer(..), freezeBuffer
   , BuildResult(..)
   , BuildStep
    -- * Running a builder
@@ -78,6 +73,10 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 data Buffer = Buffer {-# UNPACK #-} !(MutablePrimArray RealWorld Word8)  -- ^ the buffer content
                      {-# UNPACK #-} !Int  -- ^ writing offset
 
+-- | Freeze buffer and return a 'V.Bytes'.
+--
+-- Note the mutable buffer array will be shrinked with 'shrinkMutablePrimArray', which may not
+-- able to be reused.
 freezeBuffer :: Buffer -> IO V.Bytes
 {-# INLINE freezeBuffer #-}
 freezeBuffer (Buffer buf offset) = do
@@ -106,8 +105,7 @@ data BuildResult
 -- * @\\NUL@ will be written as @\xC0 \x80@.
 -- * @\\xD800@ ~ @\\xDFFF@ will be encoded in three bytes as normal UTF-8 codepoints.
 --
-newtype Builder a = Builder
-    { runBuilder :: (a -> BuildStep) -> BuildStep }
+newtype Builder a = Builder { runBuilder :: (a -> BuildStep) -> BuildStep }
 
 instance Show (Builder a) where
     show = show . buildBytes
@@ -221,7 +219,7 @@ unsafeBuildText :: Builder a -> T.Text
 {-# INLINE unsafeBuildText #-}
 unsafeBuildText = T.Text . buildBytesWith V.defaultInitSize
 
--- | Run Builder with 'DoubleBuffer' strategy, which is suitable
+-- | Run Builder with doubling buffer strategy, which is suitable
 -- for building short bytes.
 buildBytesWith :: Int -> Builder a -> V.Bytes
 {-# INLINABLE buildBytesWith #-}
@@ -250,8 +248,8 @@ buildBytesList :: Builder a -> [V.Bytes]
 {-# INLINE buildBytesList #-}
 buildBytesList = buildBytesListWith  V.smallChunkSize V.defaultChunkSize
 
--- | Run Builder with 'InsertChunk' strategy, which is suitable
--- for building lazy bytes chunks.
+-- | Run Builder with inserting chunk strategy, which is suitable
+-- for building a list of bytes chunks and processing them in a streaming ways.
 buildBytesListWith :: Int -> Int -> Builder a -> [V.Bytes]
 {-# INLINABLE buildBytesListWith #-}
 buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
@@ -285,8 +283,8 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
 --------------------------------------------------------------------------------
 
 ensureN :: Int  -- ^ size bound
-       -> (MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which pure a new offset
-                                                                       -- for next write
+       -> (MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which return a new offset
+                                                               -- for next write
        -> Builder ()
 {-# INLINE ensureN #-}
 ensureN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
@@ -297,8 +295,7 @@ ensureN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
         f buf' offset' >>= \ offset'' -> k () (Buffer buf' offset''))))
 
 writeN :: Int  -- ^ size bound
-       -> (MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer which pure a new offset
-                                                                    -- for next write
+       -> (MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer should write exactly N bytes
        -> Builder ()
 {-# INLINE writeN #-}
 writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
@@ -308,7 +305,7 @@ writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
     else return (BufferFull buffer n (\ (Buffer buf' offset') -> do
         f buf' offset' >> k () (Buffer buf' (offset'+n)))))
 
--- | write primitive types in host byte order.
+-- | Write a primitive type in host byte order.
 encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# INLINE encodePrim #-}
 {-# SPECIALIZE INLINE encodePrim :: Word -> Builder () #-}
@@ -326,7 +323,7 @@ encodePrim x = do
   where
     n = unalignedSize (undefined :: a)
 
--- | write primitive types with little endianess.
+-- | Write a primitive type with little endianess.
 encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
 {-# INLINE encodePrimLE #-}
 {-# SPECIALIZE INLINE encodePrimLE :: Word -> Builder () #-}
@@ -339,7 +336,7 @@ encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrimLE :: Int16 -> Builder () #-}
 encodePrimLE = encodePrim . LE
 
--- | write primitive types with big endianess.
+-- | Write a primitive type with big endianess.
 encodePrimBE :: forall a. Unaligned (BE a) => a -> Builder ()
 {-# INLINE encodePrimBE #-}
 {-# SPECIALIZE INLINE encodePrimBE :: Word -> Builder () #-}

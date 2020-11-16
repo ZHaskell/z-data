@@ -23,7 +23,7 @@ module Z.Data.Vector.FlatIntSet
   , delete
   , insert
   , merge
-    -- * binary & linear search on vectors
+    -- * search on vectors
   , binarySearch
   ) where
 
@@ -149,9 +149,9 @@ insert :: Int -> FlatIntSet -> FlatIntSet
 insert v m@(FlatIntSet vec@(V.PrimVector arr s l)) =
     case binarySearch vec v of
         Left i -> FlatIntSet (V.create (l+1) (\ marr -> do
-            when (i>s) $ A.copyPrimArray marr 0 arr s (i-s)
+            when (i>0) $ A.copyPrimArray marr 0 arr s i
             A.writePrimArray marr i v
-            when (i<(s+l)) $ A.copyPrimArray marr (i+1) arr i (s+l-i)))
+            when (i<l) $ A.copyPrimArray marr (i+1) arr (i+s) (l-i)))
         Right _ -> m
 
 -- | /O(N)/ Delete a value.
@@ -161,10 +161,9 @@ delete v m@(FlatIntSet vec@(V.PrimVector arr s l)) =
     case binarySearch vec v of
         Left _ -> m
         Right i -> FlatIntSet $ V.create (l-1) (\ marr -> do
-            when (i>s) $ A.copyPrimArray marr 0 arr s (i-s)
-            let !end = s+l
-                !j = i+1
-            when (end > j) $ A.copyPrimArray marr 0 arr j (end-j))
+            when (i>0) $ A.copyPrimArray marr 0 arr s i
+            let i' = i+1
+            when (i'<l) $ A.copyPrimArray marr i arr (i'+s) (l-i'))
 
 -- | /O(n+m)/ Merge two 'FlatIntSet', prefer right value on value duplication.
 merge :: FlatIntSet -> FlatIntSet -> FlatIntSet

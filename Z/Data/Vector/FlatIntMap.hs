@@ -27,8 +27,7 @@ module Z.Data.Vector.FlatIntMap
     -- * fold and traverse
   , foldrWithKey, foldrWithKey', foldlWithKey, foldlWithKey', traverseWithKey
     -- * binary & linear search on vectors
-  , binarySearch
-  , linearSearch, linearSearchR
+  , linearSearch, linearSearchR, binarySearch
   ) where
 
 import           Control.DeepSeq
@@ -197,9 +196,9 @@ insert :: Int -> v -> FlatIntMap v -> FlatIntMap v
 insert k v (FlatIntMap vec@(V.Vector arr s l)) =
     case binarySearch vec k of
         Left i -> FlatIntMap (V.create (l+1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
+            when (i>0) $ A.copySmallArray marr 0 arr s i
             A.writeSmallArray marr i (V.IPair k v)
-            when (i<(s+l)) $ A.copySmallArray marr (i+1) arr i (s+l-i)))
+            when (i<l) $ A.copySmallArray marr (i+1) arr (i+s) (l-i)))
         Right i -> FlatIntMap (V.Vector (runST (do
             let arr' = A.cloneSmallArray arr s l
             marr <- A.unsafeThawSmallArray arr'
@@ -213,10 +212,9 @@ delete k m@(FlatIntMap vec@(V.Vector arr s l)) =
     case binarySearch vec k of
         Left _  -> m
         Right i -> FlatIntMap $ V.create (l-1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
-            let !end = s+l
-                !j = i+1
-            when (end > j) $ A.copySmallArray marr 0 arr j (end-j))
+            when (i>0) $ A.copySmallArray marr 0 arr s i
+            let i' = i+1
+            when (i'<l) $ A.copySmallArray marr i arr (i'+s) (l-i'))
 
 -- | /O(N)/ Modify a value by key.
 --
@@ -228,7 +226,7 @@ adjust' f k m@(FlatIntMap vec@(V.Vector arr s l)) =
         Left _  -> m
         Right i -> FlatIntMap $ V.create l (\ marr -> do
             A.copySmallArray marr 0 arr s l
-            let !v' = f (V.isnd (A.indexSmallArray arr i))
+            let !v' = f (V.isnd (A.indexSmallArray arr (i+s)))
             A.writeSmallArray marr i (V.IPair k v'))
 
 -- | /O(n+m)/ Merge two 'FlatIntMap', prefer right value on key duplication.

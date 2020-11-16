@@ -23,7 +23,7 @@ module Z.Data.Vector.FlatSet
   , delete
   , insert
   , merge
-    -- * binary & linear search on vectors
+    -- * search on vectors
   , binarySearch
   ) where
 
@@ -149,9 +149,9 @@ insert :: Ord v => v -> FlatSet v -> FlatSet v
 insert v m@(FlatSet vec@(V.Vector arr s l)) =
     case binarySearch vec v of
         Left i -> FlatSet (V.create (l+1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
+            when (i>0) $ A.copySmallArray marr 0 arr s i
             A.writeSmallArray marr i v
-            when (i<(s+l)) $ A.copySmallArray marr (i+1) arr i (s+l-i)))
+            when (i<l) $ A.copySmallArray marr (i+1) arr (i+s) (l-i)))
         Right _ -> m
 
 -- | /O(N)/ Delete a value from set.
@@ -161,10 +161,9 @@ delete v m@(FlatSet vec@(V.Vector arr s l)) =
     case binarySearch vec v of
         Left _ -> m
         Right i -> FlatSet $ V.create (l-1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
-            let !end = s+l
-                !j = i+1
-            when (end > j) $ A.copySmallArray marr 0 arr j (end-j))
+            when (i>0) $ A.copySmallArray marr 0 arr s i
+            let i' = i+1
+            when (i'<l) $ A.copySmallArray marr i arr (i'+s) (l-i'))
 
 -- | /O(n+m)/ Merge two 'FlatSet', prefer right value on value duplication.
 merge :: forall v . Ord v => FlatSet v -> FlatSet v -> FlatSet v
@@ -196,7 +195,7 @@ merge fmL@(FlatSet (V.Vector arrL sL lL)) fmR@(FlatSet (V.Vector arrR sR lR))
 
 --------------------------------------------------------------------------------
 
--- | Find the value's index in the vector slice, if value exists return 'Right',
+-- | Find the value's index in the vector, if value exists return 'Right',
 -- otherwise 'Left', i.e. the insert index
 --
 -- This function only works on ascending sorted vectors.
@@ -208,13 +207,13 @@ binarySearch (V.Vector arr s0 l) !v' = go s0 (s0+l-1)
     go !s !e
         | s == e =
             let v = arr `A.indexSmallArray` s
-            in case v' `compare` v of LT -> Left s
-                                      GT -> let !s' = s+1 in Left s'
-                                      _  -> Right s
+            in case v' `compare` v of LT -> Left (s-s0)
+                                      GT -> let !s' = s+1 in Left (s'-s0)
+                                      _  -> Right (s-s0)
         | s >  e = Left s
         | otherwise =
             let !mid = (s+e) `shiftR` 1
                 v = arr `A.indexSmallArray` mid
             in case v' `compare` v of LT -> go s (mid-1)
                                       GT -> go (mid+1) e
-                                      _  -> Right mid
+                                      _  -> Right (mid-s0)
