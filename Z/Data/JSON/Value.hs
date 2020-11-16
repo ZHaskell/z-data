@@ -91,7 +91,8 @@ data Value = Object {-# UNPACK #-} !(V.Vector (T.Text, Value))
            | Number {-# UNPACK #-} !Scientific
            | Bool   !Bool
            | Null
-         deriving (Eq, Show, Typeable, Generic, ShowT)
+         deriving (Eq, Show, Typeable, Generic)
+         deriving anyclass ShowT
 
 instance NFData Value where
     {-# INLINE rnf #-}

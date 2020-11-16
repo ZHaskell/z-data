@@ -10,53 +10,45 @@
 
 HsInt ascii_validate(const char* p, HsInt off, HsInt len){
     const char* q = p + off;
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(q, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_ascii_fast(q, (size_t)len);
 #else
     return (HsInt)ascii_u64(q, (size_t)len);
-#endif
 #endif
 }
 // for some reason unknown, on windows we have to supply a seperated version of ascii_validate
 // otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
 HsInt ascii_validate_addr(const char* p, HsInt len){
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(p, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_ascii_fast(p, (size_t)len);
 #else
     return (HsInt)ascii_u64(p, (size_t)len);
-#endif
 #endif
 }
 
 HsInt utf8_validate(const char* p, HsInt off, HsInt len){
     const char* q = p + off;
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(q, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_utf8_fast(q, (size_t)len);
 #else
     return utf8_validate_slow(q, (size_t)len);
-#endif
 #endif
 }
 // for some reason unknown, on windows we have to supply a seperated version of utf8_validate
 // otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
 HsInt utf8_validate_addr(const char* p, HsInt len){
-#ifdef __AVX2__
+#if defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(p, (size_t)len);
-#else
-#ifdef __SSE2__
+#elif defined(__SSE2__)
     return (HsInt)validate_utf8_fast(p, (size_t)len);
 #else
     return utf8_validate_slow(p, (size_t)len);
-#endif
 #endif
 }
 
@@ -309,27 +301,38 @@ HsInt find_json_string_end(uint32_t* state, const unsigned char* ba, HsInt offse
     return (-1);
 }
 
+/* rfc8259
+ The representation of strings is similar to conventions used in the C
+ family of programming languages.  A string begins and ends with
+ quotation marks.  All Unicode characters may be placed within the
+ quotation marks, except for the characters that MUST be escaped:
+ quotation mark, reverse solidus, and the control characters (U+0000
+ through U+001F).
+*/
+static const int escape_char_length[256] =
+  { 6,6,6,6,6,6,6,6,2,2,2,6,2,2,6,6,
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+
 HsInt escape_json_string_length(const unsigned char *src, HsInt srcoff, HsInt srclen){
     HsInt rv = 2; // for start and end quotes 
     const unsigned char *i = src + srcoff;
     const unsigned char *srcend = i + srclen;
     for (; i < srcend; i++) {
-        switch (*i) {
-            case '\b': rv += 2; break;
-            case '\f': rv += 2; break;
-            case '\n': rv += 2; break;
-            case '\r': rv += 2; break;
-            case '\t': rv += 2; break;
-            case '\"': rv += 2; break;
-            case '\\': rv += 2; break;
-            case '/': rv += 2; break;
-            default:
-                if (*i <= 0x1F) {
-                    rv += 6;
-                } else {
-                    rv += 1;
-                }
-        }
+        rv += escape_char_length[*i];
     }
     return rv;
 }
@@ -344,26 +347,29 @@ HsInt escape_json_string(const unsigned char *src, HsInt srcoff, HsInt srclen, u
     unsigned char *j = dest + desoff;
     *j++ = '\"'; // start quote
     for (; i < srcend; i++){
-        switch (*i) {
-            case '\b': *j++ = '\\'; *j++ = 'b'; break;
-            case '\f': *j++ = '\\'; *j++ = 'f'; break;
-            case '\n': *j++ = '\\'; *j++ = 'n'; break;
-            case '\r': *j++ = '\\'; *j++ = 'r'; break;
-            case '\t': *j++ = '\\'; *j++ = 't'; break;
-            case '\"': *j++ = '\\'; *j++ = '\"'; break;
-            case '\\': *j++ = '\\'; *j++ = '\\'; break;
-            case '/': *j++ = '\\'; *j++ = '/'; break;
-            default: 
-                if (*i <= 0x1F) {
+        if (escape_char_length[*i] == 1) {
+            *j++ = *i;
+        } else {
+            switch (*i) {
+                case '\"': *j++ = '\\'; *j++ = '\"'; break;
+                case '\\': *j++ = '\\'; *j++ = '\\'; break;
+                case '\b': *j++ = '\\'; *j++ = 'b'; break;
+                case '\f': *j++ = '\\'; *j++ = 'f'; break;
+                case '\n': *j++ = '\\'; *j++ = 'n'; break;
+                case '\r': *j++ = '\\'; *j++ = 'r'; break;
+                case '\t': *j++ = '\\'; *j++ = 't'; break;
+                // case '/': *j++ = '\\'; *j++ = '/'; break;
+                // see note above, solidus is not required to be escaped by rfc8259
+                // it often appears in JSON(URL strings..)
+                // for performance consideration it's omitted 
+                default: 
                     *j++ = '\\';
                     *j++ = 'u';
                     *j++ = '0';
                     *j++ = '0';
                     *j++ = DEC2HEX[*i >> 4];
                     *j++ = DEC2HEX[*i & 0xF];
-                } else {
-                    *j++ = *i;
-                }
+            }
         }
     }
     *j++ = '\"'; // end quote
@@ -500,3 +506,4 @@ HsInt utf8_totitle_length(const char* p, HsInt off, HsInt len, size_t locale){
 HsInt utf8_iscategory(const char* p, HsInt off, HsInt len, size_t flags){
     return (HsInt)utf8iscategory(p+off, len, flags);
 }
+

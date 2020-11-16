@@ -47,10 +47,10 @@ newtype FlatSet v = FlatSet { sortedValues :: V.Vector v }
     deriving (Show, Eq, Ord, Typeable, Foldable)
 
 instance T.ShowT v => T.ShowT (FlatSet v) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p (FlatSet vec) = T.parenWhen (p > 10) $ do
-        T.unsafeFromBuilder "FlatSet {"
-        T.intercalateVec T.comma (T.toTextBuilder 0) vec
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (FlatSet vec) = T.parenWhen (p > 10) $ do
+        "FlatSet{"
+        T.intercalateVec T.comma T.toUTF8Builder vec
         T.char7 '}'
 
 instance Ord v => Semigroup.Semigroup (FlatSet v) where

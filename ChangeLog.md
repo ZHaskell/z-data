@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.1.8.1  -- 2020-10-23
+
+* Add `Z.Data.Text.HexBytes` module.
+
 ## 0.1.8.0  -- 2020-10-23
 
 * Rename `ascii` to `vecASCII` in `Z.Data.Vector.QQ` to match array QQ.

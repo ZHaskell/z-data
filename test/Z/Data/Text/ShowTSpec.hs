@@ -39,21 +39,21 @@ spec :: Spec
 spec = describe "JSON Base instances" $ do
 
     it "Nullary constructor are encoded as text" $
-        showT (Nullary :: T Integer) === "Nullary"
+        toText (Nullary :: T Integer) === "Nullary"
 
     it "Unary constructor are encoded as single field" $
-        showT (Unary 123456 :: T Integer) === "Unary 123456"
+        toText (Unary 123456 :: T Integer) === "Unary 123456"
 
     it "Product are encoded as multiple field" $
-        showT (Product "ABC" (Just 'x') (123456::Integer)) ===
+        toText (Product "ABC" (Just 'x') (123456::Integer)) ===
             "Product \"ABC\" (Just 'x') 123456"
 
     it "Record are encoded as key values" $
-        showT (Record 0.123456 Nothing (Just (123456::Integer))) ===
+        toText (Record 0.123456 Nothing (Just (123456::Integer))) ===
             "Record {testOne = 0.123456, testTwo = Nothing, testThree = Just 123456}"
 
     it "List are encode as array" $
-        showT (List [Nullary
+        toText (List [Nullary
             , Unary 123456
             , (Product "ABC" (Just 'x') (123456::Integer))
             , (Record 0.123456 Nothing (Just (123456::Integer)))]) ===

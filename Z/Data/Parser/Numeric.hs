@@ -44,6 +44,8 @@ import           Data.Int
 import qualified Data.Scientific          as Sci
 import           Data.Word
 import qualified Z.Data.Builder.Numeric as B
+import           Z.Data.Builder.Numeric (pattern PLUS, pattern MINUS, pattern ZERO,
+                                         pattern DOT, pattern LITTLE_E, pattern BIG_E)
 import           Z.Data.Parser.Base     (Parser, (<?>))
 import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
@@ -52,12 +54,6 @@ import qualified Z.Data.Vector.Extra    as V
 #define WORD64_MAX_DIGITS_LEN 19
 #define INT64_MAX_DIGITS_LEN 18
 
-#define PLUS     43
-#define MINUS    45
-#define DOT      46
-#define LITTLE_E 101
-#define BIG_E    69
-#define C_0 48
 
 -- | Parse and decode an unsigned hex number, fail in case of overflow. The hex digits
 -- @\'a\'@ through @\'f\'@ may be upper or lower case.
@@ -409,7 +405,7 @@ scientificallyInternal' h = do
     !sign <- P.peek
     when (sign == MINUS) (P.skipWord8) -- no leading plus is allowed
     !intPart <- P.takeWhile1 isDigit
-    when (V.length intPart > 1 && V.head intPart == C_0) (P.fail' "leading zeros are not allowed")
+    when (V.length intPart > 1 && V.head intPart == ZERO) (P.fail' "leading zeros are not allowed")
     mdot <- P.peekMaybe
     !sci <- case mdot of
         Just DOT -> do

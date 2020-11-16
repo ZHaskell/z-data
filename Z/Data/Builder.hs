@@ -20,12 +20,11 @@ module Z.Data.Builder
   , buildBytesWith
   , buildBytesList
   , buildBytesListWith
-  , buildAndRun
-  , buildAndRunWith
+  , buildText
+  , unsafeBuildText
     -- * Basic buiders
   , bytes
   , ensureN
-  , atMost
   , writeN
    -- * Pritimive builders
   , encodePrim
@@ -42,7 +41,7 @@ module Z.Data.Builder
   , intWith
   , integer
   -- ** Fixded size hexidecimal formatting
-  , hex, heX
+  , hex, hexUpper
   -- ** IEEE float formating
   , FFormat(..)
   , double
@@ -51,6 +50,14 @@ module Z.Data.Builder
   , floatWith
   , scientific
   , scientificWith
+  -- * Patterns
+  , pattern PLUS
+  , pattern MINUS
+  , pattern ZERO
+  , pattern SPACE
+  , pattern DOT
+  , pattern LITTLE_E
+  , pattern BIG_E
     -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
   ) where

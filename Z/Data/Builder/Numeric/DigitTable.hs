@@ -9,6 +9,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
+Internal module, provides lookup table for converting numeric value into ASCII bytes.
 -}
 module Z.Data.Builder.Numeric.DigitTable where
 

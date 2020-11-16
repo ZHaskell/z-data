@@ -36,9 +36,9 @@ encodeCharLength n
 -- | Encode a 'Char' into bytes, write 'replacementChar' for invalid unicode codepoint.
 --
 -- This function assumed there're enough space for encoded bytes, and return the advanced index.
-encodeChar :: MutablePrimArray s Word8 -> Int -> Char -> ST s Int
+encodeChar :: PrimMonad m => MutablePrimArray (PrimState m) Word8 -> Int -> Char -> m Int
 {-# INLINE encodeChar #-}
-encodeChar (MutablePrimArray mba#) (I# i#) (C# c#) = ST (\ s# ->
+encodeChar (MutablePrimArray mba#) (I# i#) (C# c#) = primitive (\ s# ->
     let !(# s1#, j# #) = encodeChar# mba# i# c# s# in (# s1#, I# j# #))
 
 -- | The unboxed version of 'encodeChar'.

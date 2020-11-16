@@ -67,7 +67,7 @@ import           Z.Data.Array.Cast
 import           Z.Data.Array.UnliftedArray
 
 
--- | Bottom value (@throw ('UndefinedElement' "Data.Array.uninitialized")@)
+-- | Bottom value (@throw ('UndefinedElement' 'Data.Array.uninitialized')@)
 -- for initialize new boxed array('Array', 'SmallArray'..).
 --
 uninitialized :: a
@@ -583,6 +583,6 @@ castArray :: (Arr arr a, Cast a b) => arr a -> arr b
 castArray = unsafeCoerce#
 
 
--- | Cast between arrays
+-- | Cast between mutable arrays
 castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#

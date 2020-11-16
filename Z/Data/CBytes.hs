@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-This module provide 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
+This module provides 'CBytes' with some useful instances \/ tools for retrieving, storing or processing
 short byte sequences, such as file path, environment variables, etc.
 
 -}
@@ -78,7 +78,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 -- interface, e.g. libuv do this when deal with file paths.
 --
 -- 'CBytes' don't support O(1) slicing, it's not suitable to use it to store large byte
--- chunk, If you need advance editing, convert 'CBytes' to 'V.Bytes' with 'CB' pattern or
+-- chunk, If you need advance editing, convert 'CBytes' to\/from 'V.Bytes' with 'CB' pattern or
 -- 'toBytes' \/ 'fromBytes', then use vector combinators.
 --
 -- When textual represatation is needed e.g. converting to 'String', 'T.Text', 'Show' instance, etc.,
@@ -195,9 +195,11 @@ instance Unaligned CBytes where
         return (CBytes pa))
 
 -- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
+--
+-- Escaping rule is same with 'String'.
 instance T.ShowT CBytes where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = T.stringUTF8 . show . unpack
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = T.stringUTF8 . show . unpack
 
 -- | JSON instances check if 'CBytes' is proper UTF8 encoded,
 -- if it is, decode/encode it as 'T.Text', otherwise as 'V.Bytes'.
@@ -229,7 +231,7 @@ instance JSON.EncodeJSON CBytes where
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t -> JSON.encodeJSON t
-        Nothing -> B.square . JSON.commaVec' . toBytes $ cbytes
+        Nothing -> B.square . JSON.commaSepVec . toBytes $ cbytes
 
 -- | Concatenate two 'CBytes'.
 append :: CBytes -> CBytes -> CBytes

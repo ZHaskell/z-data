@@ -46,6 +46,7 @@ import GHC.STRef (STRef(..))
 import GHC.Exts
 import GHC.IO.Unsafe
 
+-- | Types with 'GHC.Exts.TYPE' 'GHC.Exts.UnliftedRep', which can be stored \/ retrieved in 'ArrayArray#'.
 class PrimUnlifted a where
     writeUnliftedArray# :: MutableArrayArray# s -> Int# -> a -> State# s -> State# s
     readUnliftedArray# :: MutableArrayArray# s -> Int# -> State# s -> (# State# s, a #)
@@ -135,9 +136,11 @@ instance PrimUnlifted (IORef a) where
 
 --------------------------------------------------------------------------------
 
+-- | Mutable array holding 'PrimUnlifted' values.
 data MutableUnliftedArray s a
     = MutableUnliftedArray (MutableArrayArray# s)
 
+-- | Array holding 'PrimUnlifted' values.
 data UnliftedArray a
     = UnliftedArray ArrayArray#
 
