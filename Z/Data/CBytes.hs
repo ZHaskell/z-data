@@ -195,9 +195,11 @@ instance Unaligned CBytes where
         return (CBytes pa))
 
 -- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
+--
+-- Escaping rule is same with 'String'.
 instance T.ShowT CBytes where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = T.stringUTF8 . show . unpack
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = T.stringUTF8 . show . unpack
 
 -- | JSON instances check if 'CBytes' is proper UTF8 encoded,
 -- if it is, decode/encode it as 'T.Text', otherwise as 'V.Bytes'.

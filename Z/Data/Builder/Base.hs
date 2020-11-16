@@ -29,16 +29,18 @@ but in case of rolling something shining from the ground, keep an eye on correct
 
 module Z.Data.Builder.Base
   ( -- * Builder type
-    Buffer(..)
+    Builder(..)
+  , append
+  , Buffer(..)
   , BuildResult(..)
   , BuildStep
-  , Builder(..)
-  , append
    -- * Running a builder
   , buildBytes
   , buildBytesWith
   , buildBytesList
   , buildBytesListWith
+  , buildText
+  , unsafeBuildText
     -- * Basic buiders
   , bytes
   , ensureN
@@ -60,7 +62,8 @@ import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
 import           GHC.Exts
-import qualified Data.Primitive.PrimArray         as A
+import           GHC.Stack
+import           Data.Primitive.PrimArray
 import           Z.Data.Array.Unaligned
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Text.UTF8Codec            as T
@@ -72,15 +75,15 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
 -- | Helper type to help ghc unpack
 --
-data Buffer = Buffer {-# UNPACK #-} !(A.MutablePrimArray RealWorld Word8)  -- ^ the buffer content
+data Buffer = Buffer {-# UNPACK #-} !(MutablePrimArray RealWorld Word8)  -- ^ the buffer content
                      {-# UNPACK #-} !Int  -- ^ writing offset
 
 freezeBuffer :: Buffer -> IO V.Bytes
 {-# INLINE freezeBuffer #-}
 freezeBuffer (Buffer buf offset) = do
-    siz <- A.getSizeofMutablePrimArray buf
-    when (offset < siz) (A.shrinkMutablePrimArray buf offset)
-    !arr <- A.unsafeFreezePrimArray buf
+    siz <- getSizeofMutablePrimArray buf
+    when (offset < siz) (shrinkMutablePrimArray buf offset)
+    !arr <- unsafeFreezePrimArray buf
     return (V.PrimVector arr 0 offset)
 
 -- | @BuilderStep@ is a function that fill buffer under given conditions.
@@ -190,10 +193,10 @@ append (Builder f) (Builder g) = Builder (\ k -> f ( \ _ ->  g k))
 bytes :: V.Bytes -> Builder ()
 {-# INLINE bytes #-}
 bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
-    siz <- A.getSizeofMutablePrimArray buf
+    siz <- getSizeofMutablePrimArray buf
     if siz - offset >= l
     then do
-        A.copyPrimArray buf offset arr s l
+        copyPrimArray buf offset arr s l
         k () (Buffer buf (offset+l))
     else return (InsertBytes buffer bs (k ()))) -- bytes should be copied in outer handling
 
@@ -204,28 +207,42 @@ buildBytes :: Builder a -> V.Bytes
 {-# INLINE buildBytes #-}
 buildBytes = buildBytesWith V.defaultInitSize
 
+-- | Build some bytes and validate if it's UTF8 bytes.
+buildText :: HasCallStack => Builder a -> T.Text
+{-# INLINE buildText #-}
+buildText = T.validate . buildBytesWith V.defaultInitSize
+
+-- | Build some bytes assuming it's UTF8 encoding.
+--
+-- Be carefully use this function because you could constrcut illegal 'T.Text' values.
+-- Check 'Z.Data.Text.ShowT' for UTF8 encoding builders. This functions is intended to
+-- be used in debug only.
+unsafeBuildText :: Builder a -> T.Text
+{-# INLINE unsafeBuildText #-}
+unsafeBuildText = T.Text . buildBytesWith V.defaultInitSize
+
 -- | Run Builder with 'DoubleBuffer' strategy, which is suitable
 -- for building short bytes.
 buildBytesWith :: Int -> Builder a -> V.Bytes
 {-# INLINABLE buildBytesWith #-}
 buildBytesWith initSiz (Builder b) = unsafePerformIO $ do
-    buf <- A.newPrimArray initSiz
+    buf <- newPrimArray initSiz
     loop =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
     loop r = case r of
         Done buffer -> freezeBuffer buffer
         BufferFull (Buffer buf offset) wantSiz k -> do
-            !siz <- A.getSizeofMutablePrimArray buf
+            !siz <- getSizeofMutablePrimArray buf
             let !siz' = max (offset + wantSiz `unsafeShiftL` 1)
                             (siz `unsafeShiftL` 1)
-            buf' <- A.resizeMutablePrimArray buf siz'   -- grow buffer
+            buf' <- resizeMutablePrimArray buf siz'   -- grow buffer
             loop =<< k (Buffer buf' offset)
         InsertBytes (Buffer buf offset) (V.PrimVector arr s l) k -> do
-            !siz <- A.getSizeofMutablePrimArray buf
+            !siz <- getSizeofMutablePrimArray buf
             let !siz' = max (offset + l `unsafeShiftL` 1)
                             (siz `unsafeShiftL` 1)
-            buf' <- A.resizeMutablePrimArray buf siz'   -- grow buffer
-            A.copyPrimArray buf' offset arr s l
+            buf' <- resizeMutablePrimArray buf siz'   -- grow buffer
+            copyPrimArray buf' offset arr s l
             loop =<< k (Buffer buf' (offset+l))
 
 -- | Shortcut to 'buildBytesListWith' 'V.defaultChunkSize'.
@@ -238,7 +255,7 @@ buildBytesList = buildBytesListWith  V.smallChunkSize V.defaultChunkSize
 buildBytesListWith :: Int -> Int -> Builder a -> [V.Bytes]
 {-# INLINABLE buildBytesListWith #-}
 buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
-    buf <- A.newPrimArray initSiz
+    buf <- newPrimArray initSiz
     loop [] =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
     loop acc r = case r of
@@ -247,7 +264,7 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
             return (reverse (v : acc))
         BufferFull buffer@(Buffer _ offset) wantSiz k -> do
             let !siz' = max chunkSiz wantSiz
-            buf' <- A.newPrimArray siz'   -- new buffer
+            buf' <- newPrimArray siz'   -- new buffer
             if (offset == 0)
             then loop acc =<< k (Buffer buf' 0)
             else do
@@ -258,34 +275,34 @@ buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
             then loop (v : acc) =<< k buffer
             else do
                 !v' <- freezeBuffer buffer
-                buf' <- A.newPrimArray chunkSiz   -- new buffer
+                buf' <- newPrimArray chunkSiz   -- new buffer
                 if (l < chunkSiz `unsafeShiftR` 1)
                 then do
-                    A.copyPrimArray buf' 0 arr s l
+                    copyPrimArray buf' 0 arr s l
                     loop (v' : acc) =<< k (Buffer buf' l)
                 else loop (v : v' : acc) =<< k (Buffer buf' 0)
 
 --------------------------------------------------------------------------------
 
 ensureN :: Int  -- ^ size bound
-       -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which pure a new offset
+       -> (MutablePrimArray RealWorld Word8 -> Int -> IO Int)  -- ^ the writer which pure a new offset
                                                                        -- for next write
        -> Builder ()
 {-# INLINE ensureN #-}
 ensureN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
-    siz <- A.getSizeofMutablePrimArray buf
+    siz <- getSizeofMutablePrimArray buf
     if n + offset <= siz
     then f buf offset >>= \ offset' -> k () (Buffer buf offset')
     else return (BufferFull buffer n (\ (Buffer buf' offset') -> do
         f buf' offset' >>= \ offset'' -> k () (Buffer buf' offset''))))
 
 writeN :: Int  -- ^ size bound
-       -> (A.MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer which pure a new offset
+       -> (MutablePrimArray RealWorld Word8 -> Int -> IO ())  -- ^ the writer which pure a new offset
                                                                     -- for next write
        -> Builder ()
 {-# INLINE writeN #-}
 writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
-    siz <- A.getSizeofMutablePrimArray buf
+    siz <- getSizeofMutablePrimArray buf
     if n + offset <= siz
     then f buf offset >> k () (Buffer buf (offset+n))
     else return (BufferFull buffer n (\ (Buffer buf' offset') -> do

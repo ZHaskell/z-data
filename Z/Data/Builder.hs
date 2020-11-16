@@ -20,6 +20,8 @@ module Z.Data.Builder
   , buildBytesWith
   , buildBytesList
   , buildBytesListWith
+  , buildText
+  , unsafeBuildText
     -- * Basic buiders
   , bytes
   , ensureN

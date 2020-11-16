@@ -53,11 +53,29 @@ These rules apply to user defined ADTs, but some built-in instances have differe
 There're some modifying options if you providing a custom 'Settings', which allow you to modify field name or constructor name, but please don't produce control characters during your modification, since we assume field labels and constructor name won't contain them, thus we can save an extra escaping pass. To use constom 'Settings' just write:
 
 @
-    data T = T {fooBar :: Int, fooQux :: [Int]} deriving (Generic)
-    instance ToValue T where toValue = JSON.gToValue JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
+    {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DerivingStrategies #-}
+    import GHC.Generics
+    import qualified Z.Data.JSON as JSON
+    import qualified Z.Data.Text as T
+
+    data T = T {fooT :: Int, barT :: [Int]} deriving Generic
+    instance JSON.ToValue T where
+        -- You can omit following definition if you don't need to change settings
+        toValue = JSON.gToValue JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
+
+    -- define this instances if you need fast JSON encoding(without convert to JSON.Value first)
+    instance JSON.EncodeJSON T where
+        -- You can omit following definition if you don't need to change settings
+        encodeJSON = JSON.gEncodeJSON JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
 
     > JSON.toValue (T 0 [1,2,3])
-    Object [(\"foo_bar\",Number 0.0),(\"bar_qux\",Array [Number 1.0,Number 2.0,Number 3.0])]
+    Object [(\"foo_t\",Number 0.0),(\"bar_t\",Array [Number 1.0,Number 2.0,Number 3.0])]
+
+    data T2 = T2 {fooT2 :: Int, barT2 :: T.Text} deriving Generic
+                                                 deriving anyclass ( JSON.FromValue
+                                                                   , JSON.ToValue
+                                                                   , JSON.EncodeJSON)
+    >
 @
 
 = Write instances manually.
@@ -111,7 +129,7 @@ module Z.Data.JSON
   ( -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
-  , encodeBytes, encodeBytesList, encodeText, encodeTextBuilder
+  , encodeBytes, encodeBytesList, encodeText
     -- * Value type
   , Value(..)
     -- * parse into JSON Value

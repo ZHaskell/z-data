@@ -47,7 +47,8 @@ instance Show HexBytes where
     show (HexBytes bs) = T.unpack $ hexEncodeText True bs
 
 instance T.ShowT HexBytes where
-    toTextBuilder _ (HexBytes bs) = T.unsafeFromBuilder $ B.quotes (hexEncodeBuilder True bs)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (HexBytes bs) = B.quotes (hexEncodeBuilder True bs)
 
 instance JSON.FromValue HexBytes where
     {-# INLINE fromValue #-}
@@ -67,6 +68,7 @@ instance JSON.EncodeJSON HexBytes where
 -- | Encode 'V.Bytes' using hex(base16) encoding.
 hexEncode :: Bool   -- ^ uppercase?
           -> V.Bytes -> V.Bytes
+{-# INLINE hexEncode #-}
 hexEncode upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
     allocPrimVectorUnsafe (l `unsafeShiftL` 1) $ \ buf# ->
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -78,6 +80,7 @@ hexEncode upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
 -- | 'B.Builder' version of 'hexEncode'.
 hexEncodeBuilder :: Bool -- ^ upper case?
                  -> V.Bytes -> B.Builder ()
+{-# INLINE hexEncodeBuilder #-}
 hexEncodeBuilder upper (V.PrimVector arr s l) =
     B.writeN (l `unsafeShiftL` 1) (\ (MutablePrimArray mba#) i -> do
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -88,10 +91,12 @@ hexEncodeBuilder upper (V.PrimVector arr s l) =
 -- | Text version of 'hexEncode'.
 hexEncodeText :: Bool   -- ^ uppercase?
               -> V.Bytes -> T.Text
+{-# INLINE hexEncodeText #-}
 hexEncodeText upper = T.Text . hexEncode upper
 
 -- | Decode a hex encoding string, return Nothing on illegal bytes or incomplete input.
 hexDecode :: V.Bytes -> Maybe V.Bytes
+{-# INLINABLE hexDecode #-}
 hexDecode ba
     | V.length ba == 0 = Just V.empty
     | V.length ba .&. 1 == 1 = Nothing
@@ -111,6 +116,7 @@ instance Exception HexDecodeException
 
 -- | Decode a hex encoding string, throw 'HexDecodeException' on error.
 hexDecode' :: HasCallStack => V.Bytes -> V.Bytes
+{-# INLINABLE hexDecode' #-}
 hexDecode' ba
     | V.length ba == 0 = V.empty
     | V.length ba .&. 1 == 1 = throw (IncompleteHexBytes ba callStack)

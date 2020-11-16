@@ -54,11 +54,11 @@ newtype FlatMap k v = FlatMap { sortedKeyValues :: V.Vector (k, v) }
     deriving (Show, Eq, Ord, Typeable)
 
 instance (T.ShowT k, T.ShowT v) => T.ShowT (FlatMap k v) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p (FlatMap vec) = T.parenWhen (p > 10) $ do
-        T.unsafeFromBuilder "FlatMap {"
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (FlatMap vec) = T.parenWhen (p > 10) $ do
+        "FlatMap{"
         T.intercalateVec T.comma (\ (k, v) ->
-            T.toTextBuilder 0 k >> ":" >> T.toTextBuilder 0 v) vec
+            T.toUTF8Builder k >> T.char7 ':' >> T.toUTF8Builder v) vec
         T.char7 '}'
 
 instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (FlatMap k v) where

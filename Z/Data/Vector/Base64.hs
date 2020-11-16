@@ -49,7 +49,8 @@ instance Show Base64Bytes where
     show (Base64Bytes bs) = T.unpack $ base64EncodeText bs
 
 instance T.ShowT Base64Bytes where
-    toTextBuilder _ (Base64Bytes bs) = T.unsafeFromBuilder $ B.quotes (base64EncodeBuilder bs)
+    {-# INLINABLE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (Base64Bytes bs) = B.quotes (base64EncodeBuilder bs)
 
 instance JSON.FromValue Base64Bytes where
     {-# INLINE fromValue #-}
@@ -68,6 +69,7 @@ instance JSON.EncodeJSON Base64Bytes where
 
 -- | Encode 'V.Bytes' using base64 encoding.
 base64Encode :: V.Bytes -> V.Bytes
+{-# INLINABLE base64Encode #-}
 base64Encode (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
     allocPrimVectorUnsafe (base64EncodeLength l) $ \ buf# ->
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -75,10 +77,12 @@ base64Encode (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
 
 -- | Return the encoded length of a given input length, always a multipler of 4.
 base64EncodeLength :: Int -> Int
+{-# INLINABLE base64EncodeLength #-}
 base64EncodeLength n = ((n+2) `quot` 3) `unsafeShiftL` 2
 
 -- | 'B.Builder' version of 'base64Encode'.
 base64EncodeBuilder :: V.Bytes -> B.Builder ()
+{-# INLINABLE base64EncodeBuilder #-}
 base64EncodeBuilder (V.PrimVector arr s l) =
     B.writeN (base64EncodeLength l) (\ (MutablePrimArray mba#) i -> do
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -86,10 +90,12 @@ base64EncodeBuilder (V.PrimVector arr s l) =
 
 -- | Text version of 'base64Encode'.
 base64EncodeText :: V.Bytes -> T.Text
+{-# INLINABLE base64EncodeText #-}
 base64EncodeText = T.Text . base64Encode
 
 -- | Decode a base64 encoding string, return Nothing on illegal bytes or incomplete input.
 base64Decode :: V.Bytes -> Maybe V.Bytes
+{-# INLINABLE base64Decode #-}
 base64Decode ba
     | inputLen == 0 = Just V.empty
     | decodeLen == -1 = Nothing
@@ -112,6 +118,7 @@ instance Exception Base64DecodeException
 
 -- | Decode a base64 encoding string, throw 'Base64DecodeException' on error.
 base64Decode' :: HasCallStack => V.Bytes -> V.Bytes
+{-# INLINABLE base64Decode' #-}
 base64Decode' ba
     | inputLen == 0 = V.empty
     | decodeLen == -1 = throw (IncompleteBase64Bytes ba callStack)
@@ -129,6 +136,7 @@ base64Decode' ba
 -- | Return the upper bound of decoded length of a given input length
 -- , return -1 if illegal(not a multipler of 4).
 base64DecodeLength :: Int -> Int
+{-# INLINABLE base64DecodeLength #-}
 base64DecodeLength n | n .&. 3 == 1 = -1
                      | otherwise = (n `unsafeShiftR` 2) * 3
 

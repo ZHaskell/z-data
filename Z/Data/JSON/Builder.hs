@@ -86,7 +86,7 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 --
 string :: T.Text -> B.Builder ()
 {-# INLINE string #-}
-string = T.getBuilder . T.escapeTextJSON
+string = T.escapeTextJSON
 
 -- | This builder try to render integer when (0 <= e < 1024), and scientific notation otherwise.
 scientific :: Scientific -> B.Builder ()

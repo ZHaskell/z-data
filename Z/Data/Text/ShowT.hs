@@ -7,44 +7,51 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-Base on UTF8 compatible textual builders from 'Z.Data.Builder', we provide a newtype wrapper
-'TextBuilder' which can be directly used to build 'Text'.
+This module re-exports some UTF8 compatible textual builders from 'Z.Data.Builder'.
 
-We also provide faster alternative to 'Show' class, i.e. 'ShowT', which also provides 'Generic'
-based instances deriving.
+We also provide a faster alternative to 'Show' class, i.e. 'ShowT', which can be deriving using 'Generic'.
+For example to use 'ShowT' class:
+
+@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DerivingStrategies #-}
+
+import qualified Z.Data.Text.ShowT as T
+
+data Foo = Bar Bytes | Qux Text Int deriving Generic
+                                    deriving anyclass T.ShowT
+
+@
 
 -}
 
 module Z.Data.Text.ShowT
   ( -- * ShowT class
-    ShowT(..), showT, toBuilder, toBytes, toString
-  -- * Textual Builder
-  , TextBuilder
-  , getBuilder
-  , unsafeFromBuilder
-  , buildText, buildBytes
+    ShowT(..), toText, toString, toUTF8Builder, toUTF8Bytes
   -- * Basic UTF8 builders
-  , stringUTF8, charUTF8, string7, char7, text, escapeTextJSON
+  , escapeTextJSON
+  , B.stringUTF8, B.charUTF8, B.string7, B.char7, B.text
   -- * Numeric builders
   -- ** Integral type formatting
   , B.IFormat(..)
   , B.defaultIFormat
   , B.Padding(..)
-  , int
-  , intWith
-  , integer
+  , B.int
+  , B.intWith
+  , B.integer
   -- ** Fixded size hexidecimal formatting
-  , hex, hexUpper
+  , B.hex, B.hexUpper
   -- ** IEEE float formating
   , B.FFormat(..)
-  , double
-  , doubleWith
-  , float
-  , floatWith
-  , scientific
-  , scientificWith
-  -- * Builder helpers
-  , paren, parenWhen, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
+  , B.double
+  , B.doubleWith
+  , B.float
+  , B.floatWith
+  , B.scientific
+  , B.scientificWith
+  -- * Helpers
+  , B.paren, B.curly, B.square, B.angle, B.quotes, B.squotes
+  , B.colon, B.comma, B.intercalateVec, B.intercalateList
+  , parenWhen
   ) where
 
 import           Control.Monad
@@ -86,246 +93,9 @@ import qualified Z.Data.Vector.Base             as V
 
 #define DOUBLE_QUOTE 34
 
--- | Buidlers which guarantee UTF-8 encoding, thus can be used to build
--- text directly.
---
--- Notes on 'IsString' instance: It's recommended to use 'IsString' instance, there's a rewrite rule to
--- turn encoding loop into a memcpy, which is much faster (the same rule also apply to 'stringUTF8').
--- Different from @Builder ()@, @TextBuilder ()@'s 'IsString' instance will give you desired UTF8 guarantees:
---
--- * @\NUL@ will be written directly as @\x00@.
---
--- * @\xD800@ ~ @\xDFFF@ will be replaced by replacement char.
---
-newtype TextBuilder a = TextBuilder { getBuilder :: B.Builder a }
-    deriving newtype (Functor, Applicative, Monad)
-
-deriving newtype instance Semigroup (TextBuilder ())
-deriving newtype instance Monoid (TextBuilder ())
-
-instance (a ~ ()) => IsString (TextBuilder a) where
-    {-# INLINE fromString #-}
-    fromString = TextBuilder <$> B.stringUTF8
-
-instance Arbitrary (TextBuilder ()) where
-    arbitrary = TextBuilder . B.text <$> arbitrary
-    shrink b = TextBuilder . B.text <$> shrink (buildText b)
-
-instance CoArbitrary (TextBuilder ()) where
-    coarbitrary = coarbitrary . buildText
-
-instance Show (TextBuilder a) where
-    show = show . buildText
-
-instance ShowT (TextBuilder a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ b = quotes (void b)
-
--- | Build a 'Text' using 'TextBuilder', which provide UTF-8 encoding guarantee.
-buildText :: TextBuilder a -> Text
-{-# INLINE buildText #-}
-buildText = Text . B.buildBytes . getBuilder
-
--- | Build a 'Bytes' using 'TextBuilder', which provide UTF-8 encoding guarantee.
-buildBytes :: TextBuilder a -> V.Bytes
-{-# INLINE buildBytes #-}
-buildBytes = B.buildBytes . getBuilder
-
--- | Unsafely turn a 'B.Builder' into 'TextBuilder', thus it's user's responsibility to
--- ensure only UTF-8 complied bytes are written.
-unsafeFromBuilder :: B.Builder a -> TextBuilder a
-{-# INLINE unsafeFromBuilder #-}
-unsafeFromBuilder = TextBuilder
-
---------------------------------------------------------------------------------
-
--- | Turn 'String' into 'TextBuilder' with UTF8 encoding
---
--- Illegal codepoints will be written as 'T.replacementChar's. This function will be rewritten into a memcpy if possible, (running a fast UTF-8 validation at runtime first).
-stringUTF8 :: String -> TextBuilder ()
-{-# INLINE stringUTF8 #-}
-stringUTF8 = TextBuilder . B.stringUTF8
-
--- | Turn 'Char' into 'TextBuilder' with UTF8 encoding
---
--- Illegal codepoints will be written as 'T.replacementChar's.
-charUTF8 :: Char -> TextBuilder ()
-{-# INLINE charUTF8 #-}
-charUTF8 = TextBuilder . B.charUTF8
-
--- | Turn 'String' into 'TextBuilder' with ASCII7 encoding
---
--- Codepoints beyond @'\x7F'@ will be chopped.
-string7 :: String -> TextBuilder ()
-{-# INLINE string7 #-}
-string7 = TextBuilder . B.string7
-
--- | Turn 'Char' into 'TextBuilder' with ASCII7 encoding
---
--- Codepoints beyond @'\x7F'@ will be chopped.
-char7 :: Char -> TextBuilder ()
-{-# INLINE char7 #-}
-char7 = TextBuilder . B.char7
-
--- | Write UTF8 encoded 'T.Text' using 'Builder'.
---
--- Note, if you're trying to write string literals builders,
--- please open 'OverloadedStrings' and use 'Builder's 'IsString' instance,
--- it will be rewritten into a memcpy.
-text :: T.Text -> TextBuilder ()
-{-# INLINE text #-}
-text = TextBuilder . B.text
-
---------------------------------------------------------------------------------
-
--- | @int = intWith defaultIFormat@
-int :: (Integral a, Bounded a) => a -> TextBuilder ()
-{-# INLINE int #-}
-int = TextBuilder . B.int
-
--- | Format a 'Bounded' 'Integral' type like @Int@ or @Word16@ into decimal ascii digits.
-intWith :: (Integral a, Bounded a)
-        => B.IFormat
-        -> a
-        -> TextBuilder ()
-{-# INLINE intWith #-}
-intWith fmt x = TextBuilder $ B.intWith fmt x
-
--- | Format a 'Integer' into decimal ascii digits.
-integer :: Integer -> TextBuilder ()
-{-# INLINE integer #-}
-integer = TextBuilder . B.integer
-
--- | Format a 'FiniteBits' 'Integral' type into hex nibbles.
-hex :: (FiniteBits a, Integral a) => a -> TextBuilder ()
-{-# INLINE hex #-}
-hex = TextBuilder . B.hex
-
--- | The UPPERCASED version of 'hex'.
-hexUpper :: (FiniteBits a, Integral a) => a -> TextBuilder ()
-{-# INLINE hexUpper #-}
-hexUpper = TextBuilder . B.hexUpper
-
--- | Decimal encoding of an IEEE 'Float'.
---
--- Using standard decimal notation for arguments whose absolute value lies
--- between @0.1@ and @9,999,999@, and scientific notation otherwise.
-float :: Float -> TextBuilder ()
-{-# INLINE float #-}
-float = TextBuilder . B.float
-
--- | Format single-precision float using drisu3 with dragon4 fallback.
-floatWith :: B.FFormat
-          -> Maybe Int  -- ^ Number of decimal places to render.
-          -> Float
-          -> TextBuilder ()
-{-# INLINE floatWith #-}
-floatWith fmt ds x = TextBuilder (B.floatWith fmt ds x)
-
-
--- | Decimal encoding of an IEEE 'Double'.
---
--- Using standard decimal notation for arguments whose absolute value lies
--- between @0.1@ and @9,999,999@, and scientific notation otherwise.
-double :: Double -> TextBuilder ()
-{-# INLINE double #-}
-double = TextBuilder . B.double
-
--- | Format double-precision float using drisu3 with dragon4 fallback.
-doubleWith :: B.FFormat
-           -> Maybe Int  -- ^ Number of decimal places to render.
-           -> Double
-           -> TextBuilder ()
-{-# INLINE doubleWith #-}
-doubleWith fmt ds x = TextBuilder (B.doubleWith fmt ds x)
-
-
--- | A @Builder@ which renders a scientific number to full
--- precision, using standard decimal notation for arguments whose
--- absolute value lies between @0.1@ and @9,999,999@, and scientific
--- notation otherwise.
-scientific :: Sci.Scientific -> TextBuilder ()
-{-# INLINE scientific #-}
-scientific = TextBuilder . B.scientific
-
--- | Like 'scientific' but provides rendering options.
-scientificWith :: B.FFormat
-               -> Maybe Int  -- ^ Number of decimal places to render.
-               -> Sci.Scientific
-               -> TextBuilder ()
-{-# INLINE scientificWith #-}
-scientificWith fmt ds x = TextBuilder (B.scientificWith fmt ds x)
-
---------------------------------------------------------------------------------
-
--- | add @(...)@ to original builder.
-paren :: TextBuilder () -> TextBuilder ()
-{-# INLINE paren #-}
-paren (TextBuilder b) = TextBuilder (B.paren b)
-
--- | Add "(..)" around builders when condition is met, otherwise add nothing.
---
--- This is useful when defining 'ShowT' instances.
-parenWhen :: Bool -> TextBuilder () -> TextBuilder ()
-{-# INLINE parenWhen #-}
-parenWhen True b = paren b
-parenWhen _    b = b
-
--- | add @{...}@ to original builder.
-curly :: TextBuilder () -> TextBuilder ()
-{-# INLINE curly #-}
-curly (TextBuilder b) = TextBuilder (B.curly b)
-
--- | add @[...]@ to original builder.
-square :: TextBuilder () -> TextBuilder ()
-{-# INLINE square #-}
-square (TextBuilder b) = TextBuilder (B.square b)
-
--- | add @<...>@ to original builder.
-angle :: TextBuilder () -> TextBuilder ()
-{-# INLINE angle #-}
-angle (TextBuilder b) = TextBuilder (B.angle b)
-
--- | add @"..."@ to original builder.
-quotes :: TextBuilder () -> TextBuilder ()
-{-# INLINE quotes #-}
-quotes (TextBuilder b) = TextBuilder (B.quotes b)
-
--- | add @'...'@ to original builder.
-squotes :: TextBuilder () -> TextBuilder ()
-{-# INLINE squotes #-}
-squotes (TextBuilder b) = TextBuilder (B.squotes b)
-
--- | write an ASCII @:@
-colon ::  TextBuilder ()
-{-# INLINE colon #-}
-colon = TextBuilder B.colon
-
--- | write an ASCII @,@
-comma ::  TextBuilder ()
-{-# INLINE comma #-}
-comma = TextBuilder B.comma
-
--- | Use separator to connect a vector of builders.
-intercalateVec :: (V.Vec v a)
-               => TextBuilder ()            -- ^ the seperator
-               -> (a -> TextBuilder ())     -- ^ value formatter
-               -> v a                       -- ^ value list
-               ->  TextBuilder ()
-{-# INLINE intercalateVec #-}
-intercalateVec (TextBuilder s) f = TextBuilder . B.intercalateVec s (getBuilder . f)
-
--- | Use separator to connect a list of builders.
-intercalateList :: TextBuilder ()           -- ^ the seperator
-                -> (a -> TextBuilder ())    -- ^ value formatter
-                -> [a]                      -- ^ value vector
-                -> TextBuilder ()
-{-# INLINE intercalateList #-}
-intercalateList (TextBuilder s) f = TextBuilder . B.intercalateList s (getBuilder . f)
-
 --------------------------------------------------------------------------------
 -- Data types
---
+
 -- | A class similar to 'Show', serving the purpose that quickly convert a data type to a 'Text' value.
 --
 -- You can use newtype or generic deriving to implement instance of this class quickly:
@@ -341,155 +111,169 @@ intercalateList (TextBuilder s) f = TextBuilder . B.intercalateList s (getBuilde
 --  newtype FooInt = FooInt Int deriving (Generic)
 --                            deriving anyclass ShowT
 --
--- > showT (FooInt 3)
+-- > toText (FooInt 3)
 -- > "FooInt 3"
 --
 --  newtype FooInt = FooInt Int deriving (Generic)
 --                            deriving newtype ShowT
 --
--- > showT (FooInt 3)
+-- > toText (FooInt 3)
 -- > "3"
 -- @
 --
 class ShowT a where
-    toTextBuilder :: Int -> a  -> TextBuilder ()
-    default toTextBuilder :: (Generic a, GToText (Rep a)) => Int -> a -> TextBuilder ()
-    toTextBuilder p = gToTextBuilder p . from
+    -- | Convert data to 'B.Builder' with precendence.
+    --
+    -- You should return a 'B.Builder' writing in UTF8 encoding only, i.e.
+    --
+    -- @Z.Data.Text.validateMaybe (Z.Data.Builder.buildBytes (toUTF8BuilderP p a)) /= Nothing@
+    toUTF8BuilderP :: Int -> a  -> B.Builder ()
+
+    default toUTF8BuilderP :: (Generic a, GToText (Rep a)) => Int -> a -> B.Builder ()
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p = gToUTF8BuilderP p . from
+
+-- | Convert data to 'B.Builder'.
+toUTF8Builder :: ShowT a => a  -> B.Builder ()
+{-# INLINE toUTF8Builder #-}
+toUTF8Builder = toUTF8BuilderP 0
+
+-- | Convert data to 'V.Bytes' in UTF8 encoding.
+toUTF8Bytes :: ShowT a => a -> V.Bytes
+{-# INLINE toUTF8Bytes #-}
+toUTF8Bytes = B.buildBytes . toUTF8BuilderP 0
+
+-- | Convert data to 'Text'.
+toText :: ShowT a => a -> Text
+{-# INLINE toText #-}
+toText = Text . toUTF8Bytes
+
+-- | Convert data to 'String', faster 'show' replacement.
+toString :: ShowT a => a -> String
+{-# INLINE toString #-}
+toString = T.unpack . toText
 
 class GToText f where
-    gToTextBuilder :: Int -> f a -> TextBuilder ()
-
+    gToUTF8BuilderP :: Int -> f a -> B.Builder ()
 
 class GFieldToText f where
-    gFieldToTextBuilder :: B.Builder () -> Int -> f a -> B.Builder ()
+    gFieldToUTF8BuilderP :: B.Builder () -> Int -> f a -> B.Builder ()
 
 instance (GFieldToText a, GFieldToText b) => GFieldToText (a :*: b) where
-    {-# INLINE gFieldToTextBuilder #-}
-    gFieldToTextBuilder sep p (a :*: b) =
-        gFieldToTextBuilder sep p a >> sep >> gFieldToTextBuilder sep p b
+    {-# INLINE gFieldToUTF8BuilderP #-}
+    gFieldToUTF8BuilderP sep p (a :*: b) =
+        gFieldToUTF8BuilderP sep p a >> sep >> gFieldToUTF8BuilderP sep p b
 
 instance (GToText f) => GFieldToText (S1 (MetaSel Nothing u ss ds) f) where
-    {-# INLINE gFieldToTextBuilder #-}
-    gFieldToTextBuilder _ p (M1 x) = getBuilder (gToTextBuilder p x)
+    {-# INLINE gFieldToUTF8BuilderP #-}
+    gFieldToUTF8BuilderP _ p (M1 x) = gToUTF8BuilderP p x
 
 instance (GToText f, Selector (MetaSel (Just l) u ss ds)) => GFieldToText (S1 (MetaSel (Just l) u ss ds) f) where
-    {-# INLINE gFieldToTextBuilder #-}
-    gFieldToTextBuilder _ _ m1@(M1 x) =
-        B.stringModifiedUTF8 (selName m1) >> " = " >> getBuilder (gToTextBuilder 0 x)
+    {-# INLINE gFieldToUTF8BuilderP #-}
+    gFieldToUTF8BuilderP _ _ m1@(M1 x) =
+        B.stringModifiedUTF8 (selName m1) >> " = " >> gToUTF8BuilderP 0 x
 
 instance GToText V1 where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder _ = error "Z.Data.TextBuilder: empty data type"
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP _ = error "Z.Data.Text.ShowT: empty data type"
 
 instance (GToText f, GToText g) => GToText (f :+: g) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder p (L1 x) = gToTextBuilder p x
-    gToTextBuilder p (R1 x) = gToTextBuilder p x
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP p (L1 x) = gToUTF8BuilderP p x
+    gToUTF8BuilderP p (R1 x) = gToUTF8BuilderP p x
 
 -- | Constructor without payload, convert to String
 instance (Constructor c) => GToText (C1 c U1) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder _ m1 =
-        TextBuilder . B.stringModifiedUTF8 $ conName m1
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP _ m1 = B.stringModifiedUTF8 $ conName m1
 
 -- | Constructor with payloads
 instance (GFieldToText (S1 sc f), Constructor c) => GToText (C1 c (S1 sc f)) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder p m1@(M1 x) =
-        parenWhen (p > 10) . TextBuilder $ do
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP p m1@(M1 x) =
+        parenWhen (p > 10) $ do
             B.stringModifiedUTF8 $ conName m1
             B.char8 ' '
             if conIsRecord m1
-            then B.curly $ gFieldToTextBuilder (B.char7 ',' >> B.char7 ' ') p x
-            else gFieldToTextBuilder (B.char7 ' ') 11 x
+            then B.curly $ gFieldToUTF8BuilderP (B.char7 ',' >> B.char7 ' ') p x
+            else gFieldToUTF8BuilderP (B.char7 ' ') 11 x
 
 instance (GFieldToText (a :*: b), Constructor c) => GToText (C1 c (a :*: b)) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder p m1@(M1 x) =
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP p m1@(M1 x) =
         case conFixity m1 of
-            Prefix -> parenWhen (p > 10) . TextBuilder $ do
+            Prefix -> parenWhen (p > 10) $ do
                 B.stringModifiedUTF8 $ conName m1
                 B.char8 ' '
                 if conIsRecord m1
-                then B.curly $ gFieldToTextBuilder (B.char7 ',' >> B.char7 ' ') p x
-                else gFieldToTextBuilder (B.char7 ' ') 11 x
-            Infix _ p' -> parenWhen (p > p') . TextBuilder $ do
-                gFieldToTextBuilder
+                then B.curly $ gFieldToUTF8BuilderP (B.char7 ',' >> B.char7 ' ') p x
+                else gFieldToUTF8BuilderP (B.char7 ' ') 11 x
+            Infix _ p' -> parenWhen (p > p') $ do
+                gFieldToUTF8BuilderP
                     (B.char8 ' ' >> B.stringModifiedUTF8 (conName m1) >> B.char8 ' ') (p'+1) x
 
 instance ShowT a => GToText (K1 i a) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder p (K1 x) = toTextBuilder p x
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP p (K1 x) = toUTF8BuilderP p x
+
+-- | Add "(..)" around builders when condition is met, otherwise add nothing.
+--
+-- This is useful when defining 'ShowT' instances.
+parenWhen :: Bool -> B.Builder () -> B.Builder ()
+{-# INLINE parenWhen #-}
+parenWhen True b = B.paren b
+parenWhen _    b = b
 
 --------------------------------------------------------------------------------
 -- Data types
 instance GToText f => GToText (D1 c f) where
-    {-# INLINE gToTextBuilder #-}
-    gToTextBuilder p (M1 x) = gToTextBuilder p x
-
--- | Directly convert data to 'Text'.
-showT :: ShowT a => a -> Text
-{-# INLINE showT #-}
-showT = buildText .  toTextBuilder 0
-
--- | Directly convert data to 'B.Builder'.
-toBuilder :: ShowT a => a -> B.Builder ()
-{-# INLINE toBuilder #-}
-toBuilder = getBuilder . toTextBuilder 0
-
--- | Directly convert data to 'V.Bytes'.
-toBytes :: ShowT a => a -> V.Bytes
-{-# INLINE toBytes #-}
-toBytes = B.buildBytes .  toBuilder
-
--- | Faster 'show' replacement.
-toString :: ShowT a => a -> String
-{-# INLINE toString #-}
-toString = T.unpack . showT
+    {-# INLINE gToUTF8BuilderP #-}
+    gToUTF8BuilderP p (M1 x) = gToUTF8BuilderP p x
 
 instance ShowT Bool where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ True = TextBuilder "True"
-    toTextBuilder _ _    = TextBuilder "False"
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ True = "True"
+    toUTF8BuilderP _ _    = "False"
+
 
 instance ShowT Char where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = TextBuilder . B.string8 . show
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.string8 . show
 
-instance ShowT Double where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = double;}
-instance ShowT Float  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = float;}
+instance ShowT Double where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.double;}
+instance ShowT Float  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.float;}
 
-instance ShowT Int     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Int8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Int16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Int32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Int64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Word     where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Word8    where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Word16   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Word32   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
-instance ShowT Word64   where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = int;}
+instance ShowT Int     where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Int8    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Int16   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Int32   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Int64   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Word    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Word8   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Word16  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Word32  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance ShowT Word64  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 
-instance ShowT Integer  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer;}
-instance ShowT Natural  where {{-# INLINE toTextBuilder #-}; toTextBuilder _ = integer . fromIntegral}
+instance ShowT Integer  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer;}
+instance ShowT Natural  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer . fromIntegral}
 instance ShowT Ordering where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ GT = TextBuilder "GT"
-    toTextBuilder _ EQ = TextBuilder "EQ"
-    toTextBuilder _ _  = TextBuilder "LT"
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ GT = "GT"
+    toUTF8BuilderP _ EQ = "EQ"
+    toUTF8BuilderP _ _  = "LT"
 
 instance ShowT () where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ () = TextBuilder "()"
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ () = "()"
 
 instance ShowT Version where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = stringUTF8 . show
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.stringUTF8 . show
 
 -- | The escaping rules is same with 'Show' instance: we reuse JSON escaping rules here, so it will be faster.
 instance ShowT Text where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = escapeTextJSON
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = escapeTextJSON
 
 -- | Escape text using JSON string escaping rules and add double quotes, escaping rules:
 --
@@ -505,9 +289,9 @@ instance ShowT Text where
 --    other chars <= 0x1F: "\\u00XX"
 -- @
 --
-escapeTextJSON :: T.Text -> TextBuilder ()
+escapeTextJSON :: T.Text -> B.Builder ()
 {-# INLINE escapeTextJSON #-}
-escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = TextBuilder $ do
+escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
     let !siz = escape_json_string_length ba# s l
     B.writeN siz (\ mba@(MutablePrimArray mba#) i -> do
         if siz == l+2   -- no need to escape
@@ -524,108 +308,106 @@ foreign import ccall unsafe escape_json_string
     :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
 
 instance ShowT Sci.Scientific where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = scientific
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.scientific
 
 instance ShowT a => ShowT [a] where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateList comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateList B.comma (toUTF8BuilderP 0)
 
 instance ShowT a => ShowT (A.Array a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance ShowT a => ShowT (A.SmallArray a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance (A.PrimUnlifted a, ShowT a) => ShowT (A.UnliftedArray a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance (Prim a, ShowT a) => ShowT (A.PrimArray a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance ShowT a => ShowT (V.Vector a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance (Prim a, ShowT a) => ShowT (V.PrimVector a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = square . intercalateVec comma (toTextBuilder 0)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
 instance (ShowT a, ShowT b) => ShowT (a, b) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
 
 instance (ShowT a, ShowT b, ShowT c) => ShowT (a, b, c) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b, c) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
-                     >> comma >> toTextBuilder 0 c
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b, c) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
+                     >> B.comma >> toUTF8BuilderP 0 c
 
 instance (ShowT a, ShowT b, ShowT c, ShowT d) => ShowT (a, b, c, d) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b, c, d) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
-                     >> comma >> toTextBuilder 0 c
-                     >> comma >> toTextBuilder 0 d
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b, c, d) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
+                     >> B.comma >> toUTF8BuilderP 0 c
+                     >> B.comma >> toUTF8BuilderP 0 d
 
 instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e) => ShowT (a, b, c, d, e) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b, c, d, e) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
-                     >> comma >> toTextBuilder 0 c
-                     >> comma >> toTextBuilder 0 d
-                     >> comma >> toTextBuilder 0 e
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b, c, d, e) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
+                     >> B.comma >> toUTF8BuilderP 0 c
+                     >> B.comma >> toUTF8BuilderP 0 d
+                     >> B.comma >> toUTF8BuilderP 0 e
 
 instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f) => ShowT (a, b, c, d, e, f) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b, c, d, e, f) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
-                     >> comma >> toTextBuilder 0 c
-                     >> comma >> toTextBuilder 0 d
-                     >> comma >> toTextBuilder 0 e
-                     >> comma >> toTextBuilder 0 f
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b, c, d, e, f) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
+                     >> B.comma >> toUTF8BuilderP 0 c
+                     >> B.comma >> toUTF8BuilderP 0 d
+                     >> B.comma >> toUTF8BuilderP 0 e
+                     >> B.comma >> toUTF8BuilderP 0 f
 
 instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f, ShowT g) => ShowT (a, b, c, d, e, f, g) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (a, b, c, d, e, f, g) = paren $  toTextBuilder 0 a
-                     >> comma >> toTextBuilder 0 b
-                     >> comma >> toTextBuilder 0 c
-                     >> comma >> toTextBuilder 0 d
-                     >> comma >> toTextBuilder 0 e
-                     >> comma >> toTextBuilder 0 f
-                     >> comma >> toTextBuilder 0 g
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (a, b, c, d, e, f, g) = B.paren $  toUTF8BuilderP 0 a
+                     >> B.comma >> toUTF8BuilderP 0 b
+                     >> B.comma >> toUTF8BuilderP 0 c
+                     >> B.comma >> toUTF8BuilderP 0 d
+                     >> B.comma >> toUTF8BuilderP 0 e
+                     >> B.comma >> toUTF8BuilderP 0 f
+                     >> B.comma >> toUTF8BuilderP 0 g
 
 instance ShowT a => ShowT (Maybe a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p (Just x) = parenWhen (p > 10) $ do TextBuilder "Just "
-                                                       toTextBuilder 11 x
-    toTextBuilder _ _        = TextBuilder "Nothing"
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (Just x) = parenWhen (p > 10) $ "Just " >> toUTF8BuilderP 11 x
+    toUTF8BuilderP _ _        = "Nothing"
 
 instance (ShowT a, ShowT b) => ShowT (Either a b) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p (Left x) = parenWhen (p > 10) $ do TextBuilder "Left "
-                                                       toTextBuilder 11 x
-    toTextBuilder p (Right x) = parenWhen (p > 10) $ do TextBuilder "Right "
-                                                        toTextBuilder 11 x
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (Left x) = parenWhen (p > 10) $ "Left " >> toUTF8BuilderP 11 x
+    toUTF8BuilderP p (Right x) = parenWhen (p > 10) $ "Right " >> toUTF8BuilderP 11 x
 
 instance (ShowT a, Integral a) => ShowT (Ratio a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p r = parenWhen (p > 10) $ do toTextBuilder 8 (numerator r)
-                                                TextBuilder " % "
-                                                toTextBuilder 8 (denominator r)
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p r = parenWhen (p > 10) $ do
+        toUTF8BuilderP 8 (numerator r)
+        " % "
+        toUTF8BuilderP 8 (denominator r)
 
 instance HasResolution a => ShowT (Fixed a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = TextBuilder . B.string8 .  show
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.string8 .  show
 
 instance ShowT CallStack where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ = TextBuilder . B.string8 .  show
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.string8 .  show
 
 deriving newtype instance ShowT CChar
 deriving newtype instance ShowT CSChar
@@ -655,13 +437,13 @@ deriving newtype instance ShowT CFloat
 deriving newtype instance ShowT CDouble
 
 instance ShowT (Ptr a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (Ptr a) =
-        "0x" >> hex (W# (int2Word#(addr2Int# a)))
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (Ptr a) =
+        "0x" >> B.hex (W# (int2Word#(addr2Int# a)))
 instance ShowT (ForeignPtr a) where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder _ (ForeignPtr a _) =
-        "0x" >> hex (W# (int2Word#(addr2Int# a)))
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ (ForeignPtr a _) =
+        "0x" >> B.hex (W# (int2Word#(addr2Int# a)))
 
 deriving anyclass instance ShowT ExitCode
 
