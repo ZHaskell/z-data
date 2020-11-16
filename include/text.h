@@ -58,3 +58,4 @@ HsInt utf8_totitle(const char* p, HsInt off, HsInt len, char* q, HsInt len2, siz
 HsInt utf8_totitle_length(const char* p, HsInt off, HsInt len, size_t locale);
 
 HsInt utf8_iscategory(const char* p, HsInt off, HsInt len, size_t flags);
+

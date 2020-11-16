@@ -159,30 +159,30 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
         prop "hex roundtrip" $ \ i ->
             i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int8 i)
 
-    describe "heX roundtrip" $ do
+    describe "hexUpper roundtrip" $ do
 
         let read' s = read $ "0x" ++ s
 
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word64 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int64 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word32 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int32 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word16 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int16 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Word8 i)
-        prop "heX roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.heX @Int8 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word64 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int64 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word32 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int32 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word16 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int16 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word8 i)
+        prop "hexUpper roundtrip" $ \ i ->
+            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int8 i)
 
     describe "int === show" $ do
         prop "int === show" $ \ i ->
@@ -253,6 +253,17 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
         prop "doubleWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFExponent l i ===
                 (T.unpack . T.validate . B.buildBytes  $ B.doubleWith B.Exponent l i)
+
+    describe "scientificWith === formatScientific" $ do
+        prop "scientificWith === formatScientific" $ \ i (Positive l) ->
+            Sci.formatScientific Sci.Generic (Just l) i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Generic (Just l) i)
+        prop "scientificWith === formatScientific" $ \ i l ->
+            Sci.formatScientific Sci.Fixed l i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith  B.Fixed l i)
+        prop "scientificWith === formatScientific" $ \ i (Positive l) ->
+            Sci.formatScientific Sci.Exponent (Just l) i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Exponent (Just l) i)
 
     describe "grisu3, grisu3_sp === floatToDigits 10" $ do
         prop "grisu3 === floatToDigits" $ \ (Positive f) ->

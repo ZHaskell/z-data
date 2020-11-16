@@ -61,7 +61,7 @@ module Z.Data.Vector.Base (
   -- * Searching by equality
   , elem, notElem, elemIndex
   -- * Misc
-  , IPair(..), mapIPair'
+  , IPair(..), mapIPair', fromIPair, toIPair
   , defaultInitSize
   , chunkOverhead
   , defaultChunkSize
@@ -488,6 +488,7 @@ hashWithSaltBytes salt (PrimVector (PrimArray ba#) s l) =
 -- | 'Bytes' is just primitive word8 vectors.
 type Bytes = PrimVector Word8
 
+-- | This instance use 'packASCII', which may silently chop bytes, use it with ASCII literals only.
 instance (a ~ Word8) => IsString (PrimVector a) where
     {-# INLINE fromString #-}
     fromString = packASCII
@@ -528,7 +529,7 @@ w2c :: Word8 -> Char
 w2c (W8# w#) = C# (chr# (word2Int# w#))
 
 -- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
--- silently truncates to 8 bits Chars > '\255'. It is provided as
+-- silently truncates to 8 bits Chars > @\\255@. It is provided as
 -- convenience for PrimVector construction.
 c2w :: Char -> Word8
 {-# INLINE c2w #-}
@@ -554,10 +555,10 @@ create n0 fill = runST (do
 -- | Create a vector with a initial size N array (which may not be the final array).
 --
 create' :: Vec v a
-        => Int                                                      -- ^ length in elements of type @a@
-        -> (forall s. MArr (IArray v) s a -> ST s (IPair (MArr (IArray v) s a)))  -- ^ initialization function
-                                                                    --   return a result size and array
-                                                                    --   the result must start from index 0
+        => Int
+        -- ^ length in elements of type @a@
+        -> (forall s. MArr (IArray v) s a -> ST s (IPair (MArr (IArray v) s a)))
+        -- ^ initialization function return a result size and array, the result must start from index 0
         -> v a
 {-# INLINE create' #-}
 create' n0 fill = runST (do
@@ -1241,11 +1242,11 @@ elemIndexBytes w (PrimVector (PrimArray ba#) s l) =
 data IPair a = IPair { ifst :: {-# UNPACK #-}!Int, isnd :: a } deriving (Show, Eq, Ord)
 
 instance (Arbitrary v) => Arbitrary (IPair v) where
-    arbitrary = iPairFromTuple <$> arbitrary
-    shrink v = iPairFromTuple <$> shrink (iPairToTuple v)
+    arbitrary = toIPair <$> arbitrary
+    shrink v = toIPair <$> shrink (fromIPair v)
 
 instance (CoArbitrary v) => CoArbitrary (IPair v) where
-    coarbitrary = coarbitrary . iPairToTuple
+    coarbitrary = coarbitrary . fromIPair
 
 instance Functor IPair where
     {-# INLINE fmap #-}
@@ -1260,15 +1261,15 @@ mapIPair' :: (a -> b) -> IPair a -> IPair b
 {-# INLINE mapIPair' #-}
 mapIPair' f (IPair i v) = let !v' = f v in IPair i v'
 
-iPairToTuple :: IPair a -> (Int, a)
-{-# INLINE iPairToTuple #-}
-iPairToTuple (IPair i v) = (i, v)
+fromIPair :: IPair a -> (Int, a)
+{-# INLINE fromIPair #-}
+fromIPair (IPair i v) = (i, v)
 
-iPairFromTuple :: (Int, a) -> IPair a
-{-# INLINE iPairFromTuple #-}
-iPairFromTuple (i, v) = IPair i v
+toIPair :: (Int, a) -> IPair a
+{-# INLINE toIPair #-}
+toIPair (i, v) = IPair i v
 
--- | The chunk size used for I\/O. Currently set to @16k-chunkOverhead@
+-- | The chunk size used for I\/O. Currently set to @16k - chunkOverhead@
 defaultChunkSize :: Int
 {-# INLINE defaultChunkSize #-}
 defaultChunkSize = 16 * 1024 - chunkOverhead

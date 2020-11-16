@@ -4,3 +4,6 @@
 [submodule "third_party/utf8rewind"]
 	path = third_party/utf8rewind
 	url = git@github.com:haskell-Z/utf8rewind.git
+[submodule "third_party/Turbo-Base64"]
+	path = third_party/Turbo-Base64
+	url = git@github.com:haskell-Z/Turbo-Base64.git

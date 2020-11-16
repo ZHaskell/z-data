@@ -15,7 +15,8 @@ user define 'FromValue', 'ToValue' and 'EncodeJSON' instance.
 module Z.Data.JSON.Base
   ( -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks', encodeBytes, encodeText, encodeTextBuilder
+  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
+  , encodeBytes, encodeBytesList, encodeText
   -- * Re-export 'Value' type
   , Value(..)
     -- * parse into JSON Value
@@ -36,9 +37,11 @@ module Z.Data.JSON.Base
   , Field, GWriteFields(..), GMergeFields(..), GConstrToValue(..)
   , LookupTable, GFromFields(..), GBuildLookup(..), GConstrFromValue(..)
   , GAddPunctuation(..), GConstrEncodeJSON(..)
-  -- * Internal Helper
-  , commaList'
-  , commaVec'
+  -- * Helper for manually writing encoders
+  , JB.kv, JB.kv'
+  , JB.string
+  , commaSepList
+  , commaSepVec
   ) where
 
 import           Control.Applicative
@@ -86,7 +89,6 @@ import qualified Z.Data.JSON.Value          as JV
 import qualified Z.Data.JSON.Builder        as JB
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Parser.Numeric      as P
-import qualified Z.Data.Text.Base           as T
 import qualified Z.Data.Text                as T
 import qualified Z.Data.Text.ShowT          as T
 import qualified Z.Data.Vector.Base         as V
@@ -161,15 +163,15 @@ encodeBytes :: EncodeJSON a => a -> V.Bytes
 {-# INLINE encodeBytes #-}
 encodeBytes = B.buildBytes . encodeJSON
 
+-- | Encode data to JSON bytes chunks.
+encodeBytesList :: EncodeJSON a => a -> [V.Bytes]
+{-# INLINE encodeBytesList #-}
+encodeBytesList = B.buildBytesList . encodeJSON
+
 -- | Text version 'encodeBytes'.
 encodeText :: EncodeJSON a => a -> T.Text
 {-# INLINE encodeText #-}
-encodeText = T.buildText . encodeTextBuilder
-
--- | JSON Docs are guaranteed to be valid UTF-8 texts, so we provide this.
-encodeTextBuilder :: EncodeJSON a => a -> T.TextBuilder ()
-{-# INLINE encodeTextBuilder #-}
-encodeTextBuilder = T.unsafeFromBuilder . encodeJSON
+encodeText = T.Text . encodeBytes
 
 -- | Run a 'Converter' with input value.
 convert :: (a -> Converter r) -> a -> Either ConvertError r
@@ -195,18 +197,22 @@ data PathElement
         -- ^ path of a embedded (JSON) String
   deriving (Eq, Show, Typeable, Ord, Generic, NFData)
 
-data ConvertError = ConvertError { errPath :: [PathElement], errMsg :: T.Text } deriving (Eq, Ord, Generic, NFData)
+data ConvertError = ConvertError
+    { errPath :: [PathElement], errMsg :: T.Text }
+        deriving (Eq, Ord, Generic, NFData)
 
 instance Show ConvertError where
-    -- TODO use standard format
-    show (ConvertError paths msg) = T.unpack . T.buildText $ do
+    show = T.toString
+
+instance T.ShowT ConvertError where
+    toUTF8BuilderP _ (ConvertError paths msg) = do
         "<"
         mapM_ renderPath (reverse paths)
         "> "
         T.text msg
       where
         renderPath (Index ix) = T.char7 '[' >> T.int ix >> T.char7 ']'
-        renderPath (Key k) = T.char7 '.' >> (T.unsafeFromBuilder $ JB.string k)
+        renderPath (Key k) = T.char7 '.' >> (JB.string k)
         renderPath Embedded = "<Embedded>"
 
 -- | 'Converter' for convert result from JSON 'Value'.
@@ -346,7 +352,7 @@ withBoundedScientific :: T.Text -> (Scientific -> Converter a) -> Value ->  Conv
 {-# INLINE withBoundedScientific #-}
 withBoundedScientific name f (Number x)
     | e <= 1024 = f x
-    | otherwise = fail' . T.buildText $ do
+    | otherwise = fail' . B.unsafeBuildText $ do
         "converting "
         T.text name
         " failed, found a number with exponent "
@@ -362,7 +368,7 @@ withBoundedIntegral :: (Bounded a, Integral a) => T.Text -> (a -> Converter r) -
 withBoundedIntegral name f (Number x) =
     case toBoundedInteger x of
         Just i -> f i
-        _      -> fail' . T.buildText $ do
+        _      -> fail' . B.unsafeBuildText $ do
             "converting "
             T.text name
             "failed, value is either floating or will cause over or underflow: "
@@ -478,14 +484,14 @@ convertFieldMaybe' p obj key = case FM.lookup key obj of
 --------------------------------------------------------------------------------
 
 -- | Use @,@ as separator to connect list of builders.
-commaList' :: EncodeJSON a => [a] -> B.Builder ()
-{-# INLINE commaList' #-}
-commaList' = B.intercalateList B.comma encodeJSON
+commaSepList :: EncodeJSON a => [a] -> B.Builder ()
+{-# INLINE commaSepList #-}
+commaSepList = B.intercalateList B.comma encodeJSON
 
 -- | Use @,@ as separator to connect a vector of builders.
-commaVec' :: (EncodeJSON a, V.Vec v a) => v a ->  B.Builder ()
-{-# INLINE commaVec' #-}
-commaVec' = B.intercalateVec B.comma encodeJSON
+commaSepVec :: (EncodeJSON a, V.Vec v a) => v a ->  B.Builder ()
+{-# INLINE commaSepVec #-}
+commaSepVec = B.intercalateVec B.comma encodeJSON
 
 --------------------------------------------------------------------------------
 
@@ -799,7 +805,8 @@ instance (GBuildLookup a, GBuildLookup b) => GBuildLookup (a :*: b) where
 instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
     {-# INLINE gBuildLookup #-}
     gBuildLookup _ siz name (Array v)
-        | siz' /= siz = fail' . T.buildText $ do
+        -- we have to check size here to use 'unsafeIndexM' later
+        | siz' /= siz = fail' . B.unsafeBuildText $ do
             "converting "
             T.text name
             " failed, product size mismatch, expected "
@@ -812,18 +819,9 @@ instance GBuildLookup (S1 (MetaSel Nothing u ss ds) f) where
 
 instance GBuildLookup (S1 ((MetaSel (Just l) u ss ds)) f) where
     {-# INLINE gBuildLookup #-}
-    gBuildLookup _ siz name (Object v)
-        | siz' /= siz = fail' . T.buildText $ do
-            "converting "
-            T.text name
-            " failed, product size mismatch, expected "
-            T.int siz
-            ", get"
-            T.int siz'
-        | otherwise = pure m
-      where siz' = FM.size m
-            m = FM.packVectorR v
-    gBuildLookup _ _   name x       = typeMismatch name "Object" x
+    -- we don't check size, so that duplicated keys are preserved
+    gBuildLookup _ _ _ (Object v) = pure $! FM.packVectorR v
+    gBuildLookup _ _ name x       = typeMismatch name "Object" x
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -903,9 +901,10 @@ instance FromValue T.Text   where {{-# INLINE fromValue #-}; fromValue = withTex
 instance ToValue T.Text     where {{-# INLINE toValue #-}; toValue = String;}
 instance EncodeJSON T.Text where {{-# INLINE encodeJSON #-}; encodeJSON = JB.string;}
 
+-- | Note this instance doesn't reject large input
 instance FromValue Scientific where {{-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;}
 instance ToValue Scientific where {{-# INLINE toValue #-}; toValue = Number;}
-instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = B.scientific;}
+instance EncodeJSON Scientific where {{-# INLINE encodeJSON #-}; encodeJSON = JB.scientific;}
 
 -- | default instance prefer later key
 instance FromValue a => FromValue (FM.FlatMap T.Text a) where
@@ -956,7 +955,7 @@ instance FromValue a => FromValue (FIM.FlatIntMap a) where
 instance ToValue a => ToValue (FIM.FlatIntMap a) where
     {-# INLINE toValue #-}
     toValue = Object . V.map' toKV . FIM.sortedKeyValues
-      where toKV (V.IPair i x) = let !k = T.buildText (T.int i)
+      where toKV (V.IPair i x) = let !k = T.toText i
                                      !v = toValue x
                                  in (k, v)
 instance EncodeJSON a => EncodeJSON (FIM.FlatIntMap a) where
@@ -986,7 +985,7 @@ instance ToValue a => ToValue (A.Array a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (A.Array a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue a => FromValue (A.SmallArray a) where
     {-# INLINE fromValue #-}
@@ -997,7 +996,7 @@ instance ToValue a => ToValue (A.SmallArray a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (A.SmallArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Prim a, FromValue a) => FromValue (A.PrimArray a) where
     {-# INLINE fromValue #-}
@@ -1008,7 +1007,7 @@ instance (Prim a, ToValue a) => ToValue (A.PrimArray a) where
     toValue = Array . V.map toValue
 instance (Prim a, EncodeJSON a) => EncodeJSON (A.PrimArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue A.ByteArray where
     {-# INLINE fromValue #-}
@@ -1024,7 +1023,7 @@ instance ToValue A.ByteArray where
 instance EncodeJSON A.ByteArray where
     {-# INLINE encodeJSON #-}
     encodeJSON (A.ByteArray ba#) =
-        B.square (commaVec' (A.PrimArray ba# :: A.PrimArray Word8))
+        B.square (commaSepVec (A.PrimArray ba# :: A.PrimArray Word8))
 
 instance (A.PrimUnlifted a, FromValue a) => FromValue (A.UnliftedArray a) where
     {-# INLINE fromValue #-}
@@ -1035,7 +1034,7 @@ instance (A.PrimUnlifted a, ToValue a) => ToValue (A.UnliftedArray a) where
     toValue = Array . V.map toValue
 instance (A.PrimUnlifted a, EncodeJSON a) => EncodeJSON (A.UnliftedArray a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance FromValue a => FromValue (V.Vector a) where
     {-# INLINE fromValue #-}
@@ -1046,7 +1045,7 @@ instance ToValue a => ToValue (V.Vector a) where
     toValue = Array . V.map toValue
 instance EncodeJSON a => EncodeJSON (V.Vector a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Prim a, FromValue a) => FromValue (V.PrimVector a) where
     {-# INLINE fromValue #-}
@@ -1057,7 +1056,7 @@ instance (Prim a, ToValue a) => ToValue (V.PrimVector a) where
     toValue = Array . V.map toValue
 instance (Prim a, EncodeJSON a) => EncodeJSON (V.PrimVector a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaVec'
+    encodeJSON = B.square . commaSepVec
 
 instance (Eq a, Hashable a, FromValue a) => FromValue (HS.HashSet a) where
     {-# INLINE fromValue #-}
@@ -1080,7 +1079,7 @@ instance ToValue a => ToValue [a] where
     toValue = Array . V.pack . map toValue
 instance EncodeJSON a => EncodeJSON [a] where
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.square . commaList'
+    encodeJSON = B.square . commaSepList
 
 instance FromValue a => FromValue (NonEmpty a) where
     {-# INLINE fromValue #-}
@@ -1177,7 +1176,7 @@ instance FromValue Integer where
     fromValue = withBoundedScientific "Integer" $ \ n ->
         case Scientific.floatingOrInteger n :: Either Double Integer of
             Right x -> pure x
-            Left _  -> fail' . T.buildText $ do
+            Left _  -> fail' . B.unsafeBuildText $ do
                 "converting Integer failed, unexpected floating number "
                 T.scientific n
 instance ToValue Integer where
@@ -1191,12 +1190,12 @@ instance FromValue Natural where
     {-# INLINE fromValue #-}
     fromValue = withBoundedScientific "Natural" $ \ n ->
         if n < 0
-        then fail' . T.buildText $ do
+        then fail' . B.unsafeBuildText $ do
                 "converting Natural failed, unexpected negative number "
                 T.scientific n
         else case Scientific.floatingOrInteger n :: Either Double Natural of
             Right x -> pure x
-            Left _  -> fail' . T.buildText $ do
+            Left _  -> fail' . B.unsafeBuildText $ do
                 "converting Natural failed, unexpected floating number "
                 T.scientific n
 instance ToValue Natural where
@@ -1244,7 +1243,7 @@ instance FromValue ExitCode where
     fromValue (Number x) =
         case toBoundedInteger x of
             Just i -> return (ExitFailure i)
-            _      -> fail' . T.buildText $ do
+            _      -> fail' . B.unsafeBuildText $ do
                 "converting ExitCode failed, value is either floating or will cause over or underflow: "
                 T.scientific x
     fromValue _ =  fail' "converting ExitCode failed, expected a string or number"

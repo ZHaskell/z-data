@@ -21,7 +21,7 @@ module Z.Data.Builder.Numeric (
   , intWith
   , integer
   -- * Fixded size hexidecimal formatting
-  , hex, heX
+  , hex, hexUpper
   -- * IEEE float formating
   , FFormat(..)
   , double
@@ -30,19 +30,24 @@ module Z.Data.Builder.Numeric (
   , floatWith
   , scientific
   , scientificWith
+  -- * Patterns
+  , pattern PLUS
+  , pattern MINUS
+  , pattern ZERO
+  , pattern SPACE
+  , pattern DOT
+  , pattern LITTLE_E
+  , pattern BIG_E
   -- * Misc
   , grisu3
   , grisu3_sp
-  , i2wDec, i2wHex, i2wHeX
+  , i2wDec, i2wHex, i2wHexUpper
   , countDigits
   , c_intWith, hs_intWith
 ) where
 
 import           Control.Monad
-import           Control.Monad.ST
-import           Control.Monad.ST.Unsafe
 import           Data.Bits
-import           Data.Char
 import           Data.Int
 import qualified Data.List                           as List
 import           Data.Primitive.ByteArray
@@ -133,14 +138,14 @@ c_intWith :: (Integral a, Bits a) => IFormat -> a -> Builder ()
 c_intWith (IFormat{..}) x
     | x < 0 =
         let !x' = (fromIntegral (complement x) :: Word64) + 1
-        in atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec x' (-1) width pad (unsafeCoerce# mba#) i))
+        in ensureN width' (\ (MutablePrimArray mba#) i ->
+            (c_int_dec x' (-1) width pad (unsafeCoerce# mba#) i))
     | posSign =
-        atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec (fromIntegral x) 1 width pad (unsafeCoerce# mba#) i))
+        ensureN width' (\ (MutablePrimArray mba#) i ->
+            (c_int_dec (fromIntegral x) 1 width pad (unsafeCoerce# mba#) i))
     | otherwise =
-        atMost width' (\ (MutablePrimArray mba#) i ->
-            unsafeIOToST (c_int_dec (fromIntegral x) 0 width pad (unsafeCoerce# mba#) i))
+        ensureN width' (\ (MutablePrimArray mba#) i ->
+            (c_int_dec (fromIntegral x) 0 width pad (unsafeCoerce# mba#) i))
   where
     width' = max 21 width
     pad = case padding of NoPadding          -> 0
@@ -162,12 +167,12 @@ hs_intWith format@IFormat{..} i
                 !qq = -q            -- all digits except last one
                 !rr = i2wDec (-r)      -- last digits
                 !n = countDigits qq
-                !n' = n + 2         -- extra two bytes: minus and last digit
+                !n' = n + 2         -- extra two bytes: MINUS and last digit
             if width > n'
             then case padding of
                 NoPadding ->
                     writeN n' $ \marr off -> do
-                        writePrimArray marr off minus                       -- leading minus
+                        writePrimArray marr off MINUS                       -- leading MINUS
                         let off' = off + 1
                         writePositiveDec marr off' n qq                      -- digits
                         let off'' = off' + n
@@ -175,9 +180,9 @@ hs_intWith format@IFormat{..} i
                 ZeroPadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        writePrimArray marr off minus                   -- leading minus
+                        writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN zero            -- leading zeros
+                        setPrimArray marr off' leadingN ZERO            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n qq                 -- digits
                         let off''' = off'' + n
@@ -185,9 +190,9 @@ hs_intWith format@IFormat{..} i
                 LeftSpacePadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        setPrimArray marr off leadingN space            -- leading spaces
+                        setPrimArray marr off leadingN SPACE            -- leading spaces
                         let off' = off + leadingN
-                        writePrimArray marr off' minus                  -- leading minus
+                        writePrimArray marr off' MINUS                  -- leading MINUS
                         let off'' = off' + 1
                         writePositiveDec marr off'' n qq                 -- digits
                         let off''' = off'' + n
@@ -195,16 +200,16 @@ hs_intWith format@IFormat{..} i
                 RightSpacePadding ->
                     writeN width $ \marr off -> do
                         let !trailingN = width-n'
-                        writePrimArray marr off minus                   -- leading minus
+                        writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
                         writePositiveDec marr off' n qq                  -- digits
                         let off'' = off' + n
                         writePrimArray marr off'' rr                    -- last digit
                         let off''' = off'' + 1
-                        setPrimArray marr off''' trailingN space        -- trailing spaces
+                        setPrimArray marr off''' trailingN SPACE        -- trailing spaces
             else
                 writeN n' $ \marr off -> do
-                    writePrimArray marr off minus                       -- leading minus
+                    writePrimArray marr off MINUS                       -- leading MINUS
                     let off' = off + 1
                     writePositiveDec marr off' n qq                      -- digits
                     let off'' = off' + n
@@ -212,41 +217,41 @@ hs_intWith format@IFormat{..} i
         else do
             let !qq = -i
                 !n = countDigits qq
-                !n' = n + 1  -- extra byte: minus
+                !n' = n + 1  -- extra byte: MINUS
             if width > n'
             then case padding of
                 NoPadding ->
                     writeN n' $ \marr off -> do
-                        writePrimArray marr off minus                       -- leading minus
+                        writePrimArray marr off MINUS                       -- leading MINUS
                         let off' = off + 1
                         writePositiveDec marr off' n qq                      -- digits
                 ZeroPadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        writePrimArray marr off minus                   -- leading minus
+                        writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN zero            -- leading zeros
+                        setPrimArray marr off' leadingN ZERO            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n qq                 -- digits
                 LeftSpacePadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        setPrimArray marr off leadingN space            -- leading spaces
+                        setPrimArray marr off leadingN SPACE            -- leading spaces
                         let off' = off + leadingN
-                        writePrimArray marr off' minus                  -- leading minus
+                        writePrimArray marr off' MINUS                  -- leading MINUS
                         let off'' = off' + 1
                         writePositiveDec marr off'' n qq                 -- digits
                 RightSpacePadding ->
                     writeN width $ \marr off -> do
                         let !trailingN = width-n'
-                        writePrimArray marr off minus                   -- leading minus
+                        writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
                         writePositiveDec marr off' n qq                  -- digits
                         let off'' = off' + n
-                        setPrimArray marr off'' trailingN space         -- trailing spaces
+                        setPrimArray marr off'' trailingN SPACE         -- trailing spaces
             else
                 writeN n' $ \marr off -> do
-                    writePrimArray marr off minus                       -- leading minus
+                    writePrimArray marr off MINUS                       -- leading MINUS
                     let off' = off + 1
                     writePositiveDec marr off' n qq                      -- digits
     | otherwise = positiveInt format i
@@ -262,36 +267,36 @@ positiveInt (IFormat width padding ps) i =
             then case padding of
                 NoPadding ->
                     writeN n' $ \marr off -> do
-                        writePrimArray marr off plus                    -- leading plus
+                        writePrimArray marr off PLUS                    -- leading PLUS
                         let off' = off + 1
                         writePositiveDec marr off' n i                   -- digits
                 ZeroPadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        writePrimArray marr off plus                    -- leading plus
+                        writePrimArray marr off PLUS                    -- leading PLUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN zero            -- leading zeros
+                        setPrimArray marr off' leadingN ZERO            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n i                  -- digits
                 LeftSpacePadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n'
-                        setPrimArray marr off leadingN space            -- leading spaces
+                        setPrimArray marr off leadingN SPACE            -- leading spaces
                         let off' = off + leadingN
-                        writePrimArray marr off' plus                   -- leading plus
+                        writePrimArray marr off' PLUS                   -- leading PLUS
                         let off'' = off' + 1
                         writePositiveDec marr off'' n i                  -- digits
                 RightSpacePadding ->
                     writeN width $ \marr off -> do
                         let !trailingN = width-n'
-                        writePrimArray marr off plus                    -- leading plus
+                        writePrimArray marr off PLUS                    -- leading PLUS
                         let off' = off + 1
                         writePositiveDec marr off' n i                   -- digits
                         let off'' = off' + n
-                        setPrimArray marr off'' trailingN space         -- trailing spaces
+                        setPrimArray marr off'' trailingN SPACE         -- trailing spaces
             else
                 writeN n' $ \marr off -> do
-                    writePrimArray marr off plus                        -- leading plus
+                    writePrimArray marr off PLUS                        -- leading PLUS
                     let off' = off + 1
                     writePositiveDec marr off' n i                       -- digits
 
@@ -303,13 +308,13 @@ positiveInt (IFormat width padding ps) i =
                 ZeroPadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n
-                        setPrimArray marr off leadingN zero             -- leading zeros
+                        setPrimArray marr off leadingN ZERO             -- leading zeros
                         let off' = off + leadingN
                         writePositiveDec marr off' n i                   -- digits
                 LeftSpacePadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n
-                        setPrimArray marr off leadingN space            -- leading spaces
+                        setPrimArray marr off leadingN SPACE            -- leading spaces
                         let off' = off + leadingN
                         writePositiveDec marr off' n i                   -- digits
                 RightSpacePadding ->
@@ -317,17 +322,17 @@ positiveInt (IFormat width padding ps) i =
                         let !trailingN = width-n
                         writePositiveDec marr off n i                    -- digits
                         let off' = off + n
-                        setPrimArray marr off' trailingN space          -- trailing spaces
+                        setPrimArray marr off' trailingN SPACE          -- trailing spaces
             else
                 writeN n $ \marr off -> do
                     writePositiveDec marr off n i                        -- digits
 
 writePositiveDec :: (Integral a)
-                => forall s. MutablePrimArray s Word8       -- ^ The buffer
+                => MutablePrimArray RealWorld Word8       -- ^ The buffer
                 -> Int                                      -- ^ writing offset
                 -> Int                                      -- ^ total digits
                 -> a                                        -- ^ the value
-                -> ST s ()
+                -> IO ()
 {-# INLINE writePositiveDec #-}
 writePositiveDec marr off0 ds = go (off0 + ds - 1)
   where
@@ -369,7 +374,7 @@ integer (S# i#) = int (I# i#)
 #endif
 -- Divide and conquer implementation of string conversion
 integer n0
-    | n0 < 0    = encodePrim minus >> integer' (-n0)
+    | n0 < 0    = encodePrim MINUS >> integer' (-n0)
     | otherwise = integer' n0
   where
     integer' :: Integer -> Builder ()
@@ -408,7 +413,7 @@ integer n0
 
     -- Split n into digits in base p. We first split n into digits
     -- in base p*p and then split each of these digits into two.
-    -- Note that the first 'digit' modulo p*p may have a leading zero
+    -- Note that the first 'digit' modulo p*p may have a leading ZERO
     -- in base p that we need to drop - this is what jsplith takes care of.
     -- jsplitb the handles the remaining digits.
     jsplitf :: Integer -> Integer -> [Integer]
@@ -460,38 +465,35 @@ countDigits v0
            | otherwise = go (k + 12) (v `quot` 1000000000000)
         fin v n = if v >= n then 1 else 0
 
-minus, plus, zero, space :: Word8
-{-# INLINE plus #-}
-{-# INLINE minus #-}
-{-# INLINE zero #-}
-{-# INLINE space #-}
-plus = 43
-minus = 45
-zero = 48
-space = 32
+pattern MINUS, PLUS, ZERO, SPACE, DOT, LITTLE_E, BIG_E :: Word8
+pattern PLUS     = 43
+pattern MINUS    = 45
+pattern ZERO     = 48
+pattern SPACE    = 32
+pattern DOT      = 46
+pattern LITTLE_E = 101
+pattern BIG_E    = 69
 
 -- | Decimal digit to ASCII digit.
 i2wDec :: (Integral a) => a -> Word8
 {-# INLINE i2wDec #-}
-i2wDec v = zero + fromIntegral v
-
--- | Decimal digit to ASCII char.
-i2cDec :: (Integral a) => a -> Char
-{-# INLINE i2cDec #-}
-i2cDec v = chr . fromIntegral $ zero + fromIntegral v
+{-# SPECIALIZE INLINE i2wDec :: Int -> Word8 #-}
+i2wDec v = ZERO + fromIntegral v
 
 -- | Hexadecimal digit to ASCII char.
 i2wHex :: (Integral a) => a -> Word8
 {-# INLINE i2wHex #-}
+{-# SPECIALIZE INLINE i2wHex :: Int -> Word8 #-}
 i2wHex v
-    | v <= 9    = zero + fromIntegral v
+    | v <= 9    = ZERO + fromIntegral v
     | otherwise = 87 + fromIntegral v       -- fromEnum 'a' - 10
 
 -- | Hexadecimal digit to UPPERCASED ASCII char.
-i2wHeX :: (Integral a) => a -> Word8
-{-# INLINE i2wHeX #-}
-i2wHeX v
-    | v <= 9    = zero + fromIntegral v
+i2wHexUpper :: (Integral a) => a -> Word8
+{-# INLINE i2wHexUpper #-}
+{-# SPECIALIZE INLINE i2wHexUpper :: Int -> Word8 #-}
+i2wHexUpper v
+    | v <= 9    = ZERO + fromIntegral v
     | otherwise = 55 + fromIntegral v       -- fromEnum 'A' - 10
 
 --------------------------------------------------------------------------------
@@ -534,9 +536,9 @@ hex w = writeN hexSiz (go w (hexSiz-2))
 
 
 -- | The UPPERCASED version of 'hex'.
-heX :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# INLINE heX #-}
-heX w = writeN hexSiz (go w (hexSiz-2))
+hexUpper :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
+{-# INLINE hexUpper #-}
+hexUpper w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)
     hexSiz = (bitSiz+3) `unsafeShiftR` 2
@@ -552,7 +554,7 @@ heX w = writeN hexSiz (go w (hexSiz-2))
             writePrimArray marr (off + 1) $ indexOffPtr hexDigitTableUpper (j+1)
         | d < 0  = do         -- for FiniteBits instances which has extra bits
             let !i = fromIntegral v .&. 0x0F :: Int
-            writePrimArray marr off $ i2wHeX i
+            writePrimArray marr off $ i2wHexUpper i
 
 --------------------------------------------------------------------------------
 
@@ -611,84 +613,111 @@ doubleWith fmt decs x
     | x == 0                    = doFmt fmt decs ([0], 0)
     | otherwise                 = doFmt fmt decs (grisu3 x) -- Grisu only handles strictly positive finite numbers.
 
+-- | A faster version of 'Sci.toDecimalDigits' in case of small coefficient.
+positiveSciToDigits :: Sci.Scientific -> ([Int], Int)
+positiveSciToDigits sci =
+    if c == 0
+        then ([0], 0)
+        else case c of
+#ifdef INTEGER_GMP
+            (S# i#) -> goI (I# i#) 0 []
+#endif
+            _ -> go c 0 []
+  where
+    sci' = Sci.normalize sci
+    !c = Sci.coefficient sci'
+    !e = Sci.base10Exponent sci'
+
+    go :: Integer -> Int -> [Int] -> ([Int], Int)
+    go 0 !n ds = let !ne = n + e in (ds, ne)
+    go i !n ds = case i `quotRemInteger` 10 of
+                     (# q, r #) -> go q (n+1) (d:ds)
+                       where
+                         !d = fromIntegral r
+#ifdef INTEGER_GMP
+    goI :: Int -> Int -> [Int] -> ([Int], Int)
+    goI 0 !n ds = let !ne = n + e in (ds, ne)
+    goI i !n ds = case i `quotRem` 10 of (q, !r) -> goI q (n+1) (r:ds)
+#endif
+
 -- | Worker function to do formatting.
 doFmt :: FFormat
       -> Maybe Int -- ^ Number of decimal places to render.
       -> ([Int], Int) -- ^ List of digits and exponent
       -> Builder ()
 {-# INLINABLE doFmt #-}
-doFmt format decs (is, e) =
-    let ds = map i2cDec is
-    in case format of
-        Generic ->
-            doFmt (if e < 0 || e > 7 then Exponent else Fixed) decs (is,e)
-        Exponent ->
-            case decs of
-                Nothing ->
-                    let show_e' = int (e-1)
-                    in case ds of
-                        "0"     -> "0.0e0"
-                        [d]     -> char8 d >> ".0e" >> show_e'
-                        (d:ds') -> char8 d >> char8 '.' >>
-                                        string8 ds' >> char8 'e' >> show_e'
-                        []      -> error "doFmt/Exponent: []"
-                Just dec
-                    | dec <= 0 ->
-                    -- decimal point as well (ghc trac #15115).
-                    -- Note that this handles negative precisions as well for consistency
-                    -- (see ghc trac #15509).
-                        case is of
-                            [0] -> "0e0"
-                            _ -> do
-                                let (ei,is') = roundTo 10 1 is
-                                    n:_ = map i2cDec (if ei > 0 then init is' else is')
-                                char8 n
-                                char8 'e'
-                                int (e-1+ei)
-                Just dec ->
-                    let dec' = max dec 1 in
-                    case is of
-                        [0] -> do
-                                char8 '0'
-                                char8 '.'
-                                replicateM_ dec' $ char8 '0'
-                                char8 'e'
-                                char8 '0'
-                        _ -> do
-                            let (ei,is') = roundTo 10 (dec'+1) is
-                                (d:ds') = map i2cDec (if ei > 0 then init is' else is')
-                            char8 d
-                            char8 '.'
-                            string8 ds'
-                            char8 'e'
-                            int (e-1+ei)
-        Fixed ->
-            let mk0 ls = case ls of { "" -> char8 '0' ; _ -> string8 ls}
-            in case decs of
-                Nothing
-                    | e <= 0    -> do
-                                char8 '0'
-                                char8 '.'
-                                replicateM_ (-e) $ char8 '0'
-                                string8 ds
-                    | otherwise ->
-                        let f 0 s    rs  = mk0 (reverse s) >> char8 '.' >> mk0 rs
-                            f n s    ""  = f (n-1) ('0':s) ""
-                            f n s (r:rs) = f (n-1) (r:s) rs
-                        in f e "" ds
-                Just dec ->
-                    let dec' = max dec 0
-                    in if e >= 0
-                        then
-                            let (ei,is') = roundTo 10 (dec' + e) is
-                                (ls,rs)  = splitAt (e+ei) (map i2cDec is')
-                            in mk0 ls >>
-                                (unless (List.null rs) $ char8 '.' >> string8 rs)
-                        else
-                            let (ei,is') = roundTo 10 dec' (List.replicate (-e) 0 ++ is)
-                                d:ds' = map i2cDec (if ei > 0 then is' else 0:is')
-                            in char8 d >>
-                                (unless (List.null ds') $ char8 '.' >> string8 ds')
+doFmt format decs (is, e) = case format of
+    Generic -> doFmt (if e < 0 || e > 7 then Exponent else Fixed) decs (is,e)
+    Exponent -> case decs of
+        Nothing -> case is of
+            [0]     -> "0.0e0"
+            [i]     -> encodeDigit i >> ".0e" >> int (e-1)
+            (i:is') -> do
+                encodeDigit i
+                encodePrim DOT
+                encodeDigits is'
+                encodePrim LITTLE_E
+                int (e-1)
+            []      -> error "doFmt/Exponent: []"
+        Just dec
+            | dec <= 0 ->
+            -- decimal point as well (ghc trac #15115).
+            -- Note that this handles negative precisions as well for consistency
+            -- (see ghc trac #15509).
+                case is of
+                    [0] -> "0e0"
+                    _ -> do
+                        let (ei,is') = roundTo 10 1 is
+                            n:_ = if ei > 0 then List.init is' else is'
+                        encodeDigit n
+                        encodePrim LITTLE_E
+                        int (e-1+ei)
+        Just dec ->
+            let !dec' = max dec 1 in
+            case is of
+                [0] -> do
+                    "0." >> encodeZeros dec' >> "e0"
+                _ -> do
+                    let (ei,is') = roundTo 10 (dec'+1) is
+                        (d:ds') = if ei > 0 then List.init is' else is'
+                    encodeDigit d
+                    encodePrim DOT
+                    encodeDigits ds'
+                    encodePrim LITTLE_E
+                    int (e-1+ei)
+    Fixed -> case decs of
+        Nothing
+            | e <= 0    -> do
+                "0."
+                encodeZeros (-e)
+                encodeDigits is
+            | otherwise -> insertDot e is
+        Just dec ->
+            let !dec' = max dec 0
+            in if e >= 0
+                then do
+                    let (ei,is') = roundTo 10 (dec' + e) is
+                        (ls,rs)  = splitAt (e+ei) is'
+                    mk0 ls
+                    (unless (List.null rs) $ encodePrim DOT >> encodeDigits rs)
+                else do
+                    let (ei,is') = roundTo 10 dec' (List.replicate (-e) 0 ++ is)
+                        d:ds' = if ei > 0 then is' else 0:is'
+                    encodeDigit d
+                    (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
+  where
+    encodeDigit = encodePrim . i2wDec
+
+    encodeDigits = mapM_ encodeDigit
+
+    encodeZeros n = replicateM_ n (encodePrim ZERO)
+
+    mk0 [] = encodePrim ZERO
+    mk0 ls = encodeDigits ls
+
+    insertDot 0     rs = encodePrim DOT >> mk0 rs
+    insertDot n     [] = encodePrim ZERO >> insertDot (n-1) []
+    insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
 
  ------------------------------------------------------------------------------
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
@@ -762,5 +791,5 @@ scientificWith :: FFormat
                -> Builder ()
 {-# INLINE scientificWith #-}
 scientificWith fmt decs scntfc
-   | scntfc < 0 = char8 '-' <> doFmt fmt decs (Sci.toDecimalDigits (-scntfc))
-   | otherwise  =              doFmt fmt decs (Sci.toDecimalDigits   scntfc)
+   | scntfc < 0 = char8 '-' <> doFmt fmt decs (positiveSciToDigits (-scntfc))
+   | otherwise  =              doFmt fmt decs (positiveSciToDigits   scntfc)

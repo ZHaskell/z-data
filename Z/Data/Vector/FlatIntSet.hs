@@ -47,10 +47,10 @@ newtype FlatIntSet = FlatIntSet { sortedValues :: V.PrimVector Int }
     deriving (Show, Eq, Ord, Typeable)
 
 instance T.ShowT FlatIntSet where
-    {-# INLINE toTextBuilder #-}
-    toTextBuilder p (FlatIntSet vec) = T.parenWhen (p > 10) $ do
-        T.unsafeFromBuilder "FlatIntSet {"
-        T.intercalateVec T.comma (T.toTextBuilder 0) vec
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (FlatIntSet vec) = T.parenWhen (p > 10) $ do
+        "FlatIntSet{"
+        T.intercalateVec T.comma T.toUTF8Builder vec
         T.char7 '}'
 
 instance Semigroup.Semigroup FlatIntSet where

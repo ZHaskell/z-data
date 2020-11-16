@@ -18,18 +18,20 @@ module Z.Data.JSON.Builder
   , array
   , array'
   , string
+  , scientific
     -- * Builder helpers
   , kv, kv'
     -- * Re-export 'Value' type
   , Value(..)
   ) where
 
+import           Control.Monad
 import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text                    as T
 import qualified Z.Data.Text.ShowT              as T
 import           Z.Data.Vector.Base             as V
 import           Z.Data.JSON.Value              (Value(..))
-
+import           Data.Scientific              (Scientific, base10Exponent, coefficient)
 
 -- | Use @:@ as separator to connect a label(no need to escape, only add quotes) with field builders.
 kv :: T.Text -> B.Builder () -> B.Builder ()
@@ -47,7 +49,7 @@ value :: Value -> B.Builder ()
 value (Object kvs) = object kvs
 value (Array vs) = array vs
 value (String t) = string t
-value (Number n) = B.scientific n
+value (Number n) = scientific n
 value (Bool True) = "true"
 value (Bool False) = "false"
 value Null = "null"
@@ -85,3 +87,16 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 string :: T.Text -> B.Builder ()
 {-# INLINE string #-}
 string = T.escapeTextJSON
+
+-- | This builder try to render integer when (0 <= e < 1024), and scientific notation otherwise.
+scientific :: Scientific -> B.Builder ()
+{-# INLINE scientific #-}
+scientific s
+    | e < 0 || e >= 1024 = B.scientific s
+    | e == 0 = B.integer c
+    | otherwise = do
+        B.integer c
+        when (c /= 0) (replicateM_ e (B.encodePrim B.ZERO))
+  where
+    e = base10Exponent s
+    c = coefficient s
