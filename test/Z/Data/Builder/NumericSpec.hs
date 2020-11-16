@@ -254,6 +254,17 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
             formatRealFloat FFExponent l i ===
                 (T.unpack . T.validate . B.buildBytes  $ B.doubleWith B.Exponent l i)
 
+    describe "scientificWith === formatScientific" $ do
+        prop "scientificWith === formatScientific" $ \ i (Positive l) ->
+            Sci.formatScientific Sci.Generic (Just l) i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Generic (Just l) i)
+        prop "scientificWith === formatScientific" $ \ i l ->
+            Sci.formatScientific Sci.Fixed l i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith  B.Fixed l i)
+        prop "scientificWith === formatScientific" $ \ i (Positive l) ->
+            Sci.formatScientific Sci.Exponent (Just l) i ===
+                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Exponent (Just l) i)
+
     describe "grisu3, grisu3_sp === floatToDigits 10" $ do
         prop "grisu3 === floatToDigits" $ \ (Positive f) ->
             B.grisu3 f === floatToDigits 10 f

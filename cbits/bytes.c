@@ -244,7 +244,8 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
     }
     return 0;
 }
-void hs_base64_encode(char* output, HsInt output_off, const uint8_t* input, HsInt off, HsInt len){
+
+void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt off, HsInt len){
 #if defined(__AVX2__)
     tb64avx2enc(input+off, (size_t)len, output+output_off);
 #elif defined(__AVX__)

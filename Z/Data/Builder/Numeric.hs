@@ -613,6 +613,33 @@ doubleWith fmt decs x
     | x == 0                    = doFmt fmt decs ([0], 0)
     | otherwise                 = doFmt fmt decs (grisu3 x) -- Grisu only handles strictly positive finite numbers.
 
+-- | A faster version of 'Sci.toDecimalDigits' in case of small coefficient.
+positiveSciToDigits :: Sci.Scientific -> ([Int], Int)
+positiveSciToDigits sci =
+    if c == 0
+        then ([0], 0)
+        else case c of
+#ifdef INTEGER_GMP
+            (S# i#) -> goI (I# i#) 0 []
+#endif
+            _ -> go c 0 []
+  where
+    sci' = Sci.normalize sci
+    !c = Sci.coefficient sci'
+    !e = Sci.base10Exponent sci'
+
+    go :: Integer -> Int -> [Int] -> ([Int], Int)
+    go 0 !n ds = let !ne = n + e in (ds, ne)
+    go i !n ds = case i `quotRemInteger` 10 of
+                     (# q, r #) -> go q (n+1) (d:ds)
+                       where
+                         !d = fromIntegral r
+#ifdef INTEGER_GMP
+    goI :: Int -> Int -> [Int] -> ([Int], Int)
+    goI 0 !n ds = let !ne = n + e in (ds, ne)
+    goI i !n ds = case i `quotRem` 10 of (q, !r) -> goI q (n+1) (r:ds)
+#endif
+
 -- | Worker function to do formatting.
 doFmt :: FFormat
       -> Maybe Int -- ^ Number of decimal places to render.
@@ -664,11 +691,7 @@ doFmt format decs (is, e) = case format of
                 "0."
                 encodeZeros (-e)
                 encodeDigits is
-            | otherwise ->
-                let f 0 s    rs  = mk0 (reverse s) >> encodePrim DOT >> mk0 rs
-                    f n s    []  = f (n-1) (0:s) []
-                    f n s (r:rs) = f (n-1) (r:s) rs
-                in f e [] is
+            | otherwise -> insertDot e is
         Just dec ->
             let !dec' = max dec 0
             in if e >= 0
@@ -684,10 +707,17 @@ doFmt format decs (is, e) = case format of
                     (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
   where
     encodeDigit = encodePrim . i2wDec
+
     encodeDigits = mapM_ encodeDigit
+
     encodeZeros n = replicateM_ n (encodePrim ZERO)
+
     mk0 [] = encodePrim ZERO
     mk0 ls = encodeDigits ls
+
+    insertDot 0     rs = encodePrim DOT >> mk0 rs
+    insertDot n     [] = encodePrim ZERO >> insertDot (n-1) []
+    insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
 
  ------------------------------------------------------------------------------
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
@@ -761,5 +791,5 @@ scientificWith :: FFormat
                -> Builder ()
 {-# INLINE scientificWith #-}
 scientificWith fmt decs scntfc
-   | scntfc < 0 = char8 '-' <> doFmt fmt decs (Sci.toDecimalDigits (-scntfc))
-   | otherwise  =              doFmt fmt decs (Sci.toDecimalDigits   scntfc)
+   | scntfc < 0 = char8 '-' <> doFmt fmt decs (positiveSciToDigits (-scntfc))
+   | otherwise  =              doFmt fmt decs (positiveSciToDigits   scntfc)

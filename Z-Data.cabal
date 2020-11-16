@@ -50,6 +50,11 @@ extra-source-files:         ChangeLog.md
                             third_party/fastvalidate-utf-8/include/simdasciicheck.h
                             third_party/fastvalidate-utf-8/include/simdutf8check.h
 
+                            -- Turbo-Base64
+                            third_party/Turbo-Base64/turbob64_.h
+                            third_party/Turbo-Base64/turbob64avx2.c
+
+
 source-repository head
     type:     git
     location: git://github.com/haskell-Z/z-data.git
@@ -146,7 +151,6 @@ library
                             simdutf8check.h
                             conf.h
                             turbob64.h
-                            turbob64_.h
     install-includes:       bytes.h
                             dtoa.h
                             text.h
