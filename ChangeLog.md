@@ -1,8 +1,10 @@
 # Revision history for Z-Data
 
-## 0.1.8.1  -- 2020-10-23
+## 0.1.9.0  -- 2020-10-23
 
-* Add `Z.Data.Text.HexBytes` module.
+* Add `Z.Data.Vecotr.Hex`, `Z.Data.Vector.Base64` module.
+* Improve `Z.Data.Builder` 's performance, remove `AllocateStrategy`, `buildAndRun`.
+* Remove `TextBuilder` newtype from `Z.Data.Text.ShowT`, add `buildText`, `unsafeBuildText` to `Z.Data.Builder`.
 
 ## 0.1.8.0  -- 2020-10-23
 

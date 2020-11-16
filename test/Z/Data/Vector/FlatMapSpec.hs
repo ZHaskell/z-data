@@ -17,7 +17,7 @@ type FMS = FM.FlatMap String String
 
 spec :: Spec
 spec = do
-    describe "flatmap-semigroup-monoid" $ do
+    describe "flatmap-semigroup-monoid" . modifyMaxSuccess (*5) . modifyMaxSize (*5) $ do
         prop "flatmap monoid unit law" $ \ (m :: FMS)  ->
             (m <> FM.empty) === m
         prop "flatmap monoid unit law" $ \ (m :: FMS) ->

@@ -23,7 +23,7 @@ module Z.Data.Vector.Base64
   , base64Decode'
   , base64DecodeLength
   , Base64DecodeException(..)
-  -- * Base64 helpers
+  -- * Internal C FFIs
   ,  hs_base64_encode, hs_base64_decode
   ) where
 

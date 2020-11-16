@@ -21,7 +21,7 @@ module Z.Data.Vector.Hex
   , hexDecode
   , hexDecode'
   , HexDecodeException(..)
-  -- * Hex helpers
+  -- * Internal C FFIs
   ,  hs_hex_encode, hs_hex_encode_upper, hs_hex_decode
   ) where
 
@@ -78,7 +78,7 @@ hexEncode upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
 
 
 -- | 'B.Builder' version of 'hexEncode'.
-hexEncodeBuilder :: Bool -- ^ upper case?
+hexEncodeBuilder :: Bool -- ^ uppercase?
                  -> V.Bytes -> B.Builder ()
 {-# INLINE hexEncodeBuilder #-}
 hexEncodeBuilder upper (V.PrimVector arr s l) =

@@ -56,8 +56,6 @@ module Z.Data.Text.ShowT
 
 import           Control.Monad
 import qualified Data.Scientific                as Sci
-import           Data.String
-import           Data.Bits
 import           Data.Fixed
 import           Data.Primitive.PrimArray
 import           Data.Functor.Compose
@@ -82,7 +80,6 @@ import           GHC.Stack
 import           GHC.Word
 import           Data.Version
 import           System.Exit
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 import           Data.Primitive.Types
 import qualified Z.Data.Builder.Base            as B
 import qualified Z.Data.Builder.Numeric         as B

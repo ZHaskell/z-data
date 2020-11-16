@@ -26,9 +26,8 @@ module Z.Data.Vector.FlatMap
   , merge, mergeWithKey'
     -- * fold and traverse
   , foldrWithKey, foldrWithKey', foldlWithKey, foldlWithKey', traverseWithKey
-    -- * binary & linear search on vectors
-  , binarySearch
-  , linearSearch, linearSearchR
+    -- * search on vectors
+  , linearSearch, linearSearchR, binarySearch
   ) where
 
 import           Control.DeepSeq
@@ -197,9 +196,9 @@ insert :: Ord k => k -> v -> FlatMap k v -> FlatMap k v
 insert k v (FlatMap vec@(V.Vector arr s l)) =
     case binarySearch vec k of
         Left i -> FlatMap (V.create (l+1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
+            when (i>0) $ A.copySmallArray marr 0 arr s i
             A.writeSmallArray marr i (k, v)
-            when (i<(s+l)) $ A.copySmallArray marr (i+1) arr i (s+l-i)))
+            when (i<l) $ A.copySmallArray marr (i+1) arr (i+s) (l-i)))
         Right i -> FlatMap (V.Vector (runST (do
             let arr' = A.cloneSmallArray arr s l
             marr <- A.unsafeThawSmallArray arr'
@@ -213,10 +212,9 @@ delete k m@(FlatMap vec@(V.Vector arr s l)) =
     case binarySearch vec k of
         Left _ -> m
         Right i -> FlatMap $ V.create (l-1) (\ marr -> do
-            when (i>s) $ A.copySmallArray marr 0 arr s (i-s)
-            let !end = s+l
-                !j = i+1
-            when (end > j) $ A.copySmallArray marr 0 arr j (end-j))
+            when (i>0) $ A.copySmallArray marr 0 arr s i
+            let i' = i+1
+            when (i'<l) $ A.copySmallArray marr i arr (i'+s) (l-i'))
 
 -- | /O(N)/ Modify a value by key.
 --
@@ -228,7 +226,7 @@ adjust' f k m@(FlatMap vec@(V.Vector arr s l)) =
         Left _ -> m
         Right i -> FlatMap $ V.create l (\ marr -> do
             A.copySmallArray marr 0 arr s l
-            let !v' = f (snd (A.indexSmallArray arr i))
+            let !v' = f (snd (A.indexSmallArray arr (i+s)))
             A.writeSmallArray marr i (k, v'))
 
 -- | /O(n+m)/ Merge two 'FlatMap', prefer right value on key duplication.
