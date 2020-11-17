@@ -1,6 +1,6 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.1.9.0
+version:                    0.1.9.1
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause
@@ -51,8 +51,13 @@ extra-source-files:         ChangeLog.md
                             third_party/fastvalidate-utf-8/include/simdutf8check.h
 
                             -- Turbo-Base64
+                            third_party/Turbo-Base64/conf.h
+                            third_party/Turbo-Base64/turbob64.h
                             third_party/Turbo-Base64/turbob64_.h
                             third_party/Turbo-Base64/turbob64avx2.c
+                            third_party/Turbo-Base64/turbob64c.c
+                            third_party/Turbo-Base64/turbob64d.c
+                            third_party/Turbo-Base64/turbob64sse.c
 
 
 source-repository head
@@ -149,7 +154,6 @@ library
                             utf8rewind.h
                             simdasciicheck.h
                             simdutf8check.h
-                            conf.h
                             turbob64.h
     install-includes:       bytes.h
                             dtoa.h
