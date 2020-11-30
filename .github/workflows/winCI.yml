@@ -5,17 +5,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        ghc: ['8.6.5', '8.8.4']     #8.10.2 have linker problem
-        cabal: ['2.4.1.0', '3.2.0.0']  
-        exclude:
-          # GHC 8.6.5 and cabal 2.4.1.0 have linker issues
-          - ghc: 8.6.5
-            cabal: 2.4.1.0
-          # GHC 8.8+ only works with cabal v3+
-          - ghc: 8.8.4
-            cabal: 2.4.1.0
-          - ghc: 8.10.2
-            cabal: 2.4.1.0
+        ghc: ['8.10.2']    
+        cabal: ['3.2.0.0']  
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
@@ -42,9 +33,6 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - run: cabal v2-build $CONFIG
-      - if: matrix.cabal == '2.4.1.0'
-        run: cabal v2-test 
-      - if: matrix.cabal == '3.4.0.0'
         run: cabal v2-test --test-show-details=direct
       - run: cabal v2-haddock
       - run: cabal v2-sdist
