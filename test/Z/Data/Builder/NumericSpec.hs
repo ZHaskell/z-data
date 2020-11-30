@@ -24,114 +24,114 @@ spec :: Spec
 spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50) $ do
     describe "int roundtrip" $ do
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Word i)
+            i === (read . T.unpack . B.buildText $ B.int @Word i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Int i)
+            i === (read . T.unpack . B.buildText $ B.int @Int i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Word64 i)
+            i === (read . T.unpack . B.buildText $ B.int @Word64 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Int64 i)
+            i === (read . T.unpack . B.buildText $ B.int @Int64 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Word32 i)
+            i === (read . T.unpack . B.buildText $ B.int @Word32 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Int32 i)
+            i === (read . T.unpack . B.buildText $ B.int @Int32 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Word16 i)
+            i === (read . T.unpack . B.buildText $ B.int @Word16 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Int16 i)
+            i === (read . T.unpack . B.buildText $ B.int @Int16 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Word8 i)
+            i === (read . T.unpack . B.buildText $ B.int @Word8 i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.int @Int8 i)
+            i === (read . T.unpack . B.buildText $ B.int @Int8 i)
 
     describe "int roundtrip" $ do
         let f = B.defaultIFormat{B.width = 100, B.padding = B.ZeroPadding}
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Word f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Word f i)
         prop "int roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Int f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Int f i)
         prop "padding length" $ \ i ->
-            100 === (V.length . B.buildBytes $ B.intWith @Word f i)
+            100 === (V.length . B.build $ B.intWith @Word f i)
         prop "padding length" $ \ i ->
-            100 === (V.length . B.buildBytes $ B.intWith @Int f i)
+            100 === (V.length . B.build $ B.intWith @Int f i)
 
         let f = B.defaultIFormat{B.width = 10, B.padding = B.ZeroPadding}
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Word f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Word f i)
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Int f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Int f i)
 
         let f = B.defaultIFormat{B.width = 10, B.padding = B.LeftSpacePadding}
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Word f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Word f i)
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Int f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Int f i)
 
         let f = B.defaultIFormat{B.width = 10, B.padding = B.RightSpacePadding}
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Word f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Word f i)
         prop "padding roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.intWith @Int f i)
+            i === (read . T.unpack . B.buildText $ B.intWith @Int f i)
 
     describe "c_intWith == hs_intWith" $ do
         prop "c_intWith == hs_intWith @Word" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Word f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Word f i)
         prop "c_intWith == hs_intWith @Word8" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Word8 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Word8 f i)
         prop "c_intWith == hs_intWith @Word16" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Word16 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Word16 f i)
         prop "c_intWith == hs_intWith @Word32" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Word32 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Word32 f i)
         prop "c_intWith == hs_intWith @Word64" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Word64 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Word64 f i)
         prop "c_intWith == hs_intWith @Int" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Int f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Int f i)
         prop "c_intWith == hs_intWith @Int8" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Int8 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Int8 f i)
         prop "c_intWith == hs_intWith @Int16" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Int16 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Int16 f i)
         prop "c_intWith == hs_intWith @Int32" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Int32 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Int32 f i)
         prop "c_intWith == hs_intWith @Int64" $ \ i f ->
-            (B.buildBytes $ B.hs_intWith f i) === (B.buildBytes $ B.c_intWith @Int64 f i)
+            (B.build $ B.hs_intWith f i) === (B.build $ B.c_intWith @Int64 f i)
 
     describe "integer roundtrip" $ do
         prop "integer roundtrip" $ \ i ->
-            i === (read . T.unpack . T.validate . B.buildBytes $ B.integer i)
+            i === (read . T.unpack . B.buildText $ B.integer i)
         prop "integer roundtrip II" $
             -- there're an issue with leading zeros in front of an block, so we add a case manually here
             (2132132100000000000000000000000000213213 :: Integer) ===
-                (read . T.unpack . T.validate . B.buildBytes $ B.integer 2132132100000000000000000000000000213213)
+                (read . T.unpack . B.buildText $ B.integer 2132132100000000000000000000000000213213)
 
     describe "scientific roundtrip" $ do
         prop "scientific roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientific $ Sci.scientific c e)
+                (read . T.unpack . B.buildText . B.scientific $ Sci.scientific c e)
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Exponent Nothing $
+                (read . T.unpack . B.buildText . B.scientificWith B.Exponent Nothing $
                     Sci.scientific c e)
         {- B.Exponent doesn't roundtrip, i.e. B.scientificWith B.Exponent (Just 0) 101 ===> 1e2
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Exponent (Just (abs e)) $
+                (read . T.unpack . B.buildText . B.scientificWith B.Exponent (Just (abs e)) $
                     Sci.scientific c e)
         -}
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Generic Nothing $
+                (read . T.unpack . B.buildText . B.scientificWith B.Generic Nothing $
                     Sci.scientific c e)
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Generic (Just (abs e)) $
+                (read . T.unpack . B.buildText . B.scientificWith B.Generic (Just (abs e)) $
                     Sci.scientific c e)
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Fixed Nothing $
+                (read . T.unpack . B.buildText . B.scientificWith B.Fixed Nothing $
                     Sci.scientific c e)
         prop "scientificWith roundtrip" $ \ c e ->
             Sci.scientific c e ===
-                (read . T.unpack . T.validate . B.buildBytes . B.scientificWith B.Fixed (Just (abs e)) $
+                (read . T.unpack . B.buildText . B.scientificWith B.Fixed (Just (abs e)) $
                     Sci.scientific c e)
 
     describe "hex roundtrip" $ do
@@ -139,131 +139,131 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
         let read' s = read $ "0x" ++ s
 
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Word i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Word i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Int i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Word64 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Word64 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int64 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Int64 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Word32 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Word32 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int32 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Int32 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Word16 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Word16 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int16 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Int16 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Word8 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Word8 i)
         prop "hex roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hex @Int8 i)
+            i === (read' . T.unpack . B.buildText $ B.hex @Int8 i)
 
     describe "hexUpper roundtrip" $ do
 
         let read' s = read $ "0x" ++ s
 
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Word i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Int i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word64 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Word64 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int64 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Int64 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word32 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Word32 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int32 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Int32 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word16 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Word16 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int16 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Int16 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Word8 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Word8 i)
         prop "hexUpper roundtrip" $ \ i ->
-            i === (read' . T.unpack . T.validate . B.buildBytes $ B.hexUpper @Int8 i)
+            i === (read' . T.unpack . B.buildText $ B.hexUpper @Int8 i)
 
     describe "int === show" $ do
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Word i)
+            show i === (T.unpack . B.buildText $ B.int @Word i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Int i)
+            show i === (T.unpack . B.buildText $ B.int @Int i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Word64 i)
+            show i === (T.unpack . B.buildText $ B.int @Word64 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Int64 i)
+            show i === (T.unpack . B.buildText $ B.int @Int64 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Word32 i)
+            show i === (T.unpack . B.buildText $ B.int @Word32 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Int32 i)
+            show i === (T.unpack . B.buildText $ B.int @Int32 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Word16 i)
+            show i === (T.unpack . B.buildText $ B.int @Word16 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Int16 i)
+            show i === (T.unpack . B.buildText $ B.int @Int16 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Word8 i)
+            show i === (T.unpack . B.buildText $ B.int @Word8 i)
         prop "int === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes $ B.int @Int8 i)
+            show i === (T.unpack . B.buildText $ B.int @Int8 i)
 
     describe "intWith === printf" $ do
         prop "int === printf %d" $ \ i ->
             printf "%d" i ===
-                (T.unpack . T.validate . B.buildBytes $ B.intWith @Int B.defaultIFormat i)
+                (T.unpack . B.buildText $ B.intWith @Int B.defaultIFormat i)
         prop "int === printf %xxd" $ \ i (Positive w) ->
             printf ("%" ++ show w ++ "d") i ===
-                (T.unpack . T.validate . B.buildBytes $ B.intWith @Int B.defaultIFormat
+                (T.unpack . B.buildText $ B.intWith @Int B.defaultIFormat
                     {B.padding = B.LeftSpacePadding, B.width = w} i)
         prop "int === printf %0xxd" $ \ i (Positive w) ->
             printf ("%0" ++ show w ++ "d") i ===
-                (T.unpack . T.validate . B.buildBytes $ B.intWith @Int B.defaultIFormat
+                (T.unpack . B.buildText $ B.intWith @Int B.defaultIFormat
                     {B.padding = B.ZeroPadding, B.width = w} i)
         prop "int === printf %-xx%" $ \ i (Positive w) ->
             printf ("%-" ++ show w ++ "d") i ===
-                (T.unpack . T.validate . B.buildBytes $ B.intWith @Int B.defaultIFormat
+                (T.unpack . B.buildText $ B.intWith @Int B.defaultIFormat
                     {B.padding = B.RightSpacePadding, B.width = w} i)
         prop "hex === printf %08x" $ \ i ->
             printf "%08x" i ===
-                (T.unpack . T.validate . B.buildBytes $ B.hex @Int32 i)
+                (T.unpack . B.buildText $ B.hex @Int32 i)
 
     describe "float, double === show" $ do
         prop "float === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes  $ B.float i)
+            show i === (T.unpack . B.buildText  $ B.float i)
         prop "double === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes  $ B.double i)
+            show i === (T.unpack . B.buildText  $ B.double i)
         prop "scientific === show" $ \ i ->
-            show i === (T.unpack . T.validate . B.buildBytes  $ B.scientific i)
+            show i === (T.unpack . B.buildText  $ B.scientific i)
 
     describe "floatWith, doubleWith === formatRealFloat" $ do
         prop "floatWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFGeneric l i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.floatWith B.Generic l i)
+                (T.unpack . B.buildText  $ B.floatWith B.Generic l i)
         prop "doubleWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFGeneric l i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.doubleWith  B.Generic l i)
+                (T.unpack . B.buildText  $ B.doubleWith  B.Generic l i)
         prop "floatWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFFixed  l  i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.floatWith B.Fixed  l i)
+                (T.unpack . B.buildText  $ B.floatWith B.Fixed  l i)
         prop "doubleWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFFixed  l  i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.doubleWith  B.Fixed  l i)
+                (T.unpack . B.buildText  $ B.doubleWith  B.Fixed  l i)
         prop "floatWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFExponent l i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.floatWith B.Exponent l i)
+                (T.unpack . B.buildText  $ B.floatWith B.Exponent l i)
         prop "doubleWith === formatRealFloat" $ \ i l ->
             formatRealFloat FFExponent l i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.doubleWith B.Exponent l i)
+                (T.unpack . B.buildText  $ B.doubleWith B.Exponent l i)
 
     describe "scientificWith === formatScientific" $ do
         prop "scientificWith === formatScientific" $ \ i (Positive l) ->
             Sci.formatScientific Sci.Generic (Just l) i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Generic (Just l) i)
+                (T.unpack . B.buildText  $ B.scientificWith B.Generic (Just l) i)
         prop "scientificWith === formatScientific" $ \ i l ->
             Sci.formatScientific Sci.Fixed l i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith  B.Fixed l i)
+                (T.unpack . B.buildText  $ B.scientificWith  B.Fixed l i)
         prop "scientificWith === formatScientific" $ \ i (Positive l) ->
             Sci.formatScientific Sci.Exponent (Just l) i ===
-                (T.unpack . T.validate . B.buildBytes  $ B.scientificWith B.Exponent (Just l) i)
+                (T.unpack . B.buildText  $ B.scientificWith B.Exponent (Just l) i)
 
     describe "grisu3, grisu3_sp === floatToDigits 10" $ do
         prop "grisu3 === floatToDigits" $ \ (Positive f) ->

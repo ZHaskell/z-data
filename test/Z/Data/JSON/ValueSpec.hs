@@ -21,4 +21,4 @@ import qualified Z.Data.JSON.Builder as JSONB
 spec :: Spec
 spec = describe "JSON" $ do -- large size will generate too huge JSON document
     prop "value roundtrip" $ \ v ->
-        Right v === JSON.parseValue' (B.buildBytes (JSONB.value v))
+        Right v === JSON.parseValue' (B.build (JSONB.value v))
