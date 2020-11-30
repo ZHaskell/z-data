@@ -40,7 +40,7 @@ spec = describe "CBytes-base" $ do
     describe "CBytes JSON instance property" $ do
         prop "CBytes decodeJSON . encodeJSON === id" $ \ xs ->
             let bs = CB.fromBytes (V.pack xs)
-            in Right bs === JSON.decode' (JSON.encodeBytes bs)
+            in Right bs === JSON.decode' (JSON.encode bs)
 
     describe "CBytes IsString instance property" $ do
         prop "ASCII string" $
