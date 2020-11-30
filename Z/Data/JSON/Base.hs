@@ -16,7 +16,7 @@ module Z.Data.JSON.Base
   ( -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
-  , encode, encodeBytes, encodeBytesList, encodeText
+  , encode, encodeChunks, encodeText
   -- * Re-export 'Value' type
   , Value(..)
     -- * parse into JSON Value
@@ -165,22 +165,17 @@ decodeChunks' mb bs = do
 -- | Directly encode data to JSON bytes.
 encode :: EncodeJSON a => a -> V.Bytes
 {-# INLINE encode #-}
-encode = B.buildBytes . encodeJSON
-
--- | The same as 'encode'.
-encodeBytes :: EncodeJSON a => a -> V.Bytes
-{-# INLINE encodeBytes #-}
-encodeBytes = encode
+encode = B.build . encodeJSON
 
 -- | Encode data to JSON bytes chunks.
-encodeBytesList :: EncodeJSON a => a -> [V.Bytes]
-{-# INLINE encodeBytesList #-}
-encodeBytesList = B.buildBytesList . encodeJSON
+encodeChunks :: EncodeJSON a => a -> [V.Bytes]
+{-# INLINE encodeChunks #-}
+encodeChunks = B.buildChunks . encodeJSON
 
 -- | Text version 'encodeBytes'.
 encodeText :: EncodeJSON a => a -> T.Text
 {-# INLINE encodeText #-}
-encodeText = T.Text . encodeBytes
+encodeText = T.Text . encode
 
 -- | Run a 'Converter' with input value.
 convert :: (a -> Converter r) -> a -> Either ConvertError r

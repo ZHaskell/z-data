@@ -24,7 +24,7 @@ module Z.Data.JSON
     -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
-  , encodeBytes, encodeBytesList, encodeText
+  , encode, encodeChunks, encodeText
     -- * Value type
   , Value(..)
     -- * parse into JSON Value
