@@ -489,7 +489,7 @@ toBuilder = B.bytes . toBytes
 
 -- | Build a 'CBytes' with builder, result will be trimmed down to first @\\NUL@ byte if there's any.
 buildCBytes :: B.Builder a -> CBytes
-buildCBytes = fromBytes . B.buildBytes
+buildCBytes = fromBytes . B.build
 
 --------------------------------------------------------------------------------
 

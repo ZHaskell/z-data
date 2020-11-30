@@ -138,7 +138,7 @@ toUTF8Builder = toUTF8BuilderP 0
 -- | Convert data to 'V.Bytes' in UTF8 encoding.
 toUTF8Bytes :: ShowT a => a -> V.Bytes
 {-# INLINE toUTF8Bytes #-}
-toUTF8Bytes = B.buildBytes . toUTF8BuilderP 0
+toUTF8Bytes = B.build . toUTF8BuilderP 0
 
 -- | Convert data to 'Text'.
 toText :: ShowT a => a -> Text

@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.2.0.0  -- TBD
+
+* Rename `buildBytes`, `buildBytesList` in `Z.Data.Builder` to `build`, `buildChunks`.
+* Rename `encodeBytes`, `encodeBytesList` in `Z.Data.Builder` to `encode`, `encodeChunks`.
+* `buildChunks` now produces a lazy bytes list, (so that `encodeChunks`, etc.).
+
 ## 0.1.9.0  -- 2020-10-23
 
 * Add `Z.Data.Vecotr.Hex`, `Z.Data.Vector.Base64` module.

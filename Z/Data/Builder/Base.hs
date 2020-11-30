@@ -10,10 +10,10 @@ Portability : non-portable
 
 A 'Builder' records a buffer writing function, which can be 'mappend' in O(1) via composition.
 
-  * When building a short strict 'Bytes' with 'buildBytes'\/'buildBytesWith', we double the buffer
+  * When building a short strict 'Bytes' with 'build'\/'buildWith', we double the buffer
     each time buffer is full.
 
-  * When building a large lazy @[Bytes]@ with 'buildBytesList'\/'buildBytesListWith',
+  * When building a large lazy @[Bytes]@ with 'buildChunks'\/'buildChunksWith',
     we insert a new chunk when buffer is full.
 
 
@@ -30,10 +30,10 @@ module Z.Data.Builder.Base
   , BuildResult(..)
   , BuildStep
    -- * Running a builder
-  , buildBytes
-  , buildBytesWith
-  , buildBytesList
-  , buildBytesListWith
+  , build
+  , buildWith
+  , buildChunks
+  , buildChunksWith
   , buildText
   , unsafeBuildText
     -- * Basic buiders
@@ -56,7 +56,7 @@ import           Data.Bits                          (unsafeShiftL, unsafeShiftR,
 import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
-import           GHC.Exts
+import           GHC.Exts                           hiding (build)
 import           GHC.Stack
 import           Data.Primitive.PrimArray
 import           Z.Data.Array.Unaligned
@@ -108,7 +108,7 @@ data BuildResult
 newtype Builder a = Builder { runBuilder :: (a -> BuildStep) -> BuildStep }
 
 instance Show (Builder a) where
-    show = show . buildBytes
+    show = show . build
 
 instance Functor Builder where
     {-# INLINE fmap #-}
@@ -150,10 +150,10 @@ instance (a ~ ()) => IsString (Builder a) where
 
 instance Arbitrary (Builder ()) where
     arbitrary = bytes <$> arbitrary
-    shrink b = (bytes . V.pack) <$> shrink (V.unpack (buildBytes b))
+    shrink b = (bytes . V.pack) <$> shrink (V.unpack (build b))
 
 instance CoArbitrary (Builder ()) where
-    coarbitrary = coarbitrary . buildBytes
+    coarbitrary = coarbitrary . build
 
 -- | Encode string with modified UTF-8 encoding, will be rewritten to a memcpy if possible.
 stringModifiedUTF8 :: String -> Builder ()
@@ -200,15 +200,15 @@ bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
 
 --------------------------------------------------------------------------------
 
--- | Shortcut to 'buildBytesWith' 'V.defaultInitSize'.
-buildBytes :: Builder a -> V.Bytes
-{-# INLINE buildBytes #-}
-buildBytes = buildBytesWith V.defaultInitSize
+-- | Shortcut to 'buildWith' 'V.defaultInitSize'.
+build :: Builder a -> V.Bytes
+{-# INLINE build #-}
+build = buildWith V.defaultInitSize
 
 -- | Build some bytes and validate if it's UTF8 bytes.
 buildText :: HasCallStack => Builder a -> T.Text
 {-# INLINE buildText #-}
-buildText = T.validate . buildBytesWith V.defaultInitSize
+buildText = T.validate . buildWith V.defaultInitSize
 
 -- | Build some bytes assuming it's UTF8 encoding.
 --
@@ -217,13 +217,13 @@ buildText = T.validate . buildBytesWith V.defaultInitSize
 -- be used in debug only.
 unsafeBuildText :: Builder a -> T.Text
 {-# INLINE unsafeBuildText #-}
-unsafeBuildText = T.Text . buildBytesWith V.defaultInitSize
+unsafeBuildText = T.Text . buildWith V.defaultInitSize
 
 -- | Run Builder with doubling buffer strategy, which is suitable
 -- for building short bytes.
-buildBytesWith :: Int -> Builder a -> V.Bytes
-{-# INLINABLE buildBytesWith #-}
-buildBytesWith initSiz (Builder b) = unsafePerformIO $ do
+buildWith :: Int -> Builder a -> V.Bytes
+{-# INLINABLE buildWith #-}
+buildWith initSiz (Builder b) = unsafePerformIO $ do
     buf <- newPrimArray initSiz
     loop =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
@@ -243,42 +243,51 @@ buildBytesWith initSiz (Builder b) = unsafePerformIO $ do
             copyPrimArray buf' offset arr s l
             loop =<< k (Buffer buf' (offset+l))
 
--- | Shortcut to 'buildBytesListWith' 'V.defaultChunkSize'.
-buildBytesList :: Builder a -> [V.Bytes]
-{-# INLINE buildBytesList #-}
-buildBytesList = buildBytesListWith  V.smallChunkSize V.defaultChunkSize
+-- | Shortcut to 'buildChunksWith' 'V.defaultChunkSize'.
+buildChunks :: Builder a -> [V.Bytes]
+{-# INLINE buildChunks #-}
+buildChunks = buildChunksWith  V.smallChunkSize V.defaultChunkSize
 
 -- | Run Builder with inserting chunk strategy, which is suitable
 -- for building a list of bytes chunks and processing them in a streaming ways.
-buildBytesListWith :: Int -> Int -> Builder a -> [V.Bytes]
-{-# INLINABLE buildBytesListWith #-}
-buildBytesListWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
+--
+-- Note the building process is lazy, building happens when list chunks are consumed.
+buildChunksWith :: Int -> Int -> Builder a -> [V.Bytes]
+{-# INLINABLE buildChunksWith #-}
+buildChunksWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
     buf <- newPrimArray initSiz
-    loop [] =<< b (\ _ -> return . Done) (Buffer buf 0)
+    loop =<< b (\ _ -> return . Done) (Buffer buf 0)
   where
-    loop acc r = case r of
+    loop r = case r of
         Done buffer -> do
             !v <- freezeBuffer buffer
-            return (reverse (v : acc))
+            return [v]
         BufferFull buffer@(Buffer _ offset) wantSiz k -> do
             let !siz' = max chunkSiz wantSiz
             buf' <- newPrimArray siz'   -- new buffer
-            if (offset == 0)
-            then loop acc =<< k (Buffer buf' 0)
+            if offset == 0
+            then loop =<< k (Buffer buf' 0)
             else do
                 !v <- freezeBuffer buffer
-                loop (v : acc) =<< k (Buffer buf' 0)
+                vs <- unsafeInterleaveIO . loop =<< k (Buffer buf' 0)
+                return (v:vs)
         InsertBytes buffer@(Buffer _ offset) v@(V.PrimVector arr s l) k -> do
-            if (offset == 0)
-            then loop (v : acc) =<< k buffer
+            if offset == 0
+            then do
+                vs <- unsafeInterleaveIO . loop =<< k buffer
+                return (v:vs)
             else do
                 !v' <- freezeBuffer buffer
                 buf' <- newPrimArray chunkSiz   -- new buffer
-                if (l < chunkSiz `unsafeShiftR` 1)
+                if l < chunkSiz `unsafeShiftR` 1
                 then do
                     copyPrimArray buf' 0 arr s l
-                    loop (v' : acc) =<< k (Buffer buf' l)
-                else loop (v : v' : acc) =<< k (Buffer buf' 0)
+                    vs <- unsafeInterleaveIO . loop =<< k (Buffer buf' l)
+                    return (v':vs)
+                else do
+                    vs <- unsafeInterleaveIO . loop =<< k (Buffer buf' 0)
+                    return (v':v:vs)
+                
 
 --------------------------------------------------------------------------------
 
@@ -501,7 +510,7 @@ comma = encodePrim @Word8 COMMA
 -- import Z.Data.Text    as T
 -- import Z.Data.Vector  as V
 --
--- > T.validate . B.buildBytes $ B.intercalateVec "," B.int (V.pack [1,2,3,4] :: V.PrimVector Int)
+-- > T.validate . B.build $ B.intercalateVec "," B.int (V.pack [1,2,3,4] :: V.PrimVector Int)
 -- "1,2,3,4"
 -- @
 intercalateVec :: (V.Vec v a)
@@ -521,7 +530,7 @@ intercalateVec s f v = do
 -- import Z.Data.Text    as T
 -- import Z.Data.Vector  as V
 --
--- T.validate . B.buildBytes $ B.intercalateList "," B.int ([1,2,3,4] :: [Int])
+-- T.validate . B.build $ B.intercalateList "," B.int ([1,2,3,4] :: [Int])
 -- "1,2,3,4"
 -- @
 intercalateList :: Builder ()           -- ^ the seperator

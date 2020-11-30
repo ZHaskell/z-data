@@ -18,10 +18,10 @@ module Z.Data.Builder
     Builder
   , append
    -- * Running builders
-  , buildBytes
-  , buildBytesWith
-  , buildBytesList
-  , buildBytesListWith
+  , build
+  , buildWith
+  , buildChunks
+  , buildChunksWith
   , buildText
   , unsafeBuildText
     -- * Basic buiders
