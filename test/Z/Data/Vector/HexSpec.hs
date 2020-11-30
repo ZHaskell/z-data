@@ -10,7 +10,7 @@ import           Test.Hspec
 import           Test.Hspec.QuickCheck
 
 spec :: Spec
-spec = describe "text-HexBytes" . modifyMaxSuccess (*50) . modifyMaxSize (*50) $ do
+spec = describe "text-HexBytes" . modifyMaxSuccess (*10) . modifyMaxSize (*10) $ do
     describe "encoding props " $ do
         prop "hexDecode' . hexEncode === id" $ \ xs u ->
             (H.hexDecode' (H.hexEncode u xs) === xs)

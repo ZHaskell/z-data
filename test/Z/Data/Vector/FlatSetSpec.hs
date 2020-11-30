@@ -17,7 +17,7 @@ type FMS = FS.FlatSet String
 
 spec :: Spec
 spec = do
-    describe "flatset-semigroup-monoid" . modifyMaxSuccess (*10) . modifyMaxSize (*10) $ do
+    describe "flatset-semigroup-monoid" . modifyMaxSuccess (*5) . modifyMaxSize (*5) $ do
         prop "flatset monoid unit law" $ \ (m :: FMS)  ->
             (m <> FS.empty) === m
         prop "flatset monoid unit law" $ \ (m :: FMS) ->
