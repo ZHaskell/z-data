@@ -16,7 +16,7 @@ module Z.Data.JSON.Base
   ( -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
-  , encodeBytes, encodeBytesList, encodeText
+  , encode, encodeBytes, encodeBytesList, encodeText
   -- * Re-export 'Value' type
   , Value(..)
     -- * parse into JSON Value
@@ -57,21 +57,23 @@ import           Data.Functor.Const
 import           Data.Functor.Identity
 import           Data.Functor.Product
 import           Data.Functor.Sum
-import           Data.Hashable
 import qualified Data.HashMap.Strict          as HM
 import qualified Data.HashSet                 as HS
+import           Data.Hashable
 import           Data.Int
 import           Data.List.NonEmpty           (NonEmpty (..))
 import qualified Data.List.NonEmpty           as NonEmpty
 import qualified Data.Monoid                  as Monoid
-import           Data.Primitive.Types         (Prim)
-import           Data.Proxy                   (Proxy(..))
-import           Data.Ratio                   (Ratio, (%), numerator, denominator)
-import           Data.Scientific              (Scientific, base10Exponent, toBoundedInteger)
-import qualified Data.Scientific              as Scientific
-import qualified Data.Semigroup               as Semigroup
 import qualified Data.Primitive.ByteArray     as A
 import qualified Data.Primitive.SmallArray    as A
+import           Data.Primitive.Types         (Prim)
+import           Data.Proxy                   (Proxy (..))
+import           Data.Ratio                   (Ratio, denominator, numerator,
+                                               (%))
+import           Data.Scientific              (Scientific, base10Exponent,
+                                               toBoundedInteger)
+import qualified Data.Scientific              as Scientific
+import qualified Data.Semigroup               as Semigroup
 import           Data.Tagged                  (Tagged (..))
 import           Data.Version                 (Version, parseVersion)
 import           Data.Word
@@ -81,22 +83,22 @@ import           GHC.Generics
 import           GHC.Natural
 import           System.Exit
 import           Text.ParserCombinators.ReadP (readP_to_S)
-import qualified Z.Data.Array               as A
-import qualified Z.Data.Builder             as B
+import qualified Z.Data.Array                 as A
+import qualified Z.Data.Builder               as B
 import           Z.Data.Generics.Utils
-import           Z.Data.JSON.Value          (Value(..))
-import qualified Z.Data.JSON.Value          as JV
-import qualified Z.Data.JSON.Builder        as JB
-import qualified Z.Data.Parser              as P
-import qualified Z.Data.Parser.Numeric      as P
-import qualified Z.Data.Text                as T
-import qualified Z.Data.Text.ShowT          as T
-import qualified Z.Data.Vector.Base         as V
-import qualified Z.Data.Vector.Extra        as V
-import qualified Z.Data.Vector.FlatIntMap   as FIM
-import qualified Z.Data.Vector.FlatIntSet   as FIS
-import qualified Z.Data.Vector.FlatMap      as FM
-import qualified Z.Data.Vector.FlatSet      as FS
+import qualified Z.Data.JSON.Builder          as JB
+import           Z.Data.JSON.Value            (Value (..))
+import qualified Z.Data.JSON.Value            as JV
+import qualified Z.Data.Parser                as P
+import qualified Z.Data.Parser.Numeric        as P
+import qualified Z.Data.Text                  as T
+import qualified Z.Data.Text.ShowT            as T
+import qualified Z.Data.Vector.Base           as V
+import qualified Z.Data.Vector.Extra          as V
+import qualified Z.Data.Vector.FlatIntMap     as FIM
+import qualified Z.Data.Vector.FlatIntSet     as FIS
+import qualified Z.Data.Vector.FlatMap        as FM
+import qualified Z.Data.Vector.FlatSet        as FS
 
 --------------------------------------------------------------------------------
 
@@ -125,7 +127,7 @@ decode' bs = case P.parse' (JV.value <* JV.skipSpaces <* P.endOfInput) bs of
     Left pErr -> Left (Left pErr)
     Right v -> case convert fromValue v of
         Left cErr -> Left (Right cErr)
-        Right r -> Right r
+        Right r   -> Right r
 
 -- | Decode a JSON bytes, return any trailing bytes.
 decode :: FromValue a => V.Bytes -> (V.Bytes, Either DecodeError a)
@@ -134,34 +136,41 @@ decode bs = case P.parse JV.value bs of
     (bs', Left pErr) -> (bs', Left (Left pErr))
     (bs', Right v) -> case convert fromValue v of
         Left cErr -> (bs', Left (Right cErr))
-        Right r -> (bs', Right r)
+        Right r   -> (bs', Right r)
 
 -- | Decode JSON doc chunks, return trailing bytes.
 decodeChunks :: (FromValue a, Monad m) => m V.Bytes -> V.Bytes -> m (V.Bytes, Either DecodeError a)
 {-# INLINE decodeChunks #-}
 decodeChunks mb bs = do
-    mr <- (P.parseChunks JV.value mb bs)
+    mr <- P.parseChunks JV.value mb bs
     case mr of
         (bs', Left pErr) -> pure (bs', Left (Left pErr))
-        (bs', Right v) -> case convert fromValue v of
-            Left cErr -> pure (bs', Left (Right cErr))
-            Right r -> pure (bs', Right r)
+        (bs', Right v) ->
+            case convert fromValue v of
+                Left cErr -> pure (bs', Left (Right cErr))
+                Right r   -> pure (bs', Right r)
 
 -- | Decode JSON doc chunks, consuming trailing JSON whitespaces (other trailing bytes are not allowed).
 decodeChunks' :: (FromValue a, Monad m) => m V.Bytes -> V.Bytes -> m (Either DecodeError a)
 {-# INLINE decodeChunks' #-}
 decodeChunks' mb bs = do
-    mr <- (P.parseChunks (JV.value <* JV.skipSpaces <* P.endOfInput) mb bs)
+    mr <- P.parseChunks (JV.value <* JV.skipSpaces <* P.endOfInput) mb bs
     case mr of
         (_, Left pErr) -> pure (Left (Left pErr))
-        (_, Right v) -> case convert fromValue v of
-            Left cErr -> pure (Left (Right cErr))
-            Right r -> pure (Right r)
+        (_, Right v) ->
+            case convert fromValue v of
+                Left cErr -> pure (Left (Right cErr))
+                Right r   -> pure (Right r)
 
 -- | Directly encode data to JSON bytes.
+encode :: EncodeJSON a => a -> V.Bytes
+{-# INLINE encode #-}
+encode = B.buildBytes . encodeJSON
+
+-- | The same as 'encode'.
 encodeBytes :: EncodeJSON a => a -> V.Bytes
 {-# INLINE encodeBytes #-}
-encodeBytes = B.buildBytes . encodeJSON
+encodeBytes = encode
 
 -- | Encode data to JSON bytes chunks.
 encodeBytesList :: EncodeJSON a => a -> [V.Bytes]
@@ -212,8 +221,8 @@ instance T.ShowT ConvertError where
         T.text msg
       where
         renderPath (Index ix) = T.char7 '[' >> T.int ix >> T.char7 ']'
-        renderPath (Key k) = T.char7 '.' >> (JB.string k)
-        renderPath Embedded = "<Embedded>"
+        renderPath (Key k)    = T.char7 '.' >> (JB.string k)
+        renderPath Embedded   = "<Embedded>"
 
 -- | 'Converter' for convert result from JSON 'Value'.
 --
@@ -314,8 +323,8 @@ fromNull c _ v    = typeMismatch c "Null" v
 
 withBool :: T.Text -> (Bool -> Converter a) -> Value ->  Converter a
 {-# INLINE withBool #-}
-withBool _    f (Bool x)  = f x
-withBool name _ v         = typeMismatch name "Bool" v
+withBool _    f (Bool x) = f x
+withBool name _ v        = typeMismatch name "Bool" v
 
 -- | @'withScientific' name f value@ applies @f@ to the 'Scientific' number
 -- when @value@ is a 'Data.Aeson.Number' and fails using 'typeMismatch'
@@ -332,8 +341,8 @@ withBool name _ v         = typeMismatch name "Bool" v
 -- > -- Error: "converting MyType failed, expected Number, but encountered String"
 withScientific :: T.Text -> (Scientific -> Converter a) -> Value ->  Converter a
 {-# INLINE withScientific #-}
-withScientific _    f (Number x)  = f x
-withScientific name _ v           = typeMismatch name "Number" v
+withScientific _    f (Number x) = f x
+withScientific name _ v          = typeMismatch name "Number" v
 
 -- | @'withRealFloat' try to convert floating number with following rules:
 --
@@ -377,13 +386,13 @@ withBoundedIntegral name _ v = typeMismatch name "Number" v
 
 withText :: T.Text -> (T.Text -> Converter a) -> Value -> Converter a
 {-# INLINE withText #-}
-withText _    f (String x)  = f x
-withText name _ v           = typeMismatch name "String" v
+withText _    f (String x) = f x
+withText name _ v          = typeMismatch name "String" v
 
 withArray :: T.Text -> (V.Vector Value -> Converter a) -> Value -> Converter a
 {-# INLINE withArray #-}
-withArray _ f (Array arr)  = f arr
-withArray name _ v         = typeMismatch name "Array" v
+withArray _ f (Array arr) = f arr
+withArray name _ v        = typeMismatch name "Array" v
 
 -- | Directly use 'Object' as key-values for further converting.
 withKeyValues :: T.Text -> (V.Vector (T.Text, Value) -> Converter a) -> Value -> Converter a
@@ -478,8 +487,8 @@ convertFieldMaybe p obj key = case FM.lookup key obj of
 convertFieldMaybe' :: (Value -> Converter a) -> FM.FlatMap T.Text Value -> T.Text -> Converter (Maybe a)
 {-# INLINE convertFieldMaybe' #-}
 convertFieldMaybe' p obj key = case FM.lookup key obj of
-    Just v  -> Just <$> p v <?> Key key
-    _       -> pure Nothing
+    Just v -> Just <$> p v <?> Key key
+    _      -> pure Nothing
 
 --------------------------------------------------------------------------------
 
@@ -501,7 +510,7 @@ commaSepVec = B.intercalateVec B.comma encodeJSON
 -- field names or constructor names ('defaultSettings' relys on Haskell's lexical property).
 -- Otherwise 'encodeJSON' will output illegal JSON string.
 data Settings = Settings
-    { fieldFmt :: String -> T.Text  -- ^ format field labels
+    { fieldFmt  :: String -> T.Text  -- ^ format field labels
     , constrFmt :: String -> T.Text -- ^ format constructor names.
     }
 
@@ -1249,11 +1258,11 @@ instance FromValue ExitCode where
     fromValue _ =  fail' "converting ExitCode failed, expected a string or number"
 instance ToValue ExitCode where
     {-# INLINE toValue #-}
-    toValue ExitSuccess = String "ExitSuccess"
+    toValue ExitSuccess     = String "ExitSuccess"
     toValue (ExitFailure n) = Number (fromIntegral n)
 instance EncodeJSON ExitCode where
     {-# INLINE encodeJSON #-}
-    encodeJSON ExitSuccess = "ExitSuccess"
+    encodeJSON ExitSuccess     = "ExitSuccess"
     encodeJSON (ExitFailure n) = B.int n
 
 instance FromValue Version where
@@ -1273,14 +1282,14 @@ instance EncodeJSON Version where
 instance FromValue a => FromValue (Maybe a) where
     {-# INLINE fromValue #-}
     fromValue Null = pure Nothing
-    fromValue v = Just <$> fromValue v
+    fromValue v    = Just <$> fromValue v
 instance ToValue a => ToValue (Maybe a) where
     {-# INLINE toValue #-}
-    toValue Nothing = Null
+    toValue Nothing  = Null
     toValue (Just x) = toValue x
 instance EncodeJSON a => EncodeJSON (Maybe a) where
     {-# INLINE encodeJSON #-}
-    encodeJSON Nothing = "null"
+    encodeJSON Nothing  = "null"
     encodeJSON (Just x) = encodeJSON x
 
 -- | This instance includes a bounds check to prevent maliciously large inputs to fill up the memory of the target system. You can newtype Ratio and provide your own instance using 'withScientific' if you want to allow larger inputs.

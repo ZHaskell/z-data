@@ -7,7 +7,9 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-A 'Builder' records a buffer writing function, which can be 'mappend' in O(1) via composition. This module provides many functions to turn basic data types into 'Builder's, which can used to build strict 'Bytes' or list of 'Bytes' chunks.
+A 'Builder' records a buffer writing function, which can be 'mappend' in O(1)
+via composition. This module provides many functions to turn basic data types
+into 'Builder's, which can used to build strict 'Bytes' or list of 'Bytes' chunks.
 
 -}
 
