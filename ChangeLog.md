@@ -8,6 +8,7 @@
 * `buildChunks` now produces a lazy bytes list, (so that `encodeChunks`, etc.).
 * Functions in `Z.Data.Text.Search` now return char index by default, add `findBytesIndices/findBytesIndex/R` to
   search for bytes index.
+* Add `fromStdString` to `Z.Foreign` to marshall `std::string` from c++ code.
 
 ## 0.1.9.0  -- 2020-10-23
 

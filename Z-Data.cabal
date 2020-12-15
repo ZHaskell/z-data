@@ -262,7 +262,7 @@ library
 
     default-language:       Haskell2010
     build-tool-depends:     hsc2hs:hsc2hs
-    cc-options:             -march=native -O3 -Wno-sign-compare
+    cc-options:             -march=native -std=c++11 -O3 -Wno-sign-compare
     ghc-options:            -Wall 
                             -Wno-unticked-promoted-constructors
                             -Wno-incomplete-patterns

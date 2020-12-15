@@ -1,8 +1,8 @@
+#include <HsFFI.h>
 #include <cstddef>
 #include <cstdlib>
 #include <re2/re2.h>
 #include <re2/set.h>
-#include <HsFFI.h>
 
 extern "C" {
 

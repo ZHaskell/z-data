@@ -468,10 +468,11 @@ fromPrimPtr (Ptr addr#) len = do
     arr <- unsafeFreezePrimArray marr
     return (PrimVector arr 0 len)
 
+-- | @std::string@ Pointer tag.
 data StdString
 
 -- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap bytes,
--- memory pointed by @std::string*@ will be @delete@ed.
+-- memory pointed by @std::string*@ will be @delete@ ed.
 fromStdString :: IO (Ptr StdString) -> IO Bytes
 fromStdString f = bracket f hs_delete_std_string
     (\ q -> do

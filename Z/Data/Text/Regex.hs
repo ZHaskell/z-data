@@ -8,7 +8,11 @@ Stability   : experimental
 Portability : non-portable
 
 Binding to google's <https://github.com/google/re2 RE2>, microsoft did a nice job on RE2 regex syntaxs:
-<https://docs.microsoft.com/en-us/deployedge/edge-learnmore-regex>.
+<https://docs.microsoft.com/en-us/deployedge/edge-learnmore-regex>. Note GHC string literals need @\\@ to
+be escaped, e.g.
+
+>>> match (regex "([a-z0-9_\\.-]+)@([\\da-z\\.-]+)\\.([a-z\\.]{2,6})") "please end email to hello@world.com, foo@bar.com"
+>>> ("hello@world.com",[Just "hello",Just "world",Just "com"],", foo@bar.com")
 
 -}
 
@@ -147,7 +151,7 @@ regexOpts RegexOpts{..} t = unsafePerformIO $ do
         hs_re2_delete_pattern r
         throwIO (InvalidRegexPattern t callStack)
 
--- | Escape a piece of text literal.
+-- | Escape a piece of text literal so that it can be safely used in regex pattern.
 --
 -- >>> escape "(\\d+)"
 -- >>> "\\(\\\\d\\+\\)"
@@ -172,7 +176,7 @@ test (Regex fp _ _) (T.Text bs) = unsafePerformIO $ do
 -- @Nothing@ indicate a non-matching capturing group, e.g.
 --
 -- >>> match (regex "(foo)|(bar)baz") "barbazbla"
--- >>> ("barbaz",([Nothing,Just "bar"], "bla")
+-- >>> ("barbaz",[Nothing,Just "bar"], "bla")
 --
 match :: Regex -> T.Text -> (T.Text, [Maybe T.Text], T.Text)
 {-# INLINABLE match #-}
