@@ -28,10 +28,10 @@
  * SUCH DAMAGE.
  */
 
+#include <Rts.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
-#include <Rts.h>
 
 HsInt hs_memchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n);
 HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t c, HsInt n);
