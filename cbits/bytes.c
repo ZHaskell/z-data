@@ -74,7 +74,7 @@ HsInt hs_fnv_hash(const unsigned char *str, HsInt offset, HsInt len, HsInt salt)
  * https://sourceware.org/newlib
 */
 /* Nonzero if X is not aligned on a "long" boundary.  */
-#define UNALIGNED(X) ((long)(X + 1) & (sizeof (long) - 1))
+#define CHECK_UNALIGNED(X) ((long)(X + 1) & (sizeof (long) - 1))
 /* How many bytes are loaded each iteration of the word copy loop.  */
 #define LBLOCKSIZE (sizeof (long))
 /* Threshhold for punting to the bytewise iterator.  */
@@ -101,7 +101,7 @@ void* __memrchr(void *src_void, unsigned char c, size_t length){
     unsigned long *asrc;
     unsigned long  mask;
     int i;
-    while (UNALIGNED (src)) {
+    while (CHECK_UNALIGNED (src)) {
         if (!length--)
             return NULL;
         if (*src == d)
