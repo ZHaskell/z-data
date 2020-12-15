@@ -20,17 +20,17 @@ spec = describe "text-search" $ do
 
     describe "snd . T.find == List.find" $ do
         prop "snd .T.find = List.find" $ \ (Fun _ y) x ->
-            (case T.find y . T.pack $ x of (_, _, c) -> c)  === (List.find y $ x)
+            (case T.find y . T.pack $ x of (_, c) -> c)  === (List.find y $ x)
 
     describe "T.find" $ do
         prop "T.find = maybe List.length List.findIndexOrEnd" $ \ (Fun _ y) x ->
-            (case T.find y . T.pack $ x of (i,_,_) -> i) ===
+            (case T.find y . T.pack $ x of (i,_) -> i) ===
                 (maybe (List.length x) id $ List.findIndex y x)
 
     describe "T.findR" $ do
         prop "T.find = findR . reverse" $ \ (Fun _ y) x ->
-            (case T.find y . T.pack $ x of (i,_,_) -> i) ===
-                (case T.findR y . T.reverse $ T.pack x of (i,_,_) -> i)
+            (case T.find y . T.pack $ x of (i,_) -> i) ===
+                (case T.findR y . T.reverse $ T.pack x of (i,_) -> i)
 
     describe "T.filter == List.filter" $ do
         prop "T.filter = List.filter" $ \ (Fun _ y) x ->

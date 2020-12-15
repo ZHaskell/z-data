@@ -1,10 +1,13 @@
 # Revision history for Z-Data
 
-## 0.2.0.0  -- TBD
+## 0.2.0.0  -- 2020-12-15
 
+* Add `Z.Data.Text.Regex` module, which provide regex functions using RE2.
 * Rename `buildBytes`, `buildBytesList` in `Z.Data.Builder` to `build`, `buildChunks`.
 * Rename `encodeBytes`, `encodeBytesList` in `Z.Data.Builder` to `encode`, `encodeChunks`.
 * `buildChunks` now produces a lazy bytes list, (so that `encodeChunks`, etc.).
+* Functions in `Z.Data.Text.Search` now return char index by default, add `findBytesIndices/findBytesIndex/R` to
+  search for bytes index.
 
 ## 0.1.9.0  -- 2020-10-23
 

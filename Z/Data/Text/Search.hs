@@ -14,9 +14,12 @@ module Z.Data.Text.Search (
     elem, notElem
   -- * Searching by equality
   , findIndices
+  , findBytesIndices
   , find, findR
   , findIndex
   , findIndexR
+  , findBytesIndex
+  , findBytesIndexR
   , filter, partition
   ) where
 
@@ -29,6 +32,7 @@ import           Z.Data.Text.Base
 import           Z.Data.Text.UTF8Codec
 import qualified Z.Data.Vector.Base    as V
 
+-- | find all char index matching the predicate.
 findIndices :: (Char -> Bool) -> Text -> [Int]
 {-# INLINE findIndices #-}
 findIndices f (Text (V.PrimVector arr s l)) = go 0 s
@@ -39,49 +43,85 @@ findIndices f (Text (V.PrimVector arr s l)) = go 0 s
              | otherwise = go (i+1) (p+off)
         where (# x, off #) = decodeChar arr p
 
+-- | find all char's byte index matching the predicate.
+findBytesIndices :: (Char -> Bool) -> Text -> [Int]
+{-# INLINE findBytesIndices #-}
+findBytesIndices f (Text (V.PrimVector arr s l)) = go s
+  where
+    !end = s + l
+    go !p | p >= end  = []
+          | f x       = (p-s) : go (p+off)
+          | otherwise = go (p+off)
+        where (# x, off #) = decodeChar arr p
+
 -- | /O(n)/ find the first char matching the predicate in a text
--- from left to right, if there isn't one, return the index point to the end of the byte slice.
+-- from left to right, if there isn't one, return the text length.
 find :: (Char -> Bool)
      -> Text
-     -> (Int, Int, Maybe Char)  -- ^ (char index, byte index in slice, matching char)
+     -> (Int, Maybe Char)  -- ^ (char index, matching char)
 {-# INLINE find #-}
 find f (Text (V.PrimVector arr s l)) = go 0 s
   where
     !end = s + l
-    go !i !j | j >= end  = (i, j, Nothing)
+    go !i !j | j >= end  = (i, Nothing)
              | otherwise =
                 let (# x, off #) = decodeChar arr j
                 in if f x
-                    then (i, j, Just x)
+                    then (i, Just x)
                     else go (i+1) (j+off)
 
 -- | /O(n)/ find the first char matching the predicate in a text
--- from right to left, if there isn't one, return the index point to the start of the byte slice.
+-- from right to left.
 --
 findR :: (Char -> Bool)
       -> Text
-      -> (Int, Int, Maybe Char)  -- ^ (char index(counting backwards), byte index in slice, matching char)
+      -> (Int, Maybe Char)  -- ^ (char index(counting backwards), matching char)
 {-# INLINE findR #-}
 findR f (Text (V.PrimVector arr s l)) = go 0 (s+l-1)
   where
-    go !i !j | j < s     = (i, j, Nothing)
+    go !i !j | j < s     = (i, Nothing)
              | otherwise =
                 let (# x, off #) = decodeCharReverse arr j
                 in if f x
-                    then (i, j, Just x)
+                    then (i, Just x)
                     else go (i+1) (j-off)
 
 --------------------------------------------------------------------------------
 
--- | /O(n)/ find the index of the byte slice.
+-- | /O(n)/ find the char index.
 findIndex :: (Char -> Bool) -> Text -> Int
 {-# INLINE findIndex #-}
-findIndex f t = case find f t of (_, i, _) -> i
+findIndex f t = case find f t of (i, _) -> i
 
--- | /O(n)/ find the index of the byte slice in reverse order.
+-- | /O(n)/ find the char index in reverse order.
 findIndexR ::  (Char -> Bool) -> Text -> Int
 {-# INLINE findIndexR #-}
-findIndexR f t = case findR f t of (_, i, _) -> i
+findIndexR f t = case findR f t of (i, _) -> i
+
+-- | /O(n)/ find the char's byte slice index.
+findBytesIndex :: (Char -> Bool) -> Text -> Int
+{-# INLINE findBytesIndex #-}
+findBytesIndex f (Text (V.PrimVector arr s l)) = go s
+  where
+    !end = s + l
+    go !j | j >= end  = j-s
+          | otherwise =
+              let (# x, off #) = decodeChar arr j
+              in if f x
+                  then j-s
+                  else go (j+off)
+
+-- | /O(n)/ find the char's byte slice index in reverse order(pointing to the right char's first byte).
+findBytesIndexR ::  (Char -> Bool) -> Text -> Int
+{-# INLINE findBytesIndexR #-}
+findBytesIndexR f (Text (V.PrimVector arr s l)) = go (s+l-1)
+  where
+    go !j | j < s     = j-s+1
+          | otherwise =
+              let (# x, off #) = decodeCharReverse arr j
+              in if f x
+                  then j-s+1
+                  else go (j-off)
 
 -- | /O(n)/ 'filter', applied to a predicate and a text,
 -- returns a text containing those chars that satisfy the
@@ -129,8 +169,8 @@ partition f (Text (V.PrimVector arr s l))
 -- | /O(n)/ 'elem' test if given char is in given text.
 elem :: Char -> Text -> Bool
 {-# INLINE elem #-}
-elem x t = case find (x==) t of (_,_,Nothing) -> False
-                                _             -> True
+elem x t = case find (x==) t of (_,Nothing) -> False
+                                _           -> True
 
 -- | /O(n)/ @not . elem@
 notElem ::  Char -> Text -> Bool

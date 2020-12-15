@@ -81,6 +81,7 @@ module Z.Foreign
   , clearPtr
   , castPtr
   , fromNullTerminated, fromPtr, fromPrimPtr
+  , StdString, fromStdString
   -- ** re-export
   , RealWorld
   , module Data.Primitive.ByteArray
@@ -90,6 +91,7 @@ module Z.Foreign
   , module Z.Data.Array.Unaligned
   ) where
 
+import           Control.Exception          (bracket)
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Data.Primitive
@@ -465,3 +467,18 @@ fromPrimPtr (Ptr addr#) len = do
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
     arr <- unsafeFreezePrimArray marr
     return (PrimVector arr 0 len)
+
+data StdString
+
+-- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap bytes,
+-- memory pointed by @std::string*@ will be @delete@ed.
+fromStdString :: IO (Ptr StdString) -> IO Bytes
+fromStdString f = bracket f hs_delete_std_string
+    (\ q -> do
+        siz <- hs_std_string_size q
+        (bs,_) <- allocBytesUnsafe siz (hs_copy_std_string q)
+        return bs)
+
+foreign import ccall unsafe hs_std_string_size :: Ptr StdString -> IO Int
+foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> MBA# Word8 -> IO ()
+foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()

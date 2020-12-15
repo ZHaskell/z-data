@@ -1,6 +1,6 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.1.9.1
+version:                    0.2.0.0
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause
@@ -59,6 +59,55 @@ extra-source-files:         ChangeLog.md
                             third_party/Turbo-Base64/turbob64d.c
                             third_party/Turbo-Base64/turbob64sse.c
 
+                            -- re2
+
+                            third_party/re2/util/flags.h
+                            third_party/re2/util/logging.h
+                            third_party/re2/util/malloc_counter.h
+                            third_party/re2/util/mix.h
+                            third_party/re2/util/mutex.h
+                            third_party/re2/util/strutil.h
+                            third_party/re2/util/utf.h
+                            third_party/re2/util/util.h
+                            third_party/re2/re2/bitmap256.h
+                            third_party/re2/re2/filtered_re2.h
+                            third_party/re2/re2/pod_array.h
+                            third_party/re2/re2/prefilter.h
+                            third_party/re2/re2/prefilter_tree.h
+                            third_party/re2/re2/prog.h
+                            third_party/re2/re2/re2.h
+                            third_party/re2/re2/regexp.h
+                            third_party/re2/re2/set.h
+                            third_party/re2/re2/sparse_array.h
+                            third_party/re2/re2/sparse_set.h
+                            third_party/re2/re2/stringpiece.h
+                            third_party/re2/re2/unicode_casefold.h
+                            third_party/re2/re2/unicode_groups.h
+                            third_party/re2/re2/walker-inl.h
+
+                            third_party/re2/util/rune.cc
+                            third_party/re2/util/strutil.cc
+                            third_party/re2/re2/bitstate.cc
+                            third_party/re2/re2/compile.cc
+                            third_party/re2/re2/dfa.cc
+                            third_party/re2/re2/filtered_re2.cc
+                            third_party/re2/re2/mimics_pcre.cc
+                            third_party/re2/re2/nfa.cc
+                            third_party/re2/re2/onepass.cc
+                            third_party/re2/re2/parse.cc
+                            third_party/re2/re2/perl_groups.cc
+                            third_party/re2/re2/prefilter.cc
+                            third_party/re2/re2/prefilter_tree.cc
+                            third_party/re2/re2/prog.cc
+                            third_party/re2/re2/re2.cc
+                            third_party/re2/re2/regexp.cc
+                            third_party/re2/re2/set.cc
+                            third_party/re2/re2/simplify.cc
+                            third_party/re2/re2/stringpiece.cc
+                            third_party/re2/re2/tostring.cc
+                            third_party/re2/re2/unicode_casefold.cc
+                            third_party/re2/re2/unicode_groups.cc
+
 
 source-repository head
     type:     git
@@ -95,6 +144,7 @@ library
                             Z.Data.Text
                             Z.Data.Text.Base
                             Z.Data.Text.Extra
+                            Z.Data.Text.Regex
                             Z.Data.Text.Search
                             Z.Data.Text.ShowT
                             Z.Data.Text.UTF8Codec
@@ -134,6 +184,12 @@ library
                           , unordered-containers    == 0.2.*
                           , tagged                  == 0.8.*
 
+    if os(windows)
+        extra-libraries:    stdc++
+        cc-options:         -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
+    else
+        extra-libraries:    stdc++ pthread
+
     if flag(integer-simple)
         cpp-options:        -DINTEGER_SIMPLE
         build-depends:      integer-simple >= 0.1 && < 0.5
@@ -148,6 +204,8 @@ library
                             third_party/utf8rewind/source
                             third_party/fastvalidate-utf-8/include
                             third_party/Turbo-Base64
+                            third_party/re2
+
     includes:               bytes.h
                             dtoa.h
                             text.h
@@ -155,12 +213,16 @@ library
                             simdasciicheck.h
                             simdutf8check.h
                             turbob64.h
+
     install-includes:       bytes.h
                             dtoa.h
                             text.h
+
     c-sources:              cbits/bytes.c
                             cbits/dtoa.c
                             cbits/text.c
+                            cbits/regex.cc
+
                             third_party/utf8rewind/source/unicodedatabase.c
                             third_party/utf8rewind/source/internal/casemapping.c
                             third_party/utf8rewind/source/internal/codepoint.c
@@ -170,13 +232,37 @@ library
                             third_party/utf8rewind/source/internal/seeking.c
                             third_party/utf8rewind/source/internal/streaming.c
                             third_party/utf8rewind/source/utf8rewind.c
+
                             third_party/Turbo-Base64/turbob64c.c
                             third_party/Turbo-Base64/turbob64d.c
                             third_party/Turbo-Base64/turbob64sse.c
 
+                            third_party/re2/util/rune.cc
+                            third_party/re2/util/strutil.cc
+                            third_party/re2/re2/bitstate.cc
+                            third_party/re2/re2/compile.cc
+                            third_party/re2/re2/dfa.cc
+                            third_party/re2/re2/filtered_re2.cc
+                            third_party/re2/re2/mimics_pcre.cc
+                            third_party/re2/re2/nfa.cc
+                            third_party/re2/re2/onepass.cc
+                            third_party/re2/re2/parse.cc
+                            third_party/re2/re2/perl_groups.cc
+                            third_party/re2/re2/prefilter.cc
+                            third_party/re2/re2/prefilter_tree.cc
+                            third_party/re2/re2/prog.cc
+                            third_party/re2/re2/re2.cc
+                            third_party/re2/re2/regexp.cc
+                            third_party/re2/re2/set.cc
+                            third_party/re2/re2/simplify.cc
+                            third_party/re2/re2/stringpiece.cc
+                            third_party/re2/re2/tostring.cc
+                            third_party/re2/re2/unicode_casefold.cc
+                            third_party/re2/re2/unicode_groups.cc
+
     default-language:       Haskell2010
     build-tool-depends:     hsc2hs:hsc2hs
-    cc-options:             -march=native
+    cc-options:             -march=native -O3 -Wno-sign-compare
     ghc-options:            -Wall 
                             -Wno-unticked-promoted-constructors
                             -Wno-incomplete-patterns
@@ -245,6 +331,7 @@ test-suite Z-Data-Test
                             Z.Data.Vector.FlatMapSpec
                             Z.Data.Vector.FlatSetSpec
                             Z.Data.Vector.HexSpec
+                            Z.Data.Vector.Base64Spec
                             Z.ForeignSpec
 
     build-depends:          Z-Data

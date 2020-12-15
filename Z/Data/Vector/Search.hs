@@ -136,7 +136,7 @@ findR f (Vec arr s l) = go (s+l-1)
           | otherwise = go (p-1)
         where (# x #) = indexArr' arr p
 
--- | /O(n)/ Special 'findR' for 'Bytes' with handle roll bit twiddling.
+-- | /O(n)/ Special 'findR' for 'Bytes' with @memrchr@.
 findByteR :: Word8 -> Bytes -> (Int, Maybe Word8)
 {-# INLINE findByteR #-}
 findByteR w (PrimVector (PrimArray ba#) s l) =

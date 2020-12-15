@@ -236,7 +236,7 @@ splitAt n t@(Text (V.PrimVector ba s l))
 takeWhile :: (Char -> Bool) -> Text -> Text
 {-# INLINE takeWhile #-}
 takeWhile f t@(Text (V.PrimVector arr s _)) =
-    let !i = findIndex (not . f) t in Text (V.PrimVector arr s (i-s))
+    let !i = findBytesIndex (not . f) t in Text (V.PrimVector arr s i)
 
 -- | /O(n)/ Applied to a predicate @p@ and a text @t@,
 -- returns the longest suffix (possibly empty) of @t@ of elements that
@@ -244,21 +244,21 @@ takeWhile f t@(Text (V.PrimVector arr s _)) =
 takeWhileR :: (Char -> Bool) -> Text -> Text
 {-# INLINE takeWhileR #-}
 takeWhileR f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndexR (not . f) t in Text (V.PrimVector arr (i+1) (s+l-i-1))
+    let !i = findBytesIndexR (not . f) t in Text (V.PrimVector arr (i+s) (l-i))
 
 -- | /O(n)/ Applied to a predicate @p@ and a text @vs@,
 -- returns the suffix (possibly empty) remaining after 'takeWhile' @p vs@.
 dropWhile :: (Char -> Bool) -> Text -> Text
 {-# INLINE dropWhile #-}
-dropWhile f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndex (not . f) t in Text (V.PrimVector arr i (s+l-i))
+dropWhile f t@(Text (V.PrimVector arr _ l)) =
+    let !i = findBytesIndex (not . f) t in Text (V.PrimVector arr i (l-i))
 
 -- | /O(n)/ Applied to a predicate @p@ and a text @vs@,
 -- returns the prefix (possibly empty) remaining before 'takeWhileR' @p vs@.
 dropWhileR :: (Char -> Bool) -> Text -> Text
 {-# INLINE dropWhileR #-}
 dropWhileR f t@(Text (V.PrimVector arr s _)) =
-    let !i = findIndexR (not . f) t in Text (V.PrimVector arr s (i-s+1))
+    let !i = findBytesIndexR (not . f) t in Text (V.PrimVector arr s (i-s))
 
 -- | /O(n)/ @dropAround f = dropWhile f . dropWhileR f@
 dropAround :: (Char -> Bool) -> Text -> Text
@@ -269,15 +269,13 @@ dropAround f = dropWhileR f . dropWhile f
 break :: (Char -> Bool) -> Text -> (Text, Text)
 {-# INLINE break #-}
 break f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndex f t
-    in (Text (V.PrimVector arr s (i-s)), Text (V.PrimVector arr i (s+l-i)))
+    let !i = findBytesIndex f t
+    in (Text (V.PrimVector arr s i), Text (V.PrimVector arr i (l-i)))
 
 -- | /O(n)/ Split the text into the longest prefix of elements that satisfy the predicate and the rest without copying.
 span :: (Char -> Bool) -> Text -> (Text, Text)
 {-# INLINE span #-}
-span f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndex (not . f) t
-    in (Text (V.PrimVector arr s (i-s)), Text (V.PrimVector arr i (s+l-i)))
+span f = break (not . f)
 
 -- | 'breakR' behaves like 'break' but from the end of the text.
 --
@@ -285,15 +283,13 @@ span f t@(Text (V.PrimVector arr s l)) =
 breakR :: (Char -> Bool) -> Text -> (Text, Text)
 {-# INLINE breakR #-}
 breakR f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndexR f t
-    in (Text (V.PrimVector arr s (i-s+1)), Text (V.PrimVector arr (i+1) (s+l-i-1)))
+    let !i = findBytesIndexR f t
+    in (Text (V.PrimVector arr s i), Text (V.PrimVector arr i (l-i)))
 
 -- | 'spanR' behaves like 'span' but from the end of the text.
 spanR :: (Char -> Bool) -> Text -> (Text, Text)
 {-# INLINE spanR #-}
-spanR f t@(Text (V.PrimVector arr s l)) =
-    let !i = findIndexR (not . f) t
-    in (Text (V.PrimVector arr s (i-s+1)), Text (V.PrimVector arr (i+1) (s+l-i-1)))
+spanR f = breakR (not . f)
 
 -- | Break a text on a subtext, returning a pair of the part of the
 -- text prior to the match, and the rest of the text, e.g.
