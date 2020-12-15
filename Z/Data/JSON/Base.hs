@@ -209,11 +209,11 @@ instance Show ConvertError where
     show = T.toString
 
 instance T.ShowT ConvertError where
+    toUTF8BuilderP _ (ConvertError [] msg) = T.toUTF8Builder msg
     toUTF8BuilderP _ (ConvertError paths msg) = do
-        "<"
         mapM_ renderPath (reverse paths)
-        "> "
-        T.text msg
+        T.char7 ':'
+        T.toUTF8Builder msg
       where
         renderPath (Index ix) = T.char7 '[' >> T.int ix >> T.char7 ']'
         renderPath (Key k)    = T.char7 '.' >> (JB.string k)

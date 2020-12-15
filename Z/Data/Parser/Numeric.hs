@@ -51,8 +51,8 @@ import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
 import qualified Z.Data.Vector.Extra    as V
 
-#define WORD64_MAX_DIGITS_LEN 19
-#define INT64_MAX_DIGITS_LEN 18
+#define WORD64_SAFE_DIGITS_LEN 19
+#define INT64_SAFE_DIGITS_LEN 18
 
 
 -- | Parse and decode an unsigned hex number, fail in case of overflow. The hex digits
@@ -128,7 +128,7 @@ uint :: forall a. (Integral a, Bounded a) => Parser a
 {-# INLINE uint #-}
 uint = "Z.Data.Parser.Numeric.uint" <?> do
     bs <- P.takeWhile1 isDigit
-    if V.length bs <= WORD64_MAX_DIGITS_LEN
+    if V.length bs <= WORD64_SAFE_DIGITS_LEN
     then do
         let w64 = decLoop @Word64 0 bs
         if w64 <= fromIntegral (maxBound :: a)
@@ -157,7 +157,7 @@ decLoop = V.foldl' step
 decLoopIntegerFast :: V.Bytes -> Integer
 {-# INLINE decLoopIntegerFast #-}
 decLoopIntegerFast bs
-    | V.length bs <= WORD64_MAX_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
+    | V.length bs <= WORD64_SAFE_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
     | otherwise                            = decLoop @Integer 0 bs
 
 -- | A fast digit predicate.
@@ -179,7 +179,7 @@ int = "Z.Data.Parser.Numeric.int" <?> do
   where
     loop = do
         bs <- P.takeWhile1 isDigit
-        if V.length bs <= WORD64_MAX_DIGITS_LEN
+        if V.length bs <= WORD64_SAFE_DIGITS_LEN
         then do
             let w64 = decLoop @Word64 0 bs
             if w64 <= fromIntegral (maxBound :: a)
@@ -192,7 +192,7 @@ int = "Z.Data.Parser.Numeric.int" <?> do
             else P.fail' "decimal numeric value overflow"
     loopNe = do
         bs <- P.takeWhile1 isDigit
-        if V.length bs <= INT64_MAX_DIGITS_LEN
+        if V.length bs <= INT64_SAFE_DIGITS_LEN
         then do
             let i64 = negate (decLoop @Int64 0 bs)
             if i64 >= fromIntegral (minBound :: a)
@@ -218,6 +218,7 @@ int_ = "Z.Data.Parser.Numeric.int_" <?> do
 -- | Parser specifically optimized for 'Integer'.
 --
 integer :: Parser Integer
+{-# INLINE integer #-}
 integer =  "Z.Data.Parser.Numeric.integer" <?> do
     w <- P.peek
     if w == MINUS
@@ -311,7 +312,7 @@ scientificallyInternal h = do
         let !ilen = V.length intPart
             !flen = V.length fracPart
             !base =
-                if ilen + flen <= WORD64_MAX_DIGITS_LEN
+                if ilen + flen <= WORD64_SAFE_DIGITS_LEN
                 then fromIntegral (decLoop @Word64 (decLoop @Word64 0 intPart) fracPart)
                 else
                     let i = decLoopIntegerFast intPart
@@ -415,7 +416,7 @@ scientificallyInternal' h = do
             let !ilen = V.length intPart
                 !flen = V.length fracPart
                 !base =
-                    if ilen + flen <= WORD64_MAX_DIGITS_LEN
+                    if ilen + flen <= WORD64_SAFE_DIGITS_LEN
                     then fromIntegral (decLoop @Word64 (decLoop @Word64 0 intPart) fracPart)
                     else
                         let i = decLoopIntegerFast intPart
