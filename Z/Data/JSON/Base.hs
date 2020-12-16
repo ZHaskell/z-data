@@ -91,6 +91,7 @@ import           Z.Data.JSON.Value            (Value (..))
 import qualified Z.Data.JSON.Value            as JV
 import qualified Z.Data.Parser                as P
 import qualified Z.Data.Parser.Numeric        as P
+import qualified Z.Data.Text.Base             as T
 import qualified Z.Data.Text                  as T
 import qualified Z.Data.Text.ShowT            as T
 import qualified Z.Data.Vector.Base           as V
