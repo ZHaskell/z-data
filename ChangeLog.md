@@ -3,6 +3,7 @@
 ## 0.2.1.0  -- 2020-12-16
 
 * Hide `Text` constructor from `Z.Data.Text`.
+* Add `fromStdString` to `Z.Data.CBytes`.
 
 ## 0.2.0.0  -- 2020-12-15
 
