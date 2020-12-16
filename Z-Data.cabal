@@ -265,7 +265,7 @@ library
 
     default-language:       Haskell2010
     build-tool-depends:     hsc2hs:hsc2hs
-    cc-options:             -march=native -O3 -Wno-sign-compare 
+    cc-options:             -march=native -Wno-sign-compare 
     cxx-options:            -std=c++11
                             -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
                             -- we work around this issue using Setup.hs
