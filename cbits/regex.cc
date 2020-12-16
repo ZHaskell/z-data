@@ -58,12 +58,12 @@ HsInt hs_std_string_size(std::string* str) {
     else return 0;
 }
 
-void hs_copy_std_string(std::string* str, char* buf) {
-    if (str != NULL) memcpy(buf, str->c_str(), str->size());
+void hs_copy_std_string(std::string* str, HsInt siz, char* buf) {
+    if (str != NULL) memcpy(buf, str->c_str(), siz);
 }
 
 void hs_delete_std_string(std::string* str) {
-    if (str != NULL) delete str;
+    delete str;
 }
 
 std::string* hs_re2_quote_meta(const char *in, HsInt off, HsInt len) {

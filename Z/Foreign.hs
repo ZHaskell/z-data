@@ -89,6 +89,10 @@ module Z.Foreign
   , module Foreign.C.Types
   , module Data.Primitive.Ptr
   , module Z.Data.Array.Unaligned
+  -- ** Internal helpers
+  , hs_std_string_size
+  , hs_copy_std_string
+  , hs_delete_std_string
   ) where
 
 import           Control.Exception          (bracket)
@@ -477,9 +481,9 @@ fromStdString :: IO (Ptr StdString) -> IO Bytes
 fromStdString f = bracket f hs_delete_std_string
     (\ q -> do
         siz <- hs_std_string_size q
-        (bs,_) <- allocBytesUnsafe siz (hs_copy_std_string q)
+        (bs,_) <- allocBytesUnsafe siz (hs_copy_std_string q siz)
         return bs)
 
 foreign import ccall unsafe hs_std_string_size :: Ptr StdString -> IO Int
-foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> MBA# Word8 -> IO ()
+foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> Int -> MBA# Word8 -> IO ()
 foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()
