@@ -10,7 +10,7 @@ maintainer:                 winterland1989@gmail.com
 copyright:                  (c) Dong Han, 2017-2020
                             (c) Tao He, 2017-2020
 category:                   Data
-build-type:                 Simple
+build-type:                 Custom
 homepage:                   https://github.com/haskell-Z/z-data
 bug-reports:                https://github.com/haskell-Z/z-data/issues
 
@@ -108,6 +108,8 @@ extra-source-files:         ChangeLog.md
                             third_party/re2/re2/unicode_casefold.cc
                             third_party/re2/re2/unicode_groups.cc
 
+custom-setup
+   setup-depends: base >= 4.5 && < 5, Cabal >= 2.4 && < 4
 
 source-repository head
     type:     git
@@ -221,7 +223,6 @@ library
     c-sources:              cbits/bytes.c
                             cbits/dtoa.c
                             cbits/text.c
-                            cbits/regex.cc
 
                             third_party/utf8rewind/source/unicodedatabase.c
                             third_party/utf8rewind/source/internal/casemapping.c
@@ -236,6 +237,8 @@ library
                             third_party/Turbo-Base64/turbob64c.c
                             third_party/Turbo-Base64/turbob64d.c
                             third_party/Turbo-Base64/turbob64sse.c
+
+    cxx-sources:            cbits/regex.cc
 
                             third_party/re2/util/rune.cc
                             third_party/re2/util/strutil.cc
@@ -262,7 +265,10 @@ library
 
     default-language:       Haskell2010
     build-tool-depends:     hsc2hs:hsc2hs
-    cc-options:             -march=native -std=c++11 -O3 -Wno-sign-compare
+    cc-options:             -march=native -O3 -Wno-sign-compare 
+    cxx-options:            -std=c++11
+                            -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
+                            -- we work around this issue using Setup.hs
     ghc-options:            -Wall 
                             -Wno-unticked-promoted-constructors
                             -Wno-incomplete-patterns
