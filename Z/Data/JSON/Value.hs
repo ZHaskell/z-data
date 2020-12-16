@@ -46,7 +46,7 @@ import           Data.Word
 import           GHC.Generics
 import qualified Z.Data.Parser          as P
 import           Z.Data.Parser          ((<?>))
-import qualified Z.Data.Text            as T
+import qualified Z.Data.Text.Base       as T
 import           Z.Data.Text.ShowT     (ShowT(..))
 import           Z.Data.Vector.Base     as V
 import           Z.Data.Vector.Extra    as V

@@ -305,8 +305,8 @@ validateMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
 
 -- | /O(n)/ Validate a sequence of bytes is all ascii char byte(<128).
 --
--- Throw 'InvalidASCIIException' in case of invalid byte, It's not faster
--- than 'validate', use it only if you want to validate if a ASCII char sequence.
+-- Throw 'InvalidASCIIException' in case of invalid byte, It's not always faster
+-- than 'validate', use it only if you want to validate ASCII char sequences.
 --
 validateASCII :: HasCallStack => Bytes -> Text
 {-# INLINE validateASCII #-}

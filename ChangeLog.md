@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.2.1.0  -- 2020-12-16
+
+* Hide `Text` constructor from `Z.Data.Text`.
+
 ## 0.2.0.0  -- 2020-12-15
 
 * Add `Z.Data.Text.Regex` module, which provide regex functions using RE2.

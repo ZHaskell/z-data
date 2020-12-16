@@ -16,7 +16,7 @@ see 'normalize', 'caseFold' (current using unicode 13 databases).
 
 module Z.Data.Text (
   -- * Text type
-    Text(..)
+    Text, getUTF8Bytes
   , validate, validateASCII
   , validateMaybe, validateASCIIMaybe
   , TextException(..)
