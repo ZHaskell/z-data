@@ -21,7 +21,7 @@ module Z.Data.CBytes
   , unpack
   , null, length
   , empty, singleton, append, concat, intercalate, intercalateElem
-  , fromCString, fromCStringN
+  , fromCString, fromCStringN, fromStdString
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   , withCBytesListUnsafe, withCBytesList
   -- * re-export
@@ -31,12 +31,13 @@ module Z.Data.CBytes
 
 import           Control.DeepSeq
 import           Control.Monad
+import           Control.Exception
 import           Control.Monad.Primitive
 import           Control.Monad.ST
 import           Data.Bits
-import           Data.Foldable           (foldlM)
-import           Data.Hashable           (Hashable(..))
-import qualified Data.List               as List
+import           Data.Foldable              (foldlM)
+import           Data.Hashable              (Hashable(..))
+import qualified Data.List                  as List
 import           Data.Primitive.PrimArray
 import           Data.Word
 import           Foreign.C.String
@@ -44,30 +45,30 @@ import           GHC.Exts
 import           GHC.CString
 import           GHC.Ptr
 import           GHC.Stack
-import           Prelude                 hiding (all, any, appendFile, break,
-                                          concat, concatMap, drop, dropWhile,
-                                          elem, filter, foldl, foldl1, foldr,
-                                          foldr1, getContents, getLine, head,
-                                          init, interact, last, length, lines,
-                                          map, maximum, minimum, notElem, null,
-                                          putStr, putStrLn, readFile, replicate,
-                                          reverse, scanl, scanl1, scanr, scanr1,
-                                          span, splitAt, tail, take, takeWhile,
-                                          unlines, unzip, writeFile, zip,
-                                          zipWith)
+import           Prelude                    hiding (all, any, appendFile, break,
+                                                concat, concatMap, drop, dropWhile,
+                                                elem, filter, foldl, foldl1, foldr,
+                                                foldr1, getContents, getLine, head,
+                                                init, interact, last, length, lines,
+                                                map, maximum, minimum, notElem, null,
+                                                putStr, putStrLn, readFile, replicate,
+                                                reverse, scanl, scanl1, scanr, scanr1,
+                                                span, splitAt, tail, take, takeWhile,
+                                                unlines, unzip, writeFile, zip,
+                                                zipWith)
 import           Z.Data.Array
 import           Z.Data.Array.Unaligned
-import qualified Z.Data.Builder        as B
-import qualified Z.Data.Text           as T
-import qualified Z.Data.Text.ShowT     as T
-import qualified Z.Data.Text.UTF8Codec as T
-import qualified Z.Data.JSON.Base      as JSON
-import           Z.Data.JSON.Base      ((<?>))
-import           Z.Data.Text.UTF8Codec (encodeCharModifiedUTF8, decodeChar)
-import qualified Z.Data.Vector.Base    as V
-import           Z.Foreign
-import           System.IO.Unsafe        (unsafeDupablePerformIO)
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
+import qualified Z.Data.Builder             as B
+import qualified Z.Data.Text                as T
+import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.UTF8Codec      as T
+import qualified Z.Data.JSON.Base           as JSON
+import           Z.Data.JSON.Base           ((<?>))
+import           Z.Data.Text.UTF8Codec      (encodeCharModifiedUTF8, decodeChar)
+import qualified Z.Data.Vector.Base         as V
+import           Z.Foreign                  hiding (fromStdString)
+import           System.IO.Unsafe           (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary  (Arbitrary(..), CoArbitrary(..))
 
 -- | A efficient wrapper for short immutable null-terminated byte sequences which can be
 -- automatically freed by ghc garbage collector.
@@ -603,6 +604,16 @@ allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
     writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
     return (CBytes bs, a)
+
+-- | Run FFI in bracket and marshall @std::string*@ result into 'CBytes',
+-- memory pointed by @std::string*@ will be @delete@ ed.
+fromStdString :: IO (Ptr StdString) -> IO CBytes
+fromStdString f = bracket f hs_delete_std_string
+    (\ q -> do
+        siz <- hs_std_string_size q
+        let !siz' = siz + 1
+        (bs,_) <- allocPrimArrayUnsafe siz' (hs_copy_std_string q siz')
+        return (CBytes bs))
 
 --------------------------------------------------------------------------------
 
