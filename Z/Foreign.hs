@@ -84,6 +84,7 @@ module Z.Foreign
   , StdString, fromStdString
   -- ** re-export
   , RealWorld
+  , touch
   , module Data.Primitive.ByteArray
   , module Data.Primitive.PrimArray
   , module Foreign.C.Types

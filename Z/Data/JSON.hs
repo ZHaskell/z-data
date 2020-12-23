@@ -31,7 +31,7 @@ module Z.Data.JSON
   , parseValue, parseValue', parseValueChunks, parseValueChunks'
   -- * Convert 'Value' to Haskell data
   , convert, convert', Converter(..), fail', (<?>), prependContext
-  , PathElement(..), ConvertError
+  , PathElement(..), ConvertError(..)
   , typeMismatch, fromNull, withBool, withScientific, withBoundedScientific, withRealFloat
   , withBoundedIntegral, withText, withArray, withKeyValues, withFlatMap, withFlatMapR
   , withHashMap, withHashMapR, withEmbeddedJSON
