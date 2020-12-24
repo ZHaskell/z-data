@@ -27,7 +27,7 @@ module Z.Data.Parser.Base
   , decodePrim, decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , word8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, bytes, bytesCI
   , text
     -- * Misc
@@ -454,12 +454,25 @@ word8 w' = do
             then k () (V.unsafeTail inp)
             else kf ["Z.Data.Parser.Base.word8: mismatch byte"] inp)
 
+-- | Return a byte, this is an alias to @decodePrim @Word8@.
+--
+anyWord8 :: Parser Word8
+{-# INLINE anyWord8 #-}
+anyWord8 = decodePrim
+
 -- | Match a specific 8bit char.
 --
 char8 :: Char -> Parser ()
 {-# INLINE char8 #-}
 char8 = word8 . V.c2w
 
+-- | Take a byte and return as a 8bit char.
+--
+anyChar8 :: Parser Char
+{-# INLINE anyChar8 #-}
+anyChar8 = do
+    w <- anyWord8
+    return $! V.w2c w
 
 -- | Match either a single newline byte @\'\\n\'@, or a carriage
 -- return followed by a newline byte @\"\\r\\n\"@.
