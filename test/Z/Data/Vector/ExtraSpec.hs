@@ -5,14 +5,15 @@ module Z.Data.Vector.ExtraSpec where
 
 import qualified Data.List                as List
 import           Data.Word
-import qualified Z.Data.Vector          as V
-import qualified Z.Data.Vector.Base     as V
-import qualified Z.Data.Vector.Extra    as V
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
+import           Z.Data.ASCII
+import qualified Z.Data.Vector          as V
+import qualified Z.Data.Vector.Base     as V
+import qualified Z.Data.Vector.Extra    as V
 
 spec :: Spec
 spec =  describe "vector-extras" $ do
@@ -356,22 +357,22 @@ spec =  describe "vector-extras" $ do
     describe "vector words == List.words" $ do
         prop "vector words === List.words" $ \ xs ->
             (V.words . V.pack @V.PrimVector @Word8 $ xs)  ===
-                (V.pack . List.map V.c2w <$> (List.words . List.map V.w2c $ xs))
+                (V.pack . List.map c2w <$> (List.words . List.map w2c $ xs))
 
     describe "vector lines == List.lines" $ do
         prop "vector lines === List.lines" $ \ xs ->
             (V.lines . V.pack @V.PrimVector @Word8 $ xs)  ===
-                (V.pack . List.map V.c2w <$> (List.lines . List.map V.w2c $ xs))
+                (V.pack . List.map c2w <$> (List.lines . List.map w2c $ xs))
 
     describe "vector unwords == List.unwords" $ do
         prop "vector unwords === List.unwords" $ \ xs ->
             (V.unwords $ V.pack @V.PrimVector @Word8 <$> xs)  ===
-                (V.pack (List.map V.c2w . List.unwords $ List.map V.w2c <$> xs))
+                (V.pack (List.map c2w . List.unwords $ List.map w2c <$> xs))
 
     describe "vector unlines == List.unlines" $ do
         prop "vector unlines === List.unlines" $ \ (NonEmpty xs) ->
             ((V.unlines $ V.pack @V.PrimVector @Word8 <$> xs) <> V.singleton 10) ===
-                (V.pack (List.map V.c2w . List.unlines $ List.map V.w2c <$> xs))
+                (V.pack (List.map c2w . List.unlines $ List.map w2c <$> xs))
 
     describe "vector padLeft n x xs = if l >= n then xs else replicate (n-l) x ++ xs" $ do
         prop "vector padLeft n x xs = if l >= n then xs else replicate (n-l) x ++ xs" $ \ xs n x ->

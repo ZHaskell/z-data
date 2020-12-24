@@ -58,7 +58,7 @@ module Z.Data.Parser
   , scientific'
   , scientifically'
     -- * Misc
-  , isSpace, isHexDigit, isDigit, fail'
+  , fail'
   ) where
 
 import           Z.Data.Parser.Base

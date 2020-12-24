@@ -7,12 +7,13 @@ module Z.Data.Vector.BaseSpec where
 import qualified Data.List                as List
 import           Data.Word
 import           Data.Hashable            (hashWithSalt, hash)
-import qualified Z.Data.Vector.Base     as V
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
+import qualified Z.Data.Vector.Base     as V
+import           Z.Data.ASCII
 
 spec :: Spec
 spec = describe "vector-base" $ do
@@ -75,9 +76,9 @@ spec = describe "vector-base" $ do
 
     describe "Bytes IsString instance property" $ do
         prop "ASCII string" $
-            "hello world" === V.pack @V.PrimVector (List.map V.c2w "hello world")
+            "hello world" === V.pack @V.PrimVector (List.map c2w "hello world")
         prop "UTF8 string" $
-            "你好世界" === V.pack @V.PrimVector (List.map V.c2w "你好世界")
+            "你好世界" === V.pack @V.PrimVector (List.map c2w "你好世界")
 
     describe "vector length == List.length" $ do
         prop "vector length === List.length" $ \ xs ->

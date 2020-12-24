@@ -31,7 +31,6 @@ module Z.Data.Parser.Base
   , take, takeN, takeTill, takeWhile, takeWhile1, bytes, bytesCI
   , text
     -- * Misc
-  , isSpace
   , fail'
   ) where
 
@@ -45,6 +44,7 @@ import           Data.Word
 import           GHC.Types
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
+import           Z.Data.ASCII
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Vector.Base               as V
 import qualified Z.Data.Vector.Extra              as V
@@ -464,7 +464,7 @@ anyWord8 = decodePrim
 --
 char8 :: Char -> Parser ()
 {-# INLINE char8 #-}
-char8 = word8 . V.c2w
+char8 = word8 . c2w
 
 -- | Take a byte and return as a 8bit char.
 --
@@ -472,7 +472,7 @@ anyChar8 :: Parser Char
 {-# INLINE anyChar8 #-}
 anyChar8 = do
     w <- anyWord8
-    return $! V.w2c w
+    return $! w2c w
 
 -- | Match either a single newline byte @\'\\n\'@, or a carriage
 -- return followed by a newline byte @\"\\r\\n\"@.
@@ -552,11 +552,6 @@ skipWhile p =
 skipSpaces :: Parser ()
 {-# INLINE skipSpaces #-}
 skipSpaces = skipWhile isSpace
-
--- | @isSpace w = w == 32 || w - 9 <= 4 || w == 0xA0@
-isSpace :: Word8 -> Bool
-{-# INLINE isSpace #-}
-isSpace w = w == 32 || w - 9 <= 4 || w == 0xA0
 
 take :: Int -> Parser V.Bytes
 {-# INLINE take #-}

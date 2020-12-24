@@ -129,6 +129,7 @@ library
                             Z.Data.Array.QQ
                             Z.Data.Array.Unaligned
                             Z.Data.Array.UnliftedArray
+                            Z.Data.ASCII
                             Z.Data.CBytes
                             Z.Data.Vector
                             Z.Data.Vector.Base
@@ -148,7 +149,7 @@ library
                             Z.Data.Text.Extra
                             Z.Data.Text.Regex
                             Z.Data.Text.Search
-                            Z.Data.Text.ShowT
+                            Z.Data.Text.Print
                             Z.Data.Text.UTF8Codec
                             Z.Data.Text.UTF8Rewind
 
@@ -329,7 +330,7 @@ test-suite Z-Data-Test
                             Z.Data.Text.BaseSpec
                             Z.Data.Text.ExtraSpec
                             Z.Data.Text.SearchSpec
-                            Z.Data.Text.ShowTSpec
+                            Z.Data.Text.PrintSpec
                             Z.Data.Vector.BaseSpec
                             Z.Data.Vector.ExtraSpec
                             Z.Data.Vector.SearchSpec

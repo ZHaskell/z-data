@@ -38,7 +38,7 @@ import Foreign.ForeignPtr
 import Foreign.Marshal.Utils            (fromBool)
 import System.IO.Unsafe
 import qualified Z.Data.Text.Base       as T
-import qualified Z.Data.Text.ShowT      as T
+import qualified Z.Data.Text.Print      as T
 import qualified Z.Data.Vector.Base     as V
 import qualified Z.Data.Array           as A
 
@@ -48,7 +48,7 @@ data Regex = Regex
     , regexCaptureNum :: {-# UNPACK #-} !Int        -- ^ capturing group number(including @\\0@)
     , regexPattern :: T.Text                        -- ^ Get back regex's pattern.
     } deriving (Show, Generic)
-      deriving anyclass T.ShowT
+      deriving anyclass T.Print
 
 -- | RE2 Regex options.
 --
@@ -94,7 +94,7 @@ data RegexOpts = RegexOpts
     , word_boundary  :: Bool
     , one_line       :: Bool
     } deriving (Eq, Ord, Show, Generic)
-      deriving anyclass T.ShowT
+      deriving anyclass T.Print
 
 -- | Default regex options, see 'RegexOpts'.
 --

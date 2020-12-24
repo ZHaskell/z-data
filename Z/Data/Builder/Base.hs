@@ -60,6 +60,7 @@ import           GHC.Exts                           hiding (build)
 import           GHC.Stack
 import           Data.Primitive.PrimArray
 import           Z.Data.Array.Unaligned
+import           Z.Data.ASCII
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Text.UTF8Codec            as T
 import qualified Z.Data.Vector.Base               as V
@@ -287,7 +288,7 @@ buildChunksWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
                 else do
                     vs <- unsafeInterleaveIO . loop =<< k (Buffer buf' 0)
                     return (v':v:vs)
-                
+
 
 --------------------------------------------------------------------------------
 
@@ -417,7 +418,7 @@ string7 = mapM_ char7
 char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
 char7 chr = do
-    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (V.c2w chr .&. 0x7F))
+    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr .&. 0x7F))
 
 -- | Turn 'String' into 'Builder' with ASCII8 encoding
 --
@@ -436,7 +437,7 @@ string8 = mapM_ char8
 char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
 char8 chr = do
-    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (V.c2w chr))
+    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr))
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --
@@ -449,59 +450,46 @@ text (T.Text bs) = bytes bs
 
 --------------------------------------------------------------------------------
 
-#define BACKSLASH 92
-#define CLOSE_ANGLE 62
-#define CLOSE_CURLY 125
-#define CLOSE_PAREN 41
-#define CLOSE_SQUARE 93
-#define COMMA 44
-#define COLON 58
-#define DOUBLE_QUOTE 34
-#define OPEN_ANGLE 60
-#define OPEN_CURLY 123
-#define OPEN_PAREN 40
-#define OPEN_SQUARE 91
-#define SINGLE_QUOTE 39
 
 -- | add @(...)@ to original builder.
 paren :: Builder () -> Builder ()
 {-# INLINE paren #-}
-paren b = encodePrim @Word8 OPEN_PAREN >> b >> encodePrim @Word8 CLOSE_PAREN
+paren b = encodePrim PAREN_LEFT >> b >> encodePrim PAREN_RIGHT
 
 -- | add @{...}@ to original builder.
 curly :: Builder () -> Builder ()
 {-# INLINE curly #-}
-curly b = encodePrim @Word8 OPEN_CURLY >> b >> encodePrim @Word8 CLOSE_CURLY
+curly b = encodePrim CURLY_LEFT >> b >> encodePrim CURLY_RIGHT
 
 -- | add @[...]@ to original builder.
 square :: Builder () -> Builder ()
 {-# INLINE square #-}
-square b = encodePrim @Word8 OPEN_SQUARE >> b >> encodePrim @Word8 CLOSE_SQUARE
+square b = encodePrim SQUARE_LEFT >> b >> encodePrim SQUARE_RIGHT
 
 -- | add @/<.../>@ to original builder.
 angle :: Builder () -> Builder ()
 {-# INLINE angle #-}
-angle b = encodePrim @Word8 OPEN_ANGLE >> b >> encodePrim @Word8 CLOSE_ANGLE
+angle b = encodePrim ANGLE_LEFT >> b >> encodePrim ANGLE_RIGHT
 
 -- | add @/".../"@ to original builder.
 quotes :: Builder () -> Builder ()
 {-# INLINE quotes #-}
-quotes b = encodePrim @Word8 DOUBLE_QUOTE >> b >> encodePrim @Word8 DOUBLE_QUOTE
+quotes b = encodePrim QUOTE_DOUBLE >> b >> encodePrim QUOTE_DOUBLE
 
 -- | add @/'.../'@ to original builder.
 squotes :: Builder () -> Builder ()
 {-# INLINE squotes #-}
-squotes b = encodePrim @Word8 SINGLE_QUOTE >> b >> encodePrim @Word8 SINGLE_QUOTE
+squotes b = encodePrim QUOTE_SINGLE >> b >> encodePrim QUOTE_SINGLE
 
 -- | write an ASCII @:@
 colon :: Builder ()
 {-# INLINE colon #-}
-colon = encodePrim @Word8 COLON
+colon = encodePrim COLON
 
 -- | write an ASCII @,@
 comma :: Builder ()
 {-# INLINE comma #-}
-comma = encodePrim @Word8 COMMA
+comma = encodePrim COMMA
 
 -- | Use separator to connect a vector of builders.
 --

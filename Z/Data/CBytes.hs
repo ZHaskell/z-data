@@ -26,7 +26,6 @@ module Z.Data.CBytes
   , withCBytesListUnsafe, withCBytesList
   -- * re-export
   , CString
-  , V.c2w, V.w2c
   ) where
 
 import           Control.DeepSeq
@@ -60,7 +59,7 @@ import           Z.Data.Array
 import           Z.Data.Array.Unaligned
 import qualified Z.Data.Builder             as B
 import qualified Z.Data.Text                as T
-import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.Print          as T
 import qualified Z.Data.Text.UTF8Codec      as T
 import qualified Z.Data.JSON.Base           as JSON
 import           Z.Data.JSON.Base           ((<?>))
@@ -198,7 +197,7 @@ instance Unaligned CBytes where
 -- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
 --
 -- Escaping rule is same with 'String'.
-instance T.ShowT CBytes where
+instance T.Print CBytes where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = T.stringUTF8 . show . unpack
 
@@ -483,7 +482,7 @@ fromText = fromBytes . T.getUTF8Bytes
 
 -- | Write 'CBytes' \'s byte sequence to buffer.
 --
--- This function is different from 'T.ShowT' instance in that it directly write byte sequence without
+-- This function is different from 'T.Print' instance in that it directly write byte sequence without
 -- checking if it's UTF8 encoded.
 toBuilder :: CBytes -> B.Builder ()
 toBuilder = B.bytes . toBytes

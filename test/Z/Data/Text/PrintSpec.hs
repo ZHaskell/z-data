@@ -4,14 +4,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Z.Data.Text.ShowTSpec where
+module Z.Data.Text.PrintSpec where
 
 import qualified Data.List                as L
 import           Data.Word
 import           Data.Int
 import           GHC.Generics
 import qualified Z.Data.Text            as T
-import           Z.Data.Text.ShowT
+import           Z.Data.Text.Print
 import           Z.Data.JSON            (Value)
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
@@ -29,9 +29,9 @@ data T a
              , testThree :: Maybe a
              }
     | List [a]
-   deriving (Show, Eq, ShowT, Generic)
+   deriving (Show, Eq, Print, Generic)
 
-data I a = I a :+ I a | I a :- I a | J a deriving (Show, Generic, ShowT)
+data I a = I a :+ I a | I a :- I a | J a deriving (Show, Generic, Print)
 infixr 5 :+
 infixl 6 :-
 
