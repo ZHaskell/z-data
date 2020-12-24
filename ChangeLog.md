@@ -1,11 +1,12 @@
 # Revision history for Z-Data
 
-## 0.2.1.0  -- 2020-12-16
+## 0.2.1.0  -- TBD
 
 * Hide `Text` constructor from `Z.Data.Text`.
 * Add `fromStdString` to `Z.Data.CBytes`.
 * Re-export `touch` from `Z.Foreign`, export `ConvertError` constructor from `Z.Data.JSON`.
 * Add `anyChar8` to `Z.Data.Parser`.
+* Add `Z.Data.ASCII`, move `c2w`, `w2c`, `isDigit`, `isSpace`, `isHexDigit` and ASCII constants to it.
 
 ## 0.2.0.0  -- 2020-12-15
 

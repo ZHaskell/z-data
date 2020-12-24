@@ -30,14 +30,6 @@ module Z.Data.Builder.Numeric (
   , floatWith
   , scientific
   , scientificWith
-  -- * Patterns
-  , pattern PLUS
-  , pattern MINUS
-  , pattern ZERO
-  , pattern SPACE
-  , pattern DOT
-  , pattern LITTLE_E
-  , pattern BIG_E
   -- * Misc
   , grisu3
   , grisu3_sp
@@ -57,6 +49,7 @@ import           Data.Word
 import           GHC.Exts
 import           GHC.Float
 import           GHC.Integer
+import           Z.Data.ASCII
 import           Z.Data.Builder.Base
 import           Z.Data.Builder.Numeric.DigitTable
 import           Z.Foreign
@@ -182,7 +175,7 @@ hs_intWith format@IFormat{..} i
                         let !leadingN = width-n'
                         writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN ZERO            -- leading zeros
+                        setPrimArray marr off' leadingN DIGIT_0            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n qq                 -- digits
                         let off''' = off'' + n
@@ -230,7 +223,7 @@ hs_intWith format@IFormat{..} i
                         let !leadingN = width-n'
                         writePrimArray marr off MINUS                   -- leading MINUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN ZERO            -- leading zeros
+                        setPrimArray marr off' leadingN DIGIT_0            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n qq                 -- digits
                 LeftSpacePadding ->
@@ -275,7 +268,7 @@ positiveInt (IFormat width padding ps) i =
                         let !leadingN = width-n'
                         writePrimArray marr off PLUS                    -- leading PLUS
                         let off' = off + 1
-                        setPrimArray marr off' leadingN ZERO            -- leading zeros
+                        setPrimArray marr off' leadingN DIGIT_0            -- leading zeros
                         let off'' = off' + leadingN
                         writePositiveDec marr off'' n i                  -- digits
                 LeftSpacePadding ->
@@ -308,7 +301,7 @@ positiveInt (IFormat width padding ps) i =
                 ZeroPadding ->
                     writeN width $ \marr off -> do
                         let !leadingN = width-n
-                        setPrimArray marr off leadingN ZERO             -- leading zeros
+                        setPrimArray marr off leadingN DIGIT_0             -- leading zeros
                         let off' = off + leadingN
                         writePositiveDec marr off' n i                   -- digits
                 LeftSpacePadding ->
@@ -413,7 +406,7 @@ integer n0
 
     -- Split n into digits in base p. We first split n into digits
     -- in base p*p and then split each of these digits into two.
-    -- Note that the first 'digit' modulo p*p may have a leading ZERO
+    -- Note that the first 'digit' modulo p*p may have a leading DIGIT_0
     -- in base p that we need to drop - this is what jsplith takes care of.
     -- jsplitb the handles the remaining digits.
     jsplitf :: Integer -> Integer -> [Integer]
@@ -465,27 +458,19 @@ countDigits v0
            | otherwise = go (k + 12) (v `quot` 1000000000000)
         fin v n = if v >= n then 1 else 0
 
-pattern MINUS, PLUS, ZERO, SPACE, DOT, LITTLE_E, BIG_E :: Word8
-pattern PLUS     = 43
-pattern MINUS    = 45
-pattern ZERO     = 48
-pattern SPACE    = 32
-pattern DOT      = 46
-pattern LITTLE_E = 101
-pattern BIG_E    = 69
 
 -- | Decimal digit to ASCII digit.
 i2wDec :: (Integral a) => a -> Word8
 {-# INLINE i2wDec #-}
 {-# SPECIALIZE INLINE i2wDec :: Int -> Word8 #-}
-i2wDec v = ZERO + fromIntegral v
+i2wDec v = DIGIT_0 + fromIntegral v
 
 -- | Hexadecimal digit to ASCII char.
 i2wHex :: (Integral a) => a -> Word8
 {-# INLINE i2wHex #-}
 {-# SPECIALIZE INLINE i2wHex :: Int -> Word8 #-}
 i2wHex v
-    | v <= 9    = ZERO + fromIntegral v
+    | v <= 9    = DIGIT_0 + fromIntegral v
     | otherwise = 87 + fromIntegral v       -- fromEnum 'a' - 10
 
 -- | Hexadecimal digit to UPPERCASED ASCII char.
@@ -493,7 +478,7 @@ i2wHexUpper :: (Integral a) => a -> Word8
 {-# INLINE i2wHexUpper #-}
 {-# SPECIALIZE INLINE i2wHexUpper :: Int -> Word8 #-}
 i2wHexUpper v
-    | v <= 9    = ZERO + fromIntegral v
+    | v <= 9    = DIGIT_0 + fromIntegral v
     | otherwise = 55 + fromIntegral v       -- fromEnum 'A' - 10
 
 --------------------------------------------------------------------------------
@@ -656,7 +641,7 @@ doFmt format decs (is, e) = case format of
                 encodeDigit i
                 encodePrim DOT
                 encodeDigits is'
-                encodePrim LITTLE_E
+                encodePrim LETTER_e
                 int (e-1)
             []      -> error "doFmt/Exponent: []"
         Just dec
@@ -670,7 +655,7 @@ doFmt format decs (is, e) = case format of
                         let (ei,is') = roundTo 10 1 is
                             n:_ = if ei > 0 then List.init is' else is'
                         encodeDigit n
-                        encodePrim LITTLE_E
+                        encodePrim LETTER_e
                         int (e-1+ei)
         Just dec ->
             let !dec' = max dec 1 in
@@ -683,7 +668,7 @@ doFmt format decs (is, e) = case format of
                     encodeDigit d
                     encodePrim DOT
                     encodeDigits ds'
-                    encodePrim LITTLE_E
+                    encodePrim LETTER_e
                     int (e-1+ei)
     Fixed -> case decs of
         Nothing
@@ -710,13 +695,13 @@ doFmt format decs (is, e) = case format of
 
     encodeDigits = mapM_ encodeDigit
 
-    encodeZeros n = replicateM_ n (encodePrim ZERO)
+    encodeZeros n = replicateM_ n (encodePrim DIGIT_0)
 
-    mk0 [] = encodePrim ZERO
+    mk0 [] = encodePrim DIGIT_0
     mk0 ls = encodeDigits ls
 
     insertDot 0     rs = encodePrim DOT >> mk0 rs
-    insertDot n     [] = encodePrim ZERO >> insertDot (n-1) []
+    insertDot n     [] = encodePrim DIGIT_0 >> insertDot (n-1) []
     insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
 
  ------------------------------------------------------------------------------

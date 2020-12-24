@@ -34,7 +34,7 @@ import           System.IO.Unsafe
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Builder.Base        as B
 import qualified Z.Data.Text.Base           as T
-import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.Print          as T
 import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
 
@@ -46,7 +46,7 @@ newtype HexBytes = HexBytes { unHexBytes :: V.Bytes }
 instance Show HexBytes where
     show (HexBytes bs) = T.unpack $ hexEncodeText True bs
 
-instance T.ShowT HexBytes where
+instance T.Print HexBytes where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (HexBytes bs) = B.quotes (hexEncodeBuilder True bs)
 

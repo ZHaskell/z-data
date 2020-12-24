@@ -47,7 +47,7 @@ import           GHC.Generics
 import qualified Z.Data.Parser          as P
 import           Z.Data.Parser          ((<?>))
 import qualified Z.Data.Text.Base       as T
-import           Z.Data.Text.ShowT     (ShowT(..))
+import           Z.Data.Text.Print     (Print(..))
 import           Z.Data.Vector.Base     as V
 import           Z.Data.Vector.Extra    as V
 import           Z.Foreign
@@ -92,7 +92,7 @@ data Value = Object {-# UNPACK #-} !(V.Vector (T.Text, Value))
            | Bool   !Bool
            | Null
          deriving (Eq, Show, Typeable, Generic)
-         deriving anyclass ShowT
+         deriving anyclass Print
 
 instance NFData Value where
     {-# INLINE rnf #-}

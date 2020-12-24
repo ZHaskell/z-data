@@ -36,7 +36,7 @@ import           System.IO.Unsafe
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Builder.Base        as B
 import qualified Z.Data.Text.Base           as T
-import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.Print          as T
 import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
 
@@ -48,7 +48,7 @@ newtype Base64Bytes = Base64Bytes { unBase64Bytes :: V.Bytes }
 instance Show Base64Bytes where
     show (Base64Bytes bs) = T.unpack $ base64EncodeText bs
 
-instance T.ShowT Base64Bytes where
+instance T.Print Base64Bytes where
     {-# INLINABLE toUTF8BuilderP #-}
     toUTF8BuilderP _ (Base64Bytes bs) = B.quotes (base64EncodeBuilder bs)
 

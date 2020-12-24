@@ -35,7 +35,7 @@ import qualified Data.Monoid                as Monoid
 import qualified Data.Primitive.PrimArray   as A
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Sort         as V
-import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.Print          as T
 import           Data.Bits                   (shiftR)
 import           Data.Data
 import           Prelude hiding (elem, null)
@@ -46,7 +46,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 newtype FlatIntSet = FlatIntSet { sortedValues :: V.PrimVector Int }
     deriving (Show, Eq, Ord, Typeable)
 
-instance T.ShowT FlatIntSet where
+instance T.Print FlatIntSet where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP p (FlatIntSet vec) = T.parenWhen (p > 10) $ do
         "FlatIntSet{"

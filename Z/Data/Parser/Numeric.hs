@@ -31,8 +31,6 @@ module Z.Data.Parser.Numeric
   , hexLoop
   , decLoop
   , decLoopIntegerFast
-  , isHexDigit
-  , isDigit
   , floatToScientific
   , doubleToScientific
   ) where
@@ -43,9 +41,8 @@ import           Data.Bits
 import           Data.Int
 import qualified Data.Scientific          as Sci
 import           Data.Word
+import           Z.Data.ASCII
 import qualified Z.Data.Builder.Numeric as B
-import           Z.Data.Builder.Numeric (pattern PLUS, pattern MINUS, pattern ZERO,
-                                         pattern DOT, pattern LITTLE_E, pattern BIG_E)
 import           Z.Data.Parser.Base     (Parser, (<?>))
 import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
@@ -111,11 +108,6 @@ hexLoop = V.foldl' step
         | w <= 70   = w - 55
         | w <= 102  = w - 87
 
--- | A fast digit predicate.
-isHexDigit :: Word8 -> Bool
-{-# INLINE isHexDigit #-}
-isHexDigit w = w - 48 <= 9 || w - 65 <= 5 || w - 97 <= 5
-
 -- | Same with 'uint', but sliently cast in case of overflow.
 uint_ :: forall a. (Integral a, Bounded a) => Parser a
 {-# INLINE uint_ #-}
@@ -159,11 +151,6 @@ decLoopIntegerFast :: V.Bytes -> Integer
 decLoopIntegerFast bs
     | V.length bs <= WORD64_SAFE_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
     | otherwise                            = decLoop @Integer 0 bs
-
--- | A fast digit predicate.
-isDigit :: Word8 -> Bool
-isDigit w = w - 48 <= 9
-{-# INLINE isDigit #-}
 
 -- | Parse a decimal number with an optional leading @\'+\'@ or @\'-\'@ sign
 -- character.
@@ -324,7 +311,7 @@ scientificallyInternal h = do
   where
     {-# INLINE parseE #-}
     parseE c e =
-        (do _ <- P.satisfy (\w -> w ==  LITTLE_E || w == BIG_E)
+        (do _ <- P.satisfy (\w -> w ==  LETTER_e || w == LETTER_E)
             Sci.scientific c . subtract e <$> int) <|> pure (Sci.scientific c (negate e))
 
 --------------------------------------------------------------------------------
@@ -406,7 +393,7 @@ scientificallyInternal' h = do
     !sign <- P.peek
     when (sign == MINUS) (P.skipWord8) -- no leading plus is allowed
     !intPart <- P.takeWhile1 isDigit
-    when (V.length intPart > 1 && V.head intPart == ZERO) (P.fail' "leading zeros are not allowed")
+    when (V.length intPart > 1 && V.head intPart == DIGIT_0) (P.fail' "leading zeros are not allowed")
     mdot <- P.peekMaybe
     !sci <- case mdot of
         Just DOT -> do
@@ -430,7 +417,7 @@ scientificallyInternal' h = do
     parseE !c !e = do
         me <- P.peekMaybe
         e' <- case me of
-            Just ec | ec == LITTLE_E || ec == BIG_E -> P.skipWord8 *> int
+            Just ec | ec == LETTER_e || ec == LETTER_E -> P.skipWord8 *> int
             _ -> pure 0
         pure $! Sci.scientific c (e' - e)
 

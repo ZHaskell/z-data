@@ -26,12 +26,13 @@ module Z.Data.JSON.Builder
   ) where
 
 import           Control.Monad
+import           Z.Data.ASCII
 import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text                    as T
-import qualified Z.Data.Text.ShowT              as T
+import qualified Z.Data.Text.Print              as T
 import           Z.Data.Vector.Base             as V
 import           Z.Data.JSON.Value              (Value(..))
-import           Data.Scientific              (Scientific, base10Exponent, coefficient)
+import           Data.Scientific                (Scientific, base10Exponent, coefficient)
 
 -- | Use @:@ as separator to connect a label(no need to escape, only add quotes) with field builders.
 kv :: T.Text -> B.Builder () -> B.Builder ()
@@ -96,7 +97,7 @@ scientific s
     | e == 0 = B.integer c
     | otherwise = do
         B.integer c
-        when (c /= 0) (replicateM_ e (B.encodePrim B.ZERO))
+        when (c /= 0) (replicateM_ e (B.encodePrim DIGIT_0))
   where
     e = base10Exponent s
     c = coefficient s

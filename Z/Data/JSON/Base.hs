@@ -93,7 +93,7 @@ import qualified Z.Data.Parser                as P
 import qualified Z.Data.Parser.Numeric        as P
 import qualified Z.Data.Text.Base             as T
 import qualified Z.Data.Text                  as T
-import qualified Z.Data.Text.ShowT            as T
+import qualified Z.Data.Text.Print            as T
 import qualified Z.Data.Vector.Base           as V
 import qualified Z.Data.Vector.Extra          as V
 import qualified Z.Data.Vector.FlatIntMap     as FIM
@@ -209,7 +209,7 @@ data ConvertError = ConvertError
 instance Show ConvertError where
     show = T.toString
 
-instance T.ShowT ConvertError where
+instance T.Print ConvertError where
     toUTF8BuilderP _ (ConvertError [] msg) = T.toUTF8Builder msg
     toUTF8BuilderP _ (ConvertError paths msg) = do
         mapM_ renderPath (reverse paths)

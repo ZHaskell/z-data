@@ -66,7 +66,7 @@ module Z.Data.Vector (
   , Vector
   , PrimVector
   -- ** Word8 vector
-  , Bytes, packASCII, w2c, c2w
+  , Bytes, packASCII
   -- * Basic creating
   , empty, singleton, copy
   -- * Conversion between list

@@ -28,7 +28,7 @@ module Z.Data.Vector.Base (
   , Vector(..)
   , PrimVector(..)
   -- ** Word8 vector
-  , Bytes, packASCII, w2c, c2w
+  , Bytes, packASCII
   -- * Creating utilities
   , create, create', creating, creating', createN, createN2
   , empty, singleton, copy
@@ -522,18 +522,6 @@ packASCIIAddr addr0# = go addr0#
         arr <- unsafeFreezePrimArray marr
         return (PrimVector arr 0 len)
 
--- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
---
-w2c :: Word8 -> Char
-{-# INLINE w2c #-}
-w2c (W8# w#) = C# (chr# (word2Int# w#))
-
--- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
--- silently truncates to 8 bits Chars > @\\255@. It is provided as
--- convenience for PrimVector construction.
-c2w :: Char -> Word8
-{-# INLINE c2w #-}
-c2w (C# c#) = W8# (int2Word# (ord# c#))
 
 --------------------------------------------------------------------------------
 -- Basic creating

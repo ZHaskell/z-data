@@ -133,6 +133,7 @@ import           GHC.Types
 import           GHC.Stack
 import           GHC.CString               (unpackCString#, unpackCStringUtf8#)
 import           Z.Data.Array
+import           Z.Data.ASCII              (c2w)
 import           Z.Data.Text.UTF8Codec
 import           Z.Data.Text.UTF8Rewind
 import           Z.Data.Vector.Base        (Bytes, PrimVector(..), c_strlen)
@@ -651,7 +652,7 @@ concatMap f = concat . foldr' ((:) . f) []
 count :: Char -> Text -> Int
 {-# INLINE count #-}
 count c (Text v)
-    | encodeCharLength c == 1 = let w = V.c2w c in V.count w v
+    | encodeCharLength c == 1 = let w = c2w c in V.count w v
     | otherwise = let (Text pat) = singleton c
                   in List.length $ V.indices pat v False
 

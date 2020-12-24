@@ -1,5 +1,5 @@
 {-|
-Module      : Z.Data.Text.Builder
+Module      : Z.Data.Text.Print
 Description : UTF8 compatible builders.
 Copyright   : (c) Dong Han, 2017-2019
 License     : BSD
@@ -9,24 +9,24 @@ Portability : non-portable
 
 This module re-exports some UTF8 compatible textual builders from 'Z.Data.Builder'.
 
-We also provide a faster alternative to 'Show' class, i.e. 'ShowT', which can be deriving using 'Generic'.
-For example to use 'ShowT' class:
+We also provide a faster alternative to 'Show' class, i.e. 'Print', which can be deriving using 'Generic'.
+For example to use 'Print' class:
 
 @
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DerivingStrategies #-}
 
-import qualified Z.Data.Text.ShowT as T
+import qualified Z.Data.Text.Print as T
 
 data Foo = Bar Bytes | Qux Text Int deriving Generic
-                                    deriving anyclass T.ShowT
+                                    deriving anyclass T.Print
 
 @
 
 -}
 
-module Z.Data.Text.ShowT
-  ( -- * ShowT class
-    ShowT(..), toText, toString, toUTF8Builder, toUTF8Bytes
+module Z.Data.Text.Print
+  ( -- * Print class
+    Print(..), toText, toString, toUTF8Builder, toUTF8Bytes
   -- * Basic UTF8 builders
   , escapeTextJSON
   , B.stringUTF8, B.charUTF8, B.string7, B.char7, B.text
@@ -106,19 +106,19 @@ import qualified Z.Data.Vector.Base             as V
 --  import GHC.Generics
 --
 --  newtype FooInt = FooInt Int deriving (Generic)
---                            deriving anyclass ShowT
+--                            deriving anyclass Print
 --
 -- > toText (FooInt 3)
 -- > "FooInt 3"
 --
 --  newtype FooInt = FooInt Int deriving (Generic)
---                            deriving newtype ShowT
+--                            deriving newtype Print
 --
 -- > toText (FooInt 3)
 -- > "3"
 -- @
 --
-class ShowT a where
+class Print a where
     -- | Convert data to 'B.Builder' with precendence.
     --
     -- You should return a 'B.Builder' writing in UTF8 encoding only, i.e.
@@ -131,22 +131,22 @@ class ShowT a where
     toUTF8BuilderP p = gToUTF8BuilderP p . from
 
 -- | Convert data to 'B.Builder'.
-toUTF8Builder :: ShowT a => a  -> B.Builder ()
+toUTF8Builder :: Print a => a  -> B.Builder ()
 {-# INLINE toUTF8Builder #-}
 toUTF8Builder = toUTF8BuilderP 0
 
 -- | Convert data to 'V.Bytes' in UTF8 encoding.
-toUTF8Bytes :: ShowT a => a -> V.Bytes
+toUTF8Bytes :: Print a => a -> V.Bytes
 {-# INLINE toUTF8Bytes #-}
 toUTF8Bytes = B.build . toUTF8BuilderP 0
 
 -- | Convert data to 'Text'.
-toText :: ShowT a => a -> Text
+toText :: Print a => a -> Text
 {-# INLINE toText #-}
 toText = Text . toUTF8Bytes
 
 -- | Convert data to 'String', faster 'show' replacement.
-toString :: ShowT a => a -> String
+toString :: Print a => a -> String
 {-# INLINE toString #-}
 toString = T.unpack . toText
 
@@ -172,7 +172,7 @@ instance (GToText f, Selector (MetaSel (Just l) u ss ds)) => GFieldToText (S1 (M
 
 instance GToText V1 where
     {-# INLINE gToUTF8BuilderP #-}
-    gToUTF8BuilderP _ = error "Z.Data.Text.ShowT: empty data type"
+    gToUTF8BuilderP _ = error "Z.Data.Text.Print: empty data type"
 
 instance (GToText f, GToText g) => GToText (f :+: g) where
     {-# INLINE gToUTF8BuilderP #-}
@@ -209,13 +209,13 @@ instance (GFieldToText (a :*: b), Constructor c) => GToText (C1 c (a :*: b)) whe
                 gFieldToUTF8BuilderP
                     (B.char8 ' ' >> B.stringModifiedUTF8 (conName m1) >> B.char8 ' ') (p'+1) x
 
-instance ShowT a => GToText (K1 i a) where
+instance Print a => GToText (K1 i a) where
     {-# INLINE gToUTF8BuilderP #-}
     gToUTF8BuilderP p (K1 x) = toUTF8BuilderP p x
 
 -- | Add "(..)" around builders when condition is met, otherwise add nothing.
 --
--- This is useful when defining 'ShowT' instances.
+-- This is useful when defining 'Print' instances.
 parenWhen :: Bool -> B.Builder () -> B.Builder ()
 {-# INLINE parenWhen #-}
 parenWhen True b = B.paren b
@@ -227,48 +227,48 @@ instance GToText f => GToText (D1 c f) where
     {-# INLINE gToUTF8BuilderP #-}
     gToUTF8BuilderP p (M1 x) = gToUTF8BuilderP p x
 
-instance ShowT Bool where
+instance Print Bool where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ True = "True"
     toUTF8BuilderP _ _    = "False"
 
 
-instance ShowT Char where
+instance Print Char where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.string8 . show
 
-instance ShowT Double where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.double;}
-instance ShowT Float  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.float;}
+instance Print Double where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.double;}
+instance Print Float  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.float;}
 
-instance ShowT Int     where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Int8    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Int16   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Int32   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Int64   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Word    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Word8   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Word16  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Word32  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance ShowT Word64  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int     where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int8    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int16   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int32   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int64   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Word    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Word8   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Word16  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Word32  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Word64  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 
-instance ShowT Integer  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer;}
-instance ShowT Natural  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer . fromIntegral}
-instance ShowT Ordering where
+instance Print Integer  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer;}
+instance Print Natural  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer . fromIntegral}
+instance Print Ordering where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ GT = "GT"
     toUTF8BuilderP _ EQ = "EQ"
     toUTF8BuilderP _ _  = "LT"
 
-instance ShowT () where
+instance Print () where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ () = "()"
 
-instance ShowT Version where
+instance Print Version where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.stringUTF8 . show
 
 -- | The escaping rules is same with 'Show' instance: we reuse JSON escaping rules here, so it will be faster.
-instance ShowT Text where
+instance Print Text where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = escapeTextJSON
 
@@ -304,57 +304,57 @@ foreign import ccall unsafe escape_json_string_length
 foreign import ccall unsafe escape_json_string
     :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
 
-instance ShowT Sci.Scientific where
+instance Print Sci.Scientific where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.scientific
 
-instance ShowT a => ShowT [a] where
+instance Print a => Print [a] where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateList B.comma (toUTF8BuilderP 0)
 
-instance ShowT a => ShowT (A.Array a) where
+instance Print a => Print (A.Array a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance ShowT a => ShowT (A.SmallArray a) where
+instance Print a => Print (A.SmallArray a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance (A.PrimUnlifted a, ShowT a) => ShowT (A.UnliftedArray a) where
+instance (A.PrimUnlifted a, Print a) => Print (A.UnliftedArray a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance (Prim a, ShowT a) => ShowT (A.PrimArray a) where
+instance (Prim a, Print a) => Print (A.PrimArray a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance ShowT a => ShowT (V.Vector a) where
+instance Print a => Print (V.Vector a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance (Prim a, ShowT a) => ShowT (V.PrimVector a) where
+instance (Prim a, Print a) => Print (V.PrimVector a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.square . B.intercalateVec B.comma (toUTF8BuilderP 0)
 
-instance (ShowT a, ShowT b) => ShowT (a, b) where
+instance (Print a, Print b) => Print (a, b) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
 
-instance (ShowT a, ShowT b, ShowT c) => ShowT (a, b, c) where
+instance (Print a, Print b, Print c) => Print (a, b, c) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b, c) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
                      >> B.comma >> toUTF8BuilderP 0 c
 
-instance (ShowT a, ShowT b, ShowT c, ShowT d) => ShowT (a, b, c, d) where
+instance (Print a, Print b, Print c, Print d) => Print (a, b, c, d) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b, c, d) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
                      >> B.comma >> toUTF8BuilderP 0 c
                      >> B.comma >> toUTF8BuilderP 0 d
 
-instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e) => ShowT (a, b, c, d, e) where
+instance (Print a, Print b, Print c, Print d, Print e) => Print (a, b, c, d, e) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b, c, d, e) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
@@ -362,7 +362,7 @@ instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e) => ShowT (a, b, c, d, e) 
                      >> B.comma >> toUTF8BuilderP 0 d
                      >> B.comma >> toUTF8BuilderP 0 e
 
-instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f) => ShowT (a, b, c, d, e, f) where
+instance (Print a, Print b, Print c, Print d, Print e, Print f) => Print (a, b, c, d, e, f) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b, c, d, e, f) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
@@ -371,7 +371,7 @@ instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f) => ShowT (a, b, 
                      >> B.comma >> toUTF8BuilderP 0 e
                      >> B.comma >> toUTF8BuilderP 0 f
 
-instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f, ShowT g) => ShowT (a, b, c, d, e, f, g) where
+instance (Print a, Print b, Print c, Print d, Print e, Print f, Print g) => Print (a, b, c, d, e, f, g) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (a, b, c, d, e, f, g) = B.paren $  toUTF8BuilderP 0 a
                      >> B.comma >> toUTF8BuilderP 0 b
@@ -381,82 +381,82 @@ instance (ShowT a, ShowT b, ShowT c, ShowT d, ShowT e, ShowT f, ShowT g) => Show
                      >> B.comma >> toUTF8BuilderP 0 f
                      >> B.comma >> toUTF8BuilderP 0 g
 
-instance ShowT a => ShowT (Maybe a) where
+instance Print a => Print (Maybe a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP p (Just x) = parenWhen (p > 10) $ "Just " >> toUTF8BuilderP 11 x
     toUTF8BuilderP _ _        = "Nothing"
 
-instance (ShowT a, ShowT b) => ShowT (Either a b) where
+instance (Print a, Print b) => Print (Either a b) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP p (Left x) = parenWhen (p > 10) $ "Left " >> toUTF8BuilderP 11 x
     toUTF8BuilderP p (Right x) = parenWhen (p > 10) $ "Right " >> toUTF8BuilderP 11 x
 
-instance (ShowT a, Integral a) => ShowT (Ratio a) where
+instance (Print a, Integral a) => Print (Ratio a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP p r = parenWhen (p > 10) $ do
         toUTF8BuilderP 8 (numerator r)
         " % "
         toUTF8BuilderP 8 (denominator r)
 
-instance HasResolution a => ShowT (Fixed a) where
+instance HasResolution a => Print (Fixed a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.string8 .  show
 
-instance ShowT CallStack where
+instance Print CallStack where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.string8 .  show
 
-deriving newtype instance ShowT CChar
-deriving newtype instance ShowT CSChar
-deriving newtype instance ShowT CUChar
-deriving newtype instance ShowT CShort
-deriving newtype instance ShowT CUShort
-deriving newtype instance ShowT CInt
-deriving newtype instance ShowT CUInt
-deriving newtype instance ShowT CLong
-deriving newtype instance ShowT CULong
-deriving newtype instance ShowT CPtrdiff
-deriving newtype instance ShowT CSize
-deriving newtype instance ShowT CWchar
-deriving newtype instance ShowT CSigAtomic
-deriving newtype instance ShowT CLLong
-deriving newtype instance ShowT CULLong
-deriving newtype instance ShowT CBool
-deriving newtype instance ShowT CIntPtr
-deriving newtype instance ShowT CUIntPtr
-deriving newtype instance ShowT CIntMax
-deriving newtype instance ShowT CUIntMax
-deriving newtype instance ShowT CClock
-deriving newtype instance ShowT CTime
-deriving newtype instance ShowT CUSeconds
-deriving newtype instance ShowT CSUSeconds
-deriving newtype instance ShowT CFloat
-deriving newtype instance ShowT CDouble
+deriving newtype instance Print CChar
+deriving newtype instance Print CSChar
+deriving newtype instance Print CUChar
+deriving newtype instance Print CShort
+deriving newtype instance Print CUShort
+deriving newtype instance Print CInt
+deriving newtype instance Print CUInt
+deriving newtype instance Print CLong
+deriving newtype instance Print CULong
+deriving newtype instance Print CPtrdiff
+deriving newtype instance Print CSize
+deriving newtype instance Print CWchar
+deriving newtype instance Print CSigAtomic
+deriving newtype instance Print CLLong
+deriving newtype instance Print CULLong
+deriving newtype instance Print CBool
+deriving newtype instance Print CIntPtr
+deriving newtype instance Print CUIntPtr
+deriving newtype instance Print CIntMax
+deriving newtype instance Print CUIntMax
+deriving newtype instance Print CClock
+deriving newtype instance Print CTime
+deriving newtype instance Print CUSeconds
+deriving newtype instance Print CSUSeconds
+deriving newtype instance Print CFloat
+deriving newtype instance Print CDouble
 
-instance ShowT (Ptr a) where
+instance Print (Ptr a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (Ptr a) =
         "0x" >> B.hex (W# (int2Word#(addr2Int# a)))
-instance ShowT (ForeignPtr a) where
+instance Print (ForeignPtr a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (ForeignPtr a _) =
         "0x" >> B.hex (W# (int2Word#(addr2Int# a)))
 
-deriving anyclass instance ShowT ExitCode
+deriving anyclass instance Print ExitCode
 
-deriving anyclass instance ShowT a => ShowT (Semigroup.Min a)
-deriving anyclass instance ShowT a => ShowT (Semigroup.Max a)
-deriving anyclass instance ShowT a => ShowT (Semigroup.First a)
-deriving anyclass instance ShowT a => ShowT (Semigroup.Last a)
-deriving anyclass instance ShowT a => ShowT (Semigroup.WrappedMonoid a)
-deriving anyclass instance ShowT a => ShowT (Semigroup.Dual a)
-deriving anyclass instance ShowT a => ShowT (Monoid.First a)
-deriving anyclass instance ShowT a => ShowT (Monoid.Last a)
-deriving anyclass instance ShowT a => ShowT (NonEmpty a)
-deriving anyclass instance ShowT a => ShowT (Identity a)
-deriving anyclass instance ShowT a => ShowT (Const a b)
-deriving anyclass instance ShowT (Proxy a)
-deriving anyclass instance ShowT b => ShowT (Tagged a b)
-deriving anyclass instance ShowT (f (g a)) => ShowT (Compose f g a)
-deriving anyclass instance (ShowT (f a), ShowT (g a)) => ShowT (Product f g a)
-deriving anyclass instance (ShowT (f a), ShowT (g a), ShowT a) => ShowT (Sum f g a)
+deriving anyclass instance Print a => Print (Semigroup.Min a)
+deriving anyclass instance Print a => Print (Semigroup.Max a)
+deriving anyclass instance Print a => Print (Semigroup.First a)
+deriving anyclass instance Print a => Print (Semigroup.Last a)
+deriving anyclass instance Print a => Print (Semigroup.WrappedMonoid a)
+deriving anyclass instance Print a => Print (Semigroup.Dual a)
+deriving anyclass instance Print a => Print (Monoid.First a)
+deriving anyclass instance Print a => Print (Monoid.Last a)
+deriving anyclass instance Print a => Print (NonEmpty a)
+deriving anyclass instance Print a => Print (Identity a)
+deriving anyclass instance Print a => Print (Const a b)
+deriving anyclass instance Print (Proxy a)
+deriving anyclass instance Print b => Print (Tagged a b)
+deriving anyclass instance Print (f (g a)) => Print (Compose f g a)
+deriving anyclass instance (Print (f a), Print (g a)) => Print (Product f g a)
+deriving anyclass instance (Print (f a), Print (g a), Print a) => Print (Sum f g a)

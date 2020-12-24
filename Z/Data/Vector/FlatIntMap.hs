@@ -40,7 +40,7 @@ import qualified Data.Monoid                as Monoid
 import qualified Data.Primitive.SmallArray  as A
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Sort         as V
-import qualified Z.Data.Text.ShowT          as T
+import qualified Z.Data.Text.Print          as T
 import           Data.Function              (on)
 import           Data.Bits                   (shiftR)
 import           Data.Data
@@ -52,7 +52,7 @@ import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 newtype FlatIntMap v = FlatIntMap { sortedKeyValues :: V.Vector (V.IPair v) }
     deriving (Show, Eq, Ord, Typeable)
 
-instance T.ShowT v => T.ShowT (FlatIntMap v) where
+instance T.Print v => T.Print (FlatIntMap v) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP p (FlatIntMap vec) = T.parenWhen (p > 10) $ do
         "FlatIntMap{"
