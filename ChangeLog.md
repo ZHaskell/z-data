@@ -4,6 +4,8 @@
 
 * Hide `Text` constructor from `Z.Data.Text`.
 * Add `fromStdString` to `Z.Data.CBytes`.
+* Re-export `touch` from `Z.Foreign`, export `ConvertError` constructor from `Z.Data.JSON`.
+* Add `anyChar8` to `Z.Data.Parser`.
 
 ## 0.2.0.0  -- 2020-12-15
 

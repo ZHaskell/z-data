@@ -38,7 +38,7 @@ module Z.Data.Parser
   , decodePrim, decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , word8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeTill, takeWhile, takeWhile1, bytes, bytesCI
   , text
     -- * Numeric parsers
