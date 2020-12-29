@@ -32,7 +32,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - run: cabal build $CONFIG
+      - run: cabal configure $CONFIG
+      - run: cabal build 
       - run: cabal test --test-show-details=direct
       - run: cabal haddock
       - run: cabal sdist
