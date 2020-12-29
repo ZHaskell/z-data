@@ -8,7 +8,6 @@ import           Data.Word
 import           Data.Int
 import           GHC.Float
 import           Text.Printf                 (printf)
-import           Data.Word8                  (toLower, toUpper)
 import qualified Z.Data.Parser.Numeric    as P
 import qualified Z.Data.Parser.Base    as P
 import qualified Z.Data.Builder.Numeric    as B
