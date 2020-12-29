@@ -38,7 +38,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - run: cabal build $CONFIG
+      - run: cabal configure $CONFIG
+      - run: cabal build
 
       - if: matrix.cabal == '2.4.1.0'
         run: cabal test 
