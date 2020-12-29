@@ -33,6 +33,7 @@ import           Foreign.C.Types
 --------------------------------------------------------------------------------
 
 newtype UnalignedSize a = UnalignedSize { getUnalignedSize :: Int } deriving (Show, Eq, Ord)
+                                                                    deriving newtype Num
 
 -- | Primitive types which can be unaligned accessed
 --
