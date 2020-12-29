@@ -34,7 +34,9 @@ import           Z.Data.Vector.Base             as V
 import           Z.Data.JSON.Value              (Value(..))
 import           Data.Scientific                (Scientific, base10Exponent, coefficient)
 
--- | Use @:@ as separator to connect a label(no need to escape, only add quotes) with field builders.
+-- | Use @:@ as separator to connect a label(no escape, only add quotes) with field builders.
+--
+-- Don't use chars which need escaped in label.
 kv :: T.Text -> B.Builder () -> B.Builder ()
 {-# INLINE kv #-}
 l `kv` b = B.quotes (B.text l) >> B.colon >> b

@@ -36,7 +36,7 @@ import qualified Data.Primitive.PrimArray   as A
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Vector.Sort         as V
 import qualified Z.Data.Text.Print          as T
-import           Data.Bits                   (shiftR)
+import           Data.Bits                   (unsafeShiftR)
 import           Data.Data
 import           Prelude hiding (elem, null)
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
@@ -212,7 +212,7 @@ binarySearch (V.PrimVector arr s0 l) !v' = go s0 (s0+l-1)
                                       _  -> Right s
         | s >  e = Left s
         | otherwise =
-            let !mid = (s+e) `shiftR` 1
+            let !mid = (s+e) `unsafeShiftR` 1
                 v = arr `A.indexPrimArray` mid
             in case v' `compare` v of LT -> go s (mid-1)
                                       GT -> go (mid+1) e

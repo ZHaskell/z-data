@@ -44,7 +44,7 @@ module Z.Data.Parser
     -- * Numeric parsers
     -- ** Decimal
   , uint, int, integer
-  , uint_, int_
+  , uint_, int_, digit
     -- ** Hex
   , hex, hex', hex_
     -- ** Fractional
@@ -57,10 +57,18 @@ module Z.Data.Parser
   , float', double'
   , scientific'
   , scientifically'
+  -- * Time
+  , day
+  , localTime
+  , timeOfDay
+  , timeZone
+  , utcTime
+  , zonedTime
     -- * Misc
   , fail'
   ) where
 
 import           Z.Data.Parser.Base
 import           Z.Data.Parser.Numeric
+import           Z.Data.Parser.Time
 import           Prelude hiding (take, takeWhile)

@@ -1,6 +1,6 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.2.1.0
+version:                    0.3.0.0
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause
@@ -157,12 +157,14 @@ library
                             Z.Data.Builder.Base
                             Z.Data.Builder.Numeric
                             Z.Data.Builder.Numeric.DigitTable
+                            Z.Data.Builder.Time
 
                             Z.Data.Generics.Utils
 
                             Z.Data.Parser
                             Z.Data.Parser.Base
                             Z.Data.Parser.Numeric
+                            Z.Data.Parser.Time
 
                             Z.Data.PrimRef
                             Z.Data.PrimRef.PrimSTRef
@@ -172,6 +174,7 @@ library
                             Z.Data.JSON.Base
                             Z.Data.JSON.Builder
                             Z.Data.JSON.Value
+
 
                             Z.Foreign
 
@@ -183,9 +186,10 @@ library
                           , case-insensitive        == 1.2.*
                           , deepseq                 >= 1.4 && < 1.5
                           , QuickCheck              >= 2.10
-                          , template-haskell        >= 2.14.0
-                          , unordered-containers    == 0.2.*
                           , tagged                  == 0.8.*
+                          , template-haskell        >= 2.14.0
+                          , time                    >= 1.8 && < 2.0
+                          , unordered-containers    == 0.2.*
 
     if os(windows)
         extra-libraries:    stdc++
@@ -322,10 +326,12 @@ test-suite Z-Data-Test
     build-tool-depends:     hsc2hs:hsc2hs, hspec-discover:hspec-discover
     other-modules:          Z.Data.CBytesSpec
                             Z.Data.Builder.NumericSpec
+                            Z.Data.Builder.TimeSpec
                             Z.Data.JSON.BaseSpec
                             Z.Data.JSON.ValueSpec
                             Z.Data.Parser.BaseSpec
                             Z.Data.Parser.NumericSpec
+                            Z.Data.Parser.TimeSpec
                             Z.Data.Array.UnalignedSpec
                             Z.Data.Text.BaseSpec
                             Z.Data.Text.ExtraSpec
@@ -351,6 +357,7 @@ test-suite Z-Data-Test
                           , word8
                           , scientific
                           , primitive
+                          , time
 
     c-sources:              test/cbits/ffi.c
 

@@ -1,5 +1,6 @@
 {-|
 Module      :  Z.Data.PrimIORef
+Description :  Primitive IO Reference
 Copyright   :  (c) Dong Han 2017~2019
 License     :  BSD-style
 

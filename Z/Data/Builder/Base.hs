@@ -45,7 +45,7 @@ module Z.Data.Builder.Base
   , encodePrimLE
   , encodePrimBE
   -- * More builders
-  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, string8, char8, text
+  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, word7, string8, char8, word8, text
   -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
   ) where
@@ -331,7 +331,7 @@ encodePrim :: forall a. Unaligned a => a -> Builder ()
 encodePrim x = do
     writeN n (\ mpa i -> writePrimWord8ArrayAs mpa i x)
   where
-    n = unalignedSize (undefined :: a)
+    n = getUnalignedSize (unalignedSize @a)
 
 -- | Write a primitive type with little endianess.
 encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
@@ -417,8 +417,15 @@ string7 = mapM_ char7
 -- Codepoints beyond @'\x7F'@ will be chopped.
 char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
-char7 chr = do
+char7 chr =
     writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr .&. 0x7F))
+
+-- | Turn 'Word8' into 'Builder' with ASCII7 encoding
+--
+-- Codepoints beyond @'\x7F'@ will be chopped.
+word7 :: Word8 -> Builder ()
+{-# INLINE word7 #-}
+word7 w = writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (w .&. 0x7F))
 
 -- | Turn 'String' into 'Builder' with ASCII8 encoding
 --
@@ -438,6 +445,14 @@ char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
 char8 chr = do
     writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr))
+
+-- | Turn 'Word8' into 'Builder' with ASCII8 encoding, (alias to 'encodePrim').
+--
+-- Note, this encoding is NOT compatible with UTF8 encoding, i.e. bytes written
+-- by this builder may not be legal UTF8 encoding bytes.
+word8 :: Word8 -> Builder ()
+{-# INLINE word8 #-}
+word8 = encodePrim
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --

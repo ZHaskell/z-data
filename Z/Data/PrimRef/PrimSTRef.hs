@@ -1,5 +1,6 @@
 {-|
 Module      :  Z.Data.PrimRef.PrimSTRef
+Description :  Primitive ST Reference
 Copyright   :  (c) Dong Han 2017~2019
 License     :  BSD-style
 

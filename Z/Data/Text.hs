@@ -30,6 +30,8 @@ module Z.Data.Text (
   -- * Conversion between codepoint vector
   , fromVector
   , toVector
+  -- * Print class
+  , Print(..), toText, toString, toUTF8Builder, toUTF8Bytes
   -- * Basic interface
   , null
   , length
@@ -145,6 +147,7 @@ module Z.Data.Text (
 import           Z.Data.Text.Base
 import           Z.Data.Text.Search
 import           Z.Data.Text.Extra
+import           Z.Data.Text.Print
 import           Prelude                  ()
 
 

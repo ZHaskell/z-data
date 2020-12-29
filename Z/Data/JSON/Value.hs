@@ -91,7 +91,7 @@ data Value = Object {-# UNPACK #-} !(V.Vector (T.Text, Value))
            | Number {-# UNPACK #-} !Scientific
            | Bool   !Bool
            | Null
-         deriving (Eq, Show, Typeable, Generic)
+         deriving (Eq, Ord, Show, Typeable, Generic)
          deriving anyclass Print
 
 instance NFData Value where

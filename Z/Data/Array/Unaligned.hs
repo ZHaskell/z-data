@@ -18,6 +18,7 @@ import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
 import           GHC.Int
+import           GHC.IO
 import           GHC.Exts
 import           GHC.Word
 import           GHC.Float (stgFloatToWord32, stgWord32ToFloat, stgWord64ToDouble, stgDoubleToWord64)
@@ -30,6 +31,8 @@ import           Foreign.C.Types
 -- #define USE_SHIFT
 
 --------------------------------------------------------------------------------
+
+newtype UnalignedSize a = UnalignedSize { getUnalignedSize :: Int } deriving (Show, Eq, Ord)
 
 -- | Primitive types which can be unaligned accessed
 --
@@ -50,18 +53,12 @@ import           Foreign.C.Types
 -- @
 --
 class Unaligned a where
-    {-# MINIMAL (unalignedSize# | unalignedSize),
+    {-# MINIMAL unalignedSize,
                 (indexWord8ArrayAs# | indexBA),
                 (writeWord8ArrayAs# | peekMBA),
                 (readWord8ArrayAs# | pokeMBA) #-}
     -- | byte size
-    unalignedSize :: a -> Int
-    {-# INLINE unalignedSize #-}
-    unalignedSize a = I# (unalignedSize# a)
-
-    unalignedSize# :: a -> Int#
-    {-# INLINE unalignedSize# #-}
-    unalignedSize# a = case unalignedSize a of I# siz_a# -> siz_a#
+    unalignedSize :: UnalignedSize a
 
     -- | index element off byte array with offset in bytes(maybe unaligned)
     indexWord8ArrayAs# :: ByteArray# -> Int# -> a
@@ -72,13 +69,14 @@ class Unaligned a where
     readWord8ArrayAs#  :: MutableByteArray# s -> Int# -> State# s -> (# State# s, a #)
     {-# INLINE  readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s# =
-        (unsafeCoerce# (peekMBA (unsafeCoerce# mba#) (I# i#) :: IO a)) s#
+        unsafeCoerce# (peekMBA (unsafeCoerce# mba#) (I# i#) :: IO a) s#
 
     -- | write element to byte array with offset in bytes(maybe unaligned)
     writeWord8ArrayAs# :: MutableByteArray# s -> Int# -> a -> State# s -> State# s
     {-# INLINE  writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# x s# =
-        unsafeCoerce# (pokeMBA (unsafeCoerce# mba#) (I# i#) x) s#
+        let !(# s'#, _ #) = unIO (pokeMBA (unsafeCoerce# mba#) (I# i#) x :: IO ()) (unsafeCoerce# s#)
+        in unsafeCoerce# s'#
 
     -- | IO version of 'writeWord8ArrayAs#' but more convenient to write manually.
     peekMBA :: MutableByteArray# RealWorld -> Int -> IO a
@@ -128,7 +126,7 @@ indexPrimWord8ArrayAs (PrimArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
 
 instance Unaligned Word8 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 1
+    unalignedSize = UnalignedSize 1
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W8# x#) = writeWord8Array# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -139,7 +137,7 @@ instance Unaligned Word8 where
 
 instance Unaligned Int8 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 1
+    unalignedSize = UnalignedSize 1
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I8# x#) = writeInt8Array# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -169,7 +167,7 @@ newtype BE a = BE { getBE :: a } deriving (Show, Eq)
 
 instance Unaligned Word16 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W16# x#) = writeWord8ArrayAsWord16# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -180,7 +178,7 @@ instance Unaligned Word16 where
 
 instance Unaligned (LE Word16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W16# x#)) s0# =
@@ -202,7 +200,7 @@ instance Unaligned (LE Word16) where
 
 instance Unaligned (BE Word16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -239,7 +237,7 @@ instance Unaligned (BE Word16) where
 
 instance Unaligned Word32 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W32# x#) =  writeWord8ArrayAsWord32# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -251,7 +249,7 @@ instance Unaligned Word32 where
 
 instance Unaligned (LE Word32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W32# x#)) s0# =
@@ -283,7 +281,7 @@ instance Unaligned (LE Word32) where
 
 instance Unaligned (BE Word32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -330,7 +328,7 @@ instance Unaligned (BE Word32) where
 
 instance Unaligned Word64 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W64# x#) =  writeWord8ArrayAsWord64# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -342,7 +340,7 @@ instance Unaligned Word64 where
 
 instance Unaligned (LE Word64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W64# x#)) s0# =
@@ -394,7 +392,7 @@ instance Unaligned (LE Word64) where
 
 instance Unaligned (BE Word64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -462,10 +460,10 @@ instance Unaligned (BE Word64) where
 instance Unaligned Word where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #endif
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (W# x#) = writeWord8ArrayAsWord# mba# i# x#
@@ -478,7 +476,7 @@ instance Unaligned Word where
 instance Unaligned (LE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W# x#)) = writeWord8ArrayAs# mba# i# (LE (W32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -488,7 +486,7 @@ instance Unaligned (LE Word) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (W32# x#)) -> LE (W# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (W# x#)) = writeWord8ArrayAs# mba# i# (LE (W64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -501,7 +499,7 @@ instance Unaligned (LE Word) where
 instance Unaligned (BE Word) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W# x#)) = writeWord8ArrayAs# mba# i# (BE (W32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -511,7 +509,7 @@ instance Unaligned (BE Word) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (BE (W32# x#)) -> BE (W# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W# x#)) = writeWord8ArrayAs# mba# i# (BE (W64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -525,7 +523,7 @@ instance Unaligned (BE Word) where
 
 instance Unaligned Int16 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I16# x#) = writeWord8ArrayAsInt16# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -536,7 +534,7 @@ instance Unaligned Int16 where
 
 instance Unaligned (LE Int16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I16# x#)) =
@@ -555,7 +553,7 @@ instance Unaligned (LE Int16) where
 
 instance Unaligned (BE Int16) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 2
+    unalignedSize = UnalignedSize 2
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -576,7 +574,7 @@ instance Unaligned (BE Int16) where
 
 instance Unaligned Int32 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I32# x#) = writeWord8ArrayAsInt32# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -587,7 +585,7 @@ instance Unaligned Int32 where
 
 instance Unaligned (LE Int32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I32# x#)) =
@@ -606,7 +604,7 @@ instance Unaligned (LE Int32) where
 
 instance Unaligned (BE Int32) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -627,7 +625,7 @@ instance Unaligned (BE Int32) where
 
 instance Unaligned Int64 where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I64# x#) = writeWord8ArrayAsInt64# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -638,7 +636,7 @@ instance Unaligned Int64 where
 
 instance Unaligned (LE Int64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I64# x#)) =
@@ -657,7 +655,7 @@ instance Unaligned (LE Int64) where
 
 instance Unaligned (BE Int64) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -679,10 +677,10 @@ instance Unaligned (BE Int64) where
 instance Unaligned Int where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #endif
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (I# x#) = writeWord8ArrayAsInt# mba# i# x#
@@ -695,7 +693,7 @@ instance Unaligned Int where
 instance Unaligned (LE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I# x#)) = writeWord8ArrayAs# mba# i# (LE (I32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -705,7 +703,7 @@ instance Unaligned (LE Int) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (LE (I32# x#)) -> LE (I# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (I# x#)) = writeWord8ArrayAs# mba# i# (LE (I64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -718,7 +716,7 @@ instance Unaligned (LE Int) where
 instance Unaligned (BE Int) where
 #if SIZEOF_HSWORD == 4
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I# x#)) = writeWord8ArrayAs# mba# i# (BE (I32# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -728,7 +726,7 @@ instance Unaligned (BE Int) where
     indexWord8ArrayAs# ba# i# = case (indexWord8ArrayAs# ba# i#) of (BE (I32# x#)) -> BE (I# x#)
 #else
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I# x#)) = writeWord8ArrayAs# mba# i# (BE (I64# x#))
     {-# INLINE readWord8ArrayAs# #-}
@@ -742,7 +740,7 @@ instance Unaligned (BE Int) where
 
 instance Unaligned (Ptr a) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = SIZEOF_HSPTR
+    unalignedSize = UnalignedSize SIZEOF_HSPTR
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (Ptr x#) = writeWord8ArrayAsAddr# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -753,7 +751,7 @@ instance Unaligned (Ptr a) where
 
 instance Unaligned Float where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (F# x#) = writeWord8ArrayAsFloat# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -764,7 +762,7 @@ instance Unaligned Float where
 
 instance Unaligned (LE Float) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (F# x#)) =
@@ -783,7 +781,7 @@ instance Unaligned (LE Float) where
 
 instance Unaligned (BE Float) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -804,7 +802,7 @@ instance Unaligned (BE Float) where
 
 instance Unaligned Double where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (D# x#) = writeWord8ArrayAsDouble# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -815,7 +813,7 @@ instance Unaligned Double where
 
 instance Unaligned (LE Double) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 8
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (D# x#)) =
@@ -834,7 +832,7 @@ instance Unaligned (LE Double) where
 
 instance Unaligned (BE Double) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -856,7 +854,7 @@ instance Unaligned (BE Double) where
 -- | Char's instance use 31bit wide char prim-op.
 instance Unaligned Char where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (C# x#) = writeWord8ArrayAsWideChar# mba# i# x#
     {-# INLINE readWord8ArrayAs# #-}
@@ -867,7 +865,7 @@ instance Unaligned Char where
 
 instance Unaligned (LE Char) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (LE (C# x#)) =
@@ -886,7 +884,7 @@ instance Unaligned (LE Char) where
 
 instance Unaligned (BE Char) where
     {-# INLINE unalignedSize #-}
-    unalignedSize _ = 4
+    unalignedSize = UnalignedSize 4
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else
@@ -903,46 +901,365 @@ instance Unaligned (BE Char) where
         in BE (C# (chr# x#))
 #endif
 
-{- not really useful
+-- | Write a, b in order
 instance (Unaligned a, Unaligned b) => Unaligned (a, b) where
     {-# INLINE unalignedSize #-}
-    unalignedSize (a, b) = unalignedSize a + unalignedSize b
-    {-# INLINE writeWord8ArrayAs# #-}
-    writeWord8ArrayAs# mba# i# (a, b) s0 =
-        let s1 = writeWord8ArrayAs# mba# i# a s0
-        in writeWord8ArrayAs# mba# (i# +# unalignedSize# a) b s1
-    {-# INLINE readWord8ArrayAs# #-}
-    readWord8ArrayAs# mba# i# s0 =
-        let !(# s1, a #) = readWord8ArrayAs# mba# i# s0
-            !(# s2, b #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a) s1
-        in (# s2, (a, b) #)
-    {-# INLINE indexWord8ArrayAs# #-}
-    indexWord8ArrayAs# ba# i# =
-        let a = indexWord8ArrayAs# ba# i#
-            b = indexWord8ArrayAs# ba# (i# +# unalignedSize# a)
-        in (a, b)
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
 
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        return (a, b)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+        in (a, b)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+
+-- | Write a, b, c in order
 instance (Unaligned a, Unaligned b, Unaligned c) => Unaligned (a, b, c) where
     {-# INLINE unalignedSize #-}
-    unalignedSize (a, b, c) = unalignedSize a + unalignedSize b + unalignedSize c
-    {-# INLINE writeWord8ArrayAs# #-}
-    writeWord8ArrayAs# mba# i# (a, b, c) s0 =
-        let s1 = writeWord8ArrayAs# mba# i# a s0
-            s2 = writeWord8ArrayAs# mba# (i# +# unalignedSize# a) b s1
-        in writeWord8ArrayAs# mba# (i# +# unalignedSize# a +# unalignedSize# b) c s2
-    {-# INLINE readWord8ArrayAs# #-}
-    readWord8ArrayAs# mba# i# s0 =
-        let !(# s1, a #) = readWord8ArrayAs# mba# i# s0
-            !(# s2, b #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a) s1
-            !(# s3, c #) = readWord8ArrayAs# mba# (i# +# unalignedSize# a +# unalignedSize# b) s2
-        in (# s3, (a, b, c) #)
-    {-# INLINE indexWord8ArrayAs# #-}
-    indexWord8ArrayAs# ba# i# =
-        let a = indexWord8ArrayAs# ba# i#
-            b = indexWord8ArrayAs# ba# (i# +# unalignedSize# a)
-            c = indexWord8ArrayAs# ba# (i# +# unalignedSize# a +# unalignedSize# b)
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        return (a, b, c)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
         in (a, b, c)
--}
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+
+-- | Write a, b, c, d in order
+instance (Unaligned a, Unaligned b, Unaligned c, Unaligned d) => Unaligned (a, b, c, d) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      + getUnalignedSize (unalignedSize @d)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c, d) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+        pokeMBA mba# l d
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        !d <- peekMBA mba# l
+        return (a, b, c, d)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
+            !d = indexBA ba# l
+        in (a, b, c, d)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+
+-- | Write a, b, c, d, e in order
+instance (Unaligned a, Unaligned b, Unaligned c, Unaligned d, Unaligned e) => Unaligned (a, b, c, d, e) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      + getUnalignedSize (unalignedSize @d)
+                      + getUnalignedSize (unalignedSize @e)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c, d, e) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+        pokeMBA mba# l d
+        pokeMBA mba# m e
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        !d <- peekMBA mba# l
+        !e <- peekMBA mba# m
+        return (a, b, c, d, e)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
+            !d = indexBA ba# l
+            !e = indexBA ba# m
+        in (a, b, c, d, e)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+
+
+-- | Write a, b, c, d, e, f in order
+instance (Unaligned a, Unaligned b, Unaligned c, Unaligned d, Unaligned e, Unaligned f) => Unaligned (a, b, c, d, e, f) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      + getUnalignedSize (unalignedSize @d)
+                      + getUnalignedSize (unalignedSize @e)
+                      + getUnalignedSize (unalignedSize @f)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c, d, e, f) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+        pokeMBA mba# l d
+        pokeMBA mba# m e
+        pokeMBA mba# n f
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        !d <- peekMBA mba# l
+        !e <- peekMBA mba# m
+        !f <- peekMBA mba# n
+        return (a, b, c, d, e, f)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
+            !d = indexBA ba# l
+            !e = indexBA ba# m
+            !f = indexBA ba# n
+        in (a, b, c, d, e, f)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+
+-- | Write a, b, c, d, e, f, g in order
+instance (Unaligned a, Unaligned b, Unaligned c, Unaligned d, Unaligned e, Unaligned f, Unaligned g) => Unaligned (a, b, c, d, e, f, g) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      + getUnalignedSize (unalignedSize @d)
+                      + getUnalignedSize (unalignedSize @e)
+                      + getUnalignedSize (unalignedSize @f)
+                      + getUnalignedSize (unalignedSize @g)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c, d, e, f, g) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+        pokeMBA mba# l d
+        pokeMBA mba# m e
+        pokeMBA mba# n f
+        pokeMBA mba# o g
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        !d <- peekMBA mba# l
+        !e <- peekMBA mba# m
+        !f <- peekMBA mba# n
+        !g <- peekMBA mba# o
+        return (a, b, c, d, e, f, g)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
+            !d = indexBA ba# l
+            !e = indexBA ba# m
+            !f = indexBA ba# n
+            !g = indexBA ba# o
+        in (a, b, c, d, e, f, g)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+
+
+-- | Write a, b, c, d, e, f, g, h in order
+instance (Unaligned a, Unaligned b, Unaligned c, Unaligned d, Unaligned e, Unaligned f, Unaligned g, Unaligned h) => Unaligned (a, b, c, d, e, f, g, h) where
+    {-# INLINE unalignedSize #-}
+    unalignedSize =
+        UnalignedSize ( getUnalignedSize (unalignedSize @a)
+                      + getUnalignedSize (unalignedSize @b)
+                      + getUnalignedSize (unalignedSize @c)
+                      + getUnalignedSize (unalignedSize @d)
+                      + getUnalignedSize (unalignedSize @e)
+                      + getUnalignedSize (unalignedSize @f)
+                      + getUnalignedSize (unalignedSize @g)
+                      + getUnalignedSize (unalignedSize @h)
+                      )
+    {-# INLINE pokeMBA #-}
+    pokeMBA mba# i (a, b, c, d, e, f, g, h) = do
+        pokeMBA mba# i a
+        pokeMBA mba# j b
+        pokeMBA mba# k c
+        pokeMBA mba# l d
+        pokeMBA mba# m e
+        pokeMBA mba# n f
+        pokeMBA mba# o g
+        pokeMBA mba# p h
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+        p = o + getUnalignedSize (unalignedSize @g)
+
+    {-# INLINE peekMBA #-}
+    peekMBA mba# i = do
+        !a <- peekMBA mba# i
+        !b <- peekMBA mba# j
+        !c <- peekMBA mba# k
+        !d <- peekMBA mba# l
+        !e <- peekMBA mba# m
+        !f <- peekMBA mba# n
+        !g <- peekMBA mba# o
+        !h <- peekMBA mba# p
+        return (a, b, c, d, e, f, g, h)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+        p = o + getUnalignedSize (unalignedSize @g)
+
+    {-# INLINE indexBA #-}
+    indexBA ba# i =
+        let !a = indexBA ba# i
+            !b = indexBA ba# j
+            !c = indexBA ba# k
+            !d = indexBA ba# l
+            !e = indexBA ba# m
+            !f = indexBA ba# n
+            !g = indexBA ba# o
+            !h = indexBA ba# p
+        in (a, b, c, d, e, f, g, h)
+      where
+        j = i + getUnalignedSize (unalignedSize @a)
+        k = j + getUnalignedSize (unalignedSize @b)
+        l = k + getUnalignedSize (unalignedSize @c)
+        m = l + getUnalignedSize (unalignedSize @d)
+        n = m + getUnalignedSize (unalignedSize @e)
+        o = n + getUnalignedSize (unalignedSize @f)
+        p = o + getUnalignedSize (unalignedSize @g)
+
 --------------------------------------------------------------------------------
 
 -- Prim instances for newtypes in Foreign.C.Types

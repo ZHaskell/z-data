@@ -222,8 +222,8 @@ compareVector (Vector baA sA lA) (Vector baB sB lB)
   where
     !endA = sA + lA
     !endB = sB + lB
-    go !i !j | i >= endA  = endA `compare` endB
-             | j >= endB  = endA `compare` endB
+    go !i !j | i >= endA  = lA `compare` lB
+             | j >= endB  = lA `compare` lB
              | otherwise = let o = indexSmallArray baA i `compare` indexSmallArray baB j
                            in case o of EQ -> go (i+1) (j+1)
                                         x  -> x
@@ -398,12 +398,11 @@ eqPrimVector (PrimVector (PrimArray baA#) (I# sA#) lA)
         0 == I# (compareByteArrays# baA# (sA# *# siz#) baB# (sB# *# siz#) n#)
   where
     !siz@(I# siz#) = sizeOf (undefined :: a)
-    !(I# n#) = min (lA*siz) (lB*siz)
+    !(I# n#) = lA*siz
 
 instance (Prim a, Ord a) => Ord (PrimVector a) where
     {-# INLINE compare #-}
     compare = comparePrimVector
-
 
 comparePrimVector :: (Prim a, Ord a) => PrimVector a -> PrimVector a -> Ordering
 {-# INLINE [1] comparePrimVector #-}
@@ -416,8 +415,8 @@ comparePrimVector (PrimVector baA sA lA) (PrimVector baB sB lB)
   where
     !endA = sA + lA
     !endB = sB + lB
-    go !i !j | i >= endA  = endA `compare` endB
-             | j >= endB  = endA `compare` endB
+    go !i !j | i >= endA  = lA `compare` lB
+             | j >= endB  = lA `compare` lB
              | otherwise = let o = indexPrimArray baA i `compare` indexPrimArray baB j
                            in case o of EQ -> go (i+1) (j+1)
                                         x  -> x

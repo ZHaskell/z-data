@@ -42,7 +42,7 @@ import qualified Z.Data.Vector.Base as V
 import qualified Z.Data.Vector.Sort as V
 import qualified Z.Data.Text.Print          as T
 import           Data.Function              (on)
-import           Data.Bits                   (shiftR)
+import           Data.Bits                  (unsafeShiftR)
 import           Data.Data
 import           Prelude hiding (lookup, null)
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
@@ -184,7 +184,7 @@ lookup k' (FlatMap (V.Vector arr s l)) = go s (s+l-1)
                                                       | otherwise -> Nothing
         | i >  j = Nothing
         | otherwise =
-            let mid = (i+j) `shiftR` 1
+            let mid = (i+j) `unsafeShiftR` 1
                 (k, v)  = arr `A.indexSmallArray` mid
             in case k' `compare` k of LT -> go i (mid-1)
                                       GT -> go (mid+1) j
@@ -351,7 +351,7 @@ binarySearch (V.Vector arr s l) !k' = go s (s+l-1)
                                       _  -> Right i
         | i >  j = Left i
         | otherwise =
-            let !mid = (i+j) `shiftR` 1
+            let !mid = (i+j) `unsafeShiftR` 1
                 (k, _)  = arr `A.indexSmallArray` mid
             in case k' `compare` k of LT -> go i (mid-1)
                                       GT -> go (mid+1) j

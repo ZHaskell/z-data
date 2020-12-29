@@ -29,6 +29,12 @@ module Z.Data.JSON
   , Value(..)
     -- * parse into JSON Value
   , parseValue, parseValue', parseValueChunks, parseValueChunks'
+  -- * FromValue, ToValue & EncodeJSON
+  , FromValue(..)
+  , ToValue(..)
+  , EncodeJSON(..)
+  , defaultSettings, Settings(..), snakeCase, trainCase
+  , gToValue, gFromValue, gEncodeJSON
   -- * Convert 'Value' to Haskell data
   , convert, convert', Converter(..), fail', (<?>), prependContext
   , PathElement(..), ConvertError(..)
@@ -36,17 +42,8 @@ module Z.Data.JSON
   , withBoundedIntegral, withText, withArray, withKeyValues, withFlatMap, withFlatMapR
   , withHashMap, withHashMapR, withEmbeddedJSON
   , (.:), (.:?), (.:!), convertField, convertFieldMaybe, convertFieldMaybe'
-  -- * FromValue, ToValue & EncodeJSON
-  , ToValue(..)
-  , FromValue(..)
-  , EncodeJSON(..)
-  , defaultSettings, Settings(..), snakeCase, trainCase
-  , gToValue, gFromValue, gEncodeJSON
-  -- * Helper for manually writing encoders
-  , kv, kv'
-  , string
-  , commaSepList
-  , commaSepVec
+  -- * Helper for manually writing instance.
+  , (.=), object, (.!), object', KVItem
   ) where
 
 import           Data.Char
@@ -129,42 +126,40 @@ import qualified Z.Data.Text      as T
 -- >     encodeJSON = JSON.gEncodeJSON JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
 --
 -- >>> JSON.toValue (T 0 [1,2,3])
--- Object [(\"foo_t\",Number 0.0),(\"bar_t\",Array [Number 1.0,Number 2.0,Number 3.0])]
-
+-- Object [("foo_t",Number 0.0),("bar_t",Array [Number 1.0,Number 2.0,Number 3.0])]
+--
 -- $manually-instance
 --
 -- You can write 'ToValue' and 'FromValue' instances by hand if the 'Generic' based one doesn't suit you.
 -- Here is an example similar to aeson's.
 --
--- > import qualified Z.Data.Text          as T
--- > import qualified Z.Data.Vector        as V
--- > import qualified Z.Data.Builder       as B
--- > import qualified Z.Data.JSON          as JSON
--- > import           Z.Data.JSON          ((.:), kv, commaSepList,
--- >                                        FromValue(..), ToValue(..), EncodeJSON(..))
--- >
--- > data Person = Person { name :: T.Text , age  :: Int } deriving Show
--- >
--- > instance FromValue Person where
--- >     fromValue = JSON.withFlatMapR \"Person\" $ \\ v -> Person
--- >                     \<$\> v .: \"name\"
--- >                     \<*\> v .: \"age\"
--- >
--- > instance ToValue Person where
--- >     toValue (Person n a) = JSON.Object $ V.pack [(\"name\", toValue n),(\"age\", toValue a)]
--- >
--- > instance EncodeJSON Person where
--- >     encodeJSON (Person n a) = B.curly . commaSepList $ [
--- >           \"name\" `kv` string n
--- >         , \"age\" `kv` B.int a
--- >         ]
+-- @
+-- import qualified Z.Data.Text          as T
+-- import qualified Z.Data.Vector        as V
+-- import qualified Z.Data.Builder       as B
+-- import qualified Z.Data.JSON          as JSON
+-- import           Z.Data.JSON          ((.:), (.=), (.!), FromValue(..), ToValue(..), EncodeJSON(..))
 --
--- >>> toValue (Person \"Joe\" 12)
--- Object [(\"name\",String \"Joe\"),(\"age\",Number 12.0)]
--- >>> JSON.convert' @Person . JSON.Object $ V.pack [(\"name\",JSON.String \"Joe\"),(\"age\",JSON.Number 12.0)]
--- Right (Person {name = \"Joe\", age = 12})
--- >>> JSON.encodeText (Person \"Joe\" 12)
--- "{\"name\":\"Joe\",\"age\":12}"
+-- data Person = Person { name :: T.Text , age  :: Int } deriving Show
+--
+-- instance FromValue Person where
+--     fromValue = JSON.withFlatMapR \"Person\" $ \\ v -> Person
+--                     \<$\> v .: \"name\"
+--                     \<*\> v .: \"age\"
+--
+-- instance ToValue Person where
+--     toValue (Person n a) = JSON.object [\"name\" .= n, \"age\" .= a]
+--
+-- instance EncodeJSON Person where
+--     encodeJSON (Person n a) = JSON.object' $ (\"name\" .! n <> \"age\" .! a)
+-- @
+--
+-- >>> toValue (Person "Joe" 12)
+-- Object [("name",String "Joe"),("age",Number 12.0)]
+-- >>> JSON.convert' @Person . JSON.Object $ V.pack [("name",JSON.String "Joe"),("age",JSON.Number 12.0)]
+-- Right (Person {name = "Joe", age = 12})
+-- >>> JSON.encodeText (Person "Joe" 12)
+-- "{"name":"Joe","age":12}"
 --
 -- The 'Value' type is different from aeson's one in that we use @Vector (Text, Value)@ to represent JSON objects, thus
 -- we can choose different strategies on key duplication, the lookup map type, etc. so instead of a single 'withObject',

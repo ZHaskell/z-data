@@ -24,6 +24,7 @@ module Z.Data.CBytes
   , fromCString, fromCStringN, fromStdString
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   , withCBytesListUnsafe, withCBytesList
+  , pokeMBACBytes, peekMBACBytes, indexBACBytes
   -- * re-export
   , CString
   ) where
@@ -56,7 +57,6 @@ import           Prelude                    hiding (all, any, appendFile, break,
                                                 unlines, unzip, writeFile, zip,
                                                 zipWith)
 import           Z.Data.Array
-import           Z.Data.Array.Unaligned
 import qualified Z.Data.Builder             as B
 import qualified Z.Data.Text                as T
 import qualified Z.Data.Text.Print          as T
@@ -160,39 +160,40 @@ instance Arbitrary CBytes where
 instance CoArbitrary CBytes where
     coarbitrary = coarbitrary . unpack
 
--- | This instance peek bytes until @\\NUL@(or input chunk ends), poke bytes with an extra \\NUL terminator.
-instance Unaligned CBytes where
-    {-# INLINE unalignedSize #-}
-    unalignedSize (CBytes arr) = sizeofPrimArray arr
-    {-# INLINE peekMBA #-}
-    peekMBA mba# i = do
-        b <- getSizeofMutableByteArray (MutableByteArray mba#)
-        let rest = b-i
-        l <- c_memchr mba# i 0 rest
-        let l' = if l == -1 then rest else l
-        mpa <- newPrimArray (l'+1)
-        copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
-        -- write \\NUL terminator
-        writePrimArray mpa l' 0
-        pa <- unsafeFreezePrimArray mpa
-        return (CBytes pa)
+-- | Poke 'CBytes' until a \\NUL terminator(or to the end of the array if there's none).
+peekMBACBytes :: MBA# Word8 -> Int -> IO CBytes
+{-# INLINE peekMBACBytes #-}
+peekMBACBytes mba# i = do
+    b <- getSizeofMutableByteArray (MutableByteArray mba#)
+    let rest = b-i
+    l <- c_memchr mba# i 0 rest
+    let l' = if l == -1 then rest else l
+    mpa <- newPrimArray (l'+1)
+    copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
+    -- write \\NUL terminator
+    writePrimArray mpa l' 0
+    pa <- unsafeFreezePrimArray mpa
+    return (CBytes pa)
 
-    {-# INLINE pokeMBA #-}
-    pokeMBA mba# i (CBytes pa) = do
+-- | Poke 'CBytes' with \\NUL terminator.
+pokeMBACBytes :: MBA# Word8 -> Int -> CBytes -> IO ()
+{-# INLINE pokeMBACBytes #-}
+pokeMBACBytes mba# i (CBytes pa) = do
         let l = sizeofPrimArray pa
         copyPrimArray (MutablePrimArray mba# :: MutablePrimArray RealWorld Word8) i pa 0 l
 
-    {-# INLINE indexBA #-}
-    indexBA ba# i = runST (do
-        let b = sizeofByteArray (ByteArray ba#)
-            rest = b-i
-            l = V.c_memchr ba# i 0 rest
-            l' = if l == -1 then rest else l
-        mpa <- newPrimArray (l'+1)
-        copyPrimArray mpa 0 (PrimArray ba#) i l'
-        writePrimArray mpa l' 0
-        pa <- unsafeFreezePrimArray mpa
-        return (CBytes pa))
+indexBACBytes :: BA# Word8 -> Int -> CBytes
+{-# INLINE indexBACBytes #-}
+indexBACBytes ba# i = runST (do
+    let b = sizeofByteArray (ByteArray ba#)
+        rest = b-i
+        l = V.c_memchr ba# i 0 rest
+        l' = if l == -1 then rest else l
+    mpa <- newPrimArray (l'+1)
+    copyPrimArray mpa 0 (PrimArray ba#) i l'
+    writePrimArray mpa l' 0
+    pa <- unsafeFreezePrimArray mpa
+    return (CBytes pa))
 
 -- | This instance provide UTF8 guarantee, illegal codepoints will be written as 'T.replacementChar's.
 --

@@ -37,9 +37,11 @@ module Z.Data.JSON.Base
   , Field, GWriteFields(..), GMergeFields(..), GConstrToValue(..)
   , LookupTable, GFromFields(..), GBuildLookup(..), GConstrFromValue(..)
   , GAddPunctuation(..), GConstrEncodeJSON(..)
-  -- * Helper for manually writing encoders
+  -- * Helper for manually writing instance.
+  , (.=), object, (.!), object', KVItem
   , JB.kv, JB.kv'
   , JB.string
+  , B.curly, B.square
   , commaSepList
   , commaSepVec
   ) where
@@ -70,11 +72,14 @@ import           Data.Primitive.Types         (Prim)
 import           Data.Proxy                   (Proxy (..))
 import           Data.Ratio                   (Ratio, denominator, numerator,
                                                (%))
-import           Data.Scientific              (Scientific, base10Exponent,
-                                               toBoundedInteger)
+import           Data.Scientific              (Scientific, base10Exponent, toBoundedInteger)
 import qualified Data.Scientific              as Scientific
 import qualified Data.Semigroup               as Semigroup
 import           Data.Tagged                  (Tagged (..))
+import           Data.Time                    (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import           Data.Time.Calendar           (CalendarDiffDays (..), DayOfWeek (..))
+import           Data.Time.LocalTime          (CalendarDiffTime (..))
+import           Data.Time.Clock.System       (SystemTime (..))
 import           Data.Version                 (Version, parseVersion)
 import           Data.Word
 import           Foreign.C.Types
@@ -173,7 +178,7 @@ encodeChunks :: EncodeJSON a => a -> [V.Bytes]
 {-# INLINE encodeChunks #-}
 encodeChunks = B.buildChunks . encodeJSON
 
--- | Text version 'encodeBytes'.
+-- | Text version 'encode'.
 encodeText :: EncodeJSON a => a -> T.Text
 {-# INLINE encodeText #-}
 encodeText = T.Text . encode
@@ -497,6 +502,35 @@ commaSepList = B.intercalateList B.comma encodeJSON
 commaSepVec :: (EncodeJSON a, V.Vec v a) => v a ->  B.Builder ()
 {-# INLINE commaSepVec #-}
 commaSepVec = B.intercalateVec B.comma encodeJSON
+
+-- | A newtype for 'B.Builder', whose semigroup's instance is to connect two builder with 'B.comma'.
+newtype KVItem = KVItem (B.Builder ())
+
+instance Semigroup KVItem where
+    {-# INLINE (<>) #-}
+    KVItem a <> KVItem b = KVItem (a >> B.comma >> b)
+
+-- | Connect key and value to a 'KVItem' using 'B.colon', key will be escaped.
+(.!) :: EncodeJSON v => T.Text -> v -> KVItem
+{-# INLINE (.!) #-}
+k .! v = KVItem (k `JB.kv'` encodeJSON v)
+infixr 8 .!
+
+-- | Add curly for comma connected 'KVItem's.
+object' :: KVItem -> B.Builder ()
+{-# INLINE object' #-}
+object' (KVItem kvb) = B.curly kvb
+
+-- | Connect key and value to a tuple to be used with 'object'.
+(.=) :: ToValue v => T.Text -> v -> (T.Text, Value)
+{-# INLINE (.=) #-}
+k .= v = (k, toValue v)
+infixr 8 .=
+
+-- | Alias for @Object . pack@.
+object :: [(T.Text, Value)] -> Value
+{-# INLINE object #-}
+object = Object . V.pack
 
 --------------------------------------------------------------------------------
 
@@ -1318,6 +1352,171 @@ instance HasResolution a => ToValue (Fixed a) where
 instance HasResolution a => EncodeJSON (Fixed a) where
     {-# INLINE encodeJSON #-}
     encodeJSON = B.scientific . realToFrac
+
+--------------------------------------------------------------------------------
+
+instance FromValue UTCTime where
+    {-# INLINE fromValue #-}
+    fromValue = withText "UTCTime" $ \ t ->
+        case P.parse' (P.utcTime <* P.endOfInput) (T.getUTF8Bytes t) of
+            Left err -> fail' $ "could not parse date as UTCTime: " <> T.toText err
+            Right r  -> return r
+instance ToValue UTCTime where
+    {-# INLINE toValue #-}
+    toValue t = String (B.unsafeBuildText (B.utcTime t))
+-- @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance EncodeJSON UTCTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . B.utcTime
+
+instance FromValue ZonedTime where
+    {-# INLINE fromValue #-}
+    fromValue = withText "ZonedTime" $ \ t ->
+        case P.parse' (P.zonedTime <* P.endOfInput) (T.getUTF8Bytes t) of
+            Left err -> fail' $ "could not parse date as ZonedTime: " <> T.toText err
+            Right r  -> return r
+instance ToValue ZonedTime where
+    {-# INLINE toValue #-}
+    toValue t = String (B.unsafeBuildText (B.zonedTime t))
+-- @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance EncodeJSON ZonedTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . B.zonedTime
+
+instance FromValue Day where
+    {-# INLINE fromValue #-}
+    fromValue = withText "Day" $ \ t ->
+        case P.parse' (P.day <* P.endOfInput) (T.getUTF8Bytes t) of
+            Left err -> fail' $ "could not parse date as Day: " <> T.toText err
+            Right r  -> return r
+instance ToValue Day where
+    {-# INLINE toValue #-}
+    toValue t = String (B.unsafeBuildText (B.day t))
+-- @YYYY-MM-DD@
+instance EncodeJSON Day where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . B.day
+
+
+instance FromValue LocalTime where
+    {-# INLINE fromValue #-}
+    fromValue = withText "LocalTime" $ \ t ->
+        case P.parse' (P.localTime <* P.endOfInput) (T.getUTF8Bytes t) of
+            Left err -> fail' $ "could not parse date as LocalTime: " <> T.toText err
+            Right r  -> return r
+instance ToValue LocalTime where
+    {-# INLINE toValue #-}
+    toValue t = String (B.unsafeBuildText (B.localTime t))
+-- @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance EncodeJSON LocalTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . B.localTime
+
+instance FromValue TimeOfDay where
+    {-# INLINE fromValue #-}
+    fromValue = withText "TimeOfDay" $ \ t ->
+        case P.parse' (P.timeOfDay <* P.endOfInput) (T.getUTF8Bytes t) of
+            Left err -> fail' $ "could not parse time as TimeOfDay: " <> T.toText err
+            Right r  -> return r
+instance ToValue TimeOfDay where
+    {-# INLINE toValue #-}
+    toValue t = String (B.unsafeBuildText (B.timeOfDay t))
+-- @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance EncodeJSON TimeOfDay where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . B.timeOfDay
+
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'NominalDiffTime' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
+instance FromValue NominalDiffTime where
+    {-# INLINE fromValue #-}
+    fromValue = withBoundedScientific "NominalDiffTime" $ pure . realToFrac
+instance ToValue NominalDiffTime where
+    {-# INLINE toValue #-}
+    toValue = Number . realToFrac
+instance EncodeJSON NominalDiffTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.scientific . realToFrac
+
+
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'DiffTime' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
+instance FromValue DiffTime where
+    {-# INLINE fromValue #-}
+    fromValue = withBoundedScientific "DiffTime" $ pure . realToFrac
+instance ToValue DiffTime where
+    {-# INLINE toValue #-}
+    toValue = Number . realToFrac
+instance EncodeJSON DiffTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.scientific . realToFrac
+
+instance FromValue SystemTime where
+    {-# INLINE fromValue #-}
+    fromValue = withFlatMapR "SystemTime" $ \ v ->
+        MkSystemTime <$> v .: "seconds" <*> v .: "nanoseconds"
+instance ToValue SystemTime where
+    {-# INLINE toValue #-}
+    toValue (MkSystemTime s ns) = object [ "seconds" .= s , "nanoseconds" .= ns ]
+instance EncodeJSON SystemTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON (MkSystemTime s ns) = object' $ ("seconds" .! s <> "nanoseconds" .! ns)
+
+instance FromValue CalendarDiffTime where
+    {-# INLINE fromValue #-}
+    fromValue = withFlatMapR "CalendarDiffTime" $ \ v ->
+        CalendarDiffTime <$> v .: "months" <*> v .: "time"
+instance ToValue CalendarDiffTime where
+    {-# INLINE toValue #-}
+    toValue (CalendarDiffTime m nt) = object [ "months" .= m , "time" .= nt ]
+instance EncodeJSON CalendarDiffTime where
+    {-# INLINE encodeJSON #-}
+    encodeJSON (CalendarDiffTime m nt) = object' $ ("months" .! m <> "time" .! nt)
+
+instance FromValue CalendarDiffDays where
+    {-# INLINE fromValue #-}
+    fromValue = withFlatMapR "CalendarDiffDays" $ \ v ->
+        CalendarDiffDays <$> v .: "months" <*> v .: "days"
+instance ToValue CalendarDiffDays where
+    {-# INLINE toValue #-}
+    toValue (CalendarDiffDays m d) = object ["months" .= m, "days" .= d]
+instance EncodeJSON CalendarDiffDays where
+    {-# INLINE encodeJSON #-}
+    encodeJSON (CalendarDiffDays m d) = object' $ ("months" .! m <> "days" .! d)
+
+instance FromValue DayOfWeek where
+    {-# INLINE fromValue #-}
+    fromValue (String "monday"   ) = pure Monday
+    fromValue (String "tuesday"  ) = pure Tuesday
+    fromValue (String "wednesday") = pure Wednesday
+    fromValue (String "thursday" ) = pure Thursday
+    fromValue (String "friday"   ) = pure Friday
+    fromValue (String "saturday" ) = pure Saturday
+    fromValue (String "sunday"   ) = pure Sunday
+    fromValue (String _   )        = fail' "converting DayOfWeek failed, value should be one of weekdays"
+    fromValue v                    = typeMismatch "DayOfWeek" "String" v
+instance ToValue DayOfWeek where
+    {-# INLINE toValue #-}
+    toValue Monday    = String "monday"
+    toValue Tuesday   = String "tuesday"
+    toValue Wednesday = String "wednesday"
+    toValue Thursday  = String "thursday"
+    toValue Friday    = String "friday"
+    toValue Saturday  = String "saturday"
+    toValue Sunday    = String "sunday"
+instance EncodeJSON DayOfWeek where
+    {-# INLINE encodeJSON #-}
+    encodeJSON Monday    = "monday"
+    encodeJSON Tuesday   = "tuesday"
+    encodeJSON Wednesday = "wednesday"
+    encodeJSON Thursday  = "thursday"
+    encodeJSON Friday    = "friday"
+    encodeJSON Saturday  = "saturday"
+    encodeJSON Sunday    = "sunday"
 
 --------------------------------------------------------------------------------
 

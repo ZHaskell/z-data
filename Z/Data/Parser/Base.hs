@@ -290,7 +290,7 @@ decodePrim = do
         let !r = indexPrimWord8ArrayAs ba i
         in k r (V.PrimVector ba (i+n) (len-n)))
   where
-    n = unalignedSize (undefined :: a)
+    n = getUnalignedSize (unalignedSize @a)
 
 decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# INLINE decodePrimLE #-}
@@ -308,7 +308,7 @@ decodePrimLE = do
         let !r = indexPrimWord8ArrayAs ba i
         in k (getLE r) (V.PrimVector ba (i+n) (len-n)))
   where
-    n = unalignedSize (undefined :: (LE a))
+    n = getUnalignedSize (unalignedSize @(LE a))
 
 decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# INLINE decodePrimBE #-}
@@ -326,7 +326,7 @@ decodePrimBE = do
         let !r = indexPrimWord8ArrayAs ba i
         in k (getBE r) (V.PrimVector ba (i+n) (len-n)))
   where
-    n = unalignedSize (undefined :: (BE a))
+    n = getUnalignedSize (unalignedSize @(BE a))
 
 -- | A stateful scanner.  The predicate consumes and transforms a
 -- state argument, and each transformed state is passed to successive

@@ -80,6 +80,7 @@ instance CoArbitrary IFormat where
 
 -- | @defaultIFormat = IFormat 0 NoPadding False@
 defaultIFormat :: IFormat
+{-# INLINE defaultIFormat #-}
 defaultIFormat = IFormat 0 NoPadding False
 
 data Padding = NoPadding | RightSpacePadding | LeftSpacePadding | ZeroPadding deriving (Show, Eq, Ord, Enum)
@@ -362,6 +363,7 @@ writePositiveDec marr off0 ds = go (off0 + ds - 1)
 
 -- | Format a 'Integer' into decimal ASCII digits.
 integer :: Integer -> Builder ()
+{-# INLINE integer #-}
 #ifdef INTEGER_GMP
 integer (S# i#) = int (I# i#)
 #endif
@@ -457,7 +459,6 @@ countDigits v0
                         else 10 + fin v 100000000000
            | otherwise = go (k + 12) (v `quot` 1000000000000)
         fin v n = if v >= n then 1 else 0
-
 
 -- | Decimal digit to ASCII digit.
 i2wDec :: (Integral a) => a -> Word8
