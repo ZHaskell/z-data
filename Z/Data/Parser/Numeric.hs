@@ -14,7 +14,7 @@ Textual numeric parsers.
 module Z.Data.Parser.Numeric
   ( -- * Decimal
     uint, int, integer
-  , uint_, int_
+  , uint_, int_, digit
     -- * Hex
   , hex, hex', hex_
     -- * Fractional
@@ -28,6 +28,7 @@ module Z.Data.Parser.Numeric
   , scientific'
   , scientifically'
     -- * Misc
+  , w2iHex, w2iDec
   , hexLoop
   , decLoop
   , decLoopIntegerFast
@@ -52,7 +53,7 @@ import qualified Z.Data.Vector.Extra    as V
 #define INT64_SAFE_DIGITS_LEN 18
 
 
--- | Parse and decode an unsigned hex number, fail in case of overflow. The hex digits
+-- | Parse and decode an unsigned hex number, fail if input length is larger than (bit_size/4). The hex digits
 -- @\'a\'@ through @\'f\'@ may be upper or lower case.
 --
 -- This parser does not accept a leading @\"0x\"@ string, and consider
@@ -95,18 +96,23 @@ hex_ :: (Integral a, Bits a) => Parser a
 hex_ = "Z.Data.Parser.Numeric.hex_" <?> hexLoop 0 <$> P.takeWhile1 isHexDigit
 
 -- | decode hex digits sequence within an array.
-hexLoop :: (Integral a, Bits a)
+hexLoop :: forall a. (Integral a, Bits a)
         => a    -- ^ accumulator, usually start from 0
         -> V.Bytes
         -> a
 {-# INLINE hexLoop #-}
 hexLoop = V.foldl' step
   where
-    step a w = a `unsafeShiftL` 4 + fromIntegral (w2iHex w)
-    w2iHex w
-        | w <= 57   = w - 48
-        | w <= 70   = w - 55
-        | w <= 102  = w - 87
+    step a w = a `unsafeShiftL` 4 + fromIntegral (w2iHex w :: a)
+
+-- | Convert A ASCII hex digit to 'Int' value.
+w2iHex :: Integral a => Word8 -> a
+{-# INLINE w2iHex #-}
+w2iHex w
+    | w <= 57   = fromIntegral w - 48
+    | w <= 70   = fromIntegral w - 55
+    | w <= 102  = fromIntegral w - 87
+
 
 -- | Same with 'uint', but sliently cast in case of overflow.
 uint_ :: forall a. (Integral a, Bounded a) => Parser a
@@ -141,7 +147,14 @@ decLoop :: Integral a
         -> a
 {-# INLINE decLoop #-}
 decLoop = V.foldl' step
-  where step a w = a * 10 + fromIntegral (w - 48)
+  where step a w = a * 10 + w2iDec w
+
+
+-- | Convert A ASCII decimal digit to 'Int' value.
+--
+w2iDec :: Integral a => Word8 -> a
+{-# INLINE w2iDec #-}
+w2iDec w = fromIntegral w - 48
 
 -- | decode digits sequence within an array.
 --
@@ -151,6 +164,14 @@ decLoopIntegerFast :: V.Bytes -> Integer
 decLoopIntegerFast bs
     | V.length bs <= WORD64_SAFE_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
     | otherwise                            = decLoop @Integer 0 bs
+
+
+-- | Take a single decimal digit and return as 'Int'.
+--
+digit :: Parser Int
+digit = do
+    d <- P.satisfy isDigit
+    return $! w2iDec d
 
 -- | Parse a decimal number with an optional leading @\'+\'@ or @\'-\'@ sign
 -- character.

@@ -1,12 +1,15 @@
 # Revision history for Z-Data
 
-## 0.2.1.0  -- TBD
+## 0.3.0.0  -- 2020-12-29
 
 * Hide `Text` constructor from `Z.Data.Text`.
 * Add `fromStdString` to `Z.Data.CBytes`.
 * Re-export `touch` from `Z.Foreign`, export `ConvertError` constructor from `Z.Data.JSON`.
 * Add `anyChar8` to `Z.Data.Parser`.
 * Add `Z.Data.ASCII`, move `c2w`, `w2c`, `isDigit`, `isSpace`, `isHexDigit` and ASCII constants to it.
+* Rename `ShowT` class to `Print`, re-export from `Z.Data.Text` module.
+* Add various JSON instances of types from `time` package, add `Z.Data.Builder.Time` and `Z.Data.Parser.Time`.
+* Fix a bug affecting comparing `PrimVector`s.
 
 ## 0.2.0.0  -- 2020-12-15
 

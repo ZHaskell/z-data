@@ -15,7 +15,7 @@ c2w :: Char -> Word8
 {-# INLINE c2w #-}
 c2w (C# c#) = W8# (int2Word# (ord# c#))
 
--- | @NUL <= w && w <= DEL@
+-- | @\\NUL <= w && w <= \\DEL@
 isASCII :: Word8 -> Bool
 {-# INLINE isASCII #-}
 isASCII w = w <= DEL
@@ -338,6 +338,6 @@ pattern CURLY_RIGHT  = 0x7d
 -- | @~@
 pattern TILDE :: Word8
 pattern TILDE        = 0x7e
--- | @\DEL@
+-- | @\\DEL@
 pattern DEL :: Word8
 pattern DEL          = 0x7f

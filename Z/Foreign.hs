@@ -1,6 +1,6 @@
 {-|
 Module      : Z.Foreign
-Description : Use PrimArray with FFI
+Description : Use PrimArray \/ PrimVector with FFI
 Copyright   : (c) Dong Han, 2017-2018
 License     : BSD
 Maintainer  : winterland1989@gmail.com

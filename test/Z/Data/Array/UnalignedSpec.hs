@@ -292,3 +292,61 @@ spec = describe "unaligned acess" . modifyMaxSuccess (*10) . modifyMaxSize (*10)
             (ByteArray ba#) <- unsafeFreezeByteArray mba
             let (BE w'') = indexWord8ArrayAs# ba# 7#
             return $ (w === w') .&&. (w === w'')
+
+--------------------------------------------------------------------------------
+
+        prop "roundtrip (,)" $ \ (w::(Word32,Word64)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,)" $ \ (w::(Word32,Word64,Word32)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,,)" $ \ (w::(Word32,Word64,Word32,Word64)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,,,)" $ \ (w::(Word32,Word64,Word32,Word64,Word32)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,,,,)" $ \ (w::(Word32,Word64,Word32,Word64,Word32,Word64)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,,,,,)" $ \ (w::(Word32,Word64,Word32,Word64,Word32,Word64,Word32)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')
+
+        prop "roundtrip (,,,,,,,)" $ \ (w::(Word32,Word64,Word32,Word64,Word32,Word64,Word32,Word64)) -> ioProperty $ do
+            mba@(MutableByteArray mba#) <- newByteArray 128
+            primitive_ (writeWord8ArrayAs# mba# 7# (w))
+            (w') <- primitive (readWord8ArrayAs# mba# 7#)
+            (ByteArray ba#) <- unsafeFreezeByteArray mba
+            let (w'') = indexWord8ArrayAs# ba# 7#
+            return $ (w === w') .&&. (w === w'')

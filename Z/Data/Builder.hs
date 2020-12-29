@@ -33,7 +33,7 @@ module Z.Data.Builder
   , encodePrimLE
   , encodePrimBE
   -- * More builders
-  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, string8, char8, text
+  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, word7, string8, char8, word8, text
   -- * Numeric builders
   -- ** Integral type formatting
   , IFormat(..)
@@ -54,7 +54,15 @@ module Z.Data.Builder
   , scientificWith
     -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
+    -- * Time
+  , day
+  , timeOfDay
+  , timeZone
+  , utcTime
+  , localTime
+  , zonedTime
   ) where
 
 import           Z.Data.Builder.Base
 import           Z.Data.Builder.Numeric
+import           Z.Data.Builder.Time
