@@ -354,7 +354,6 @@ test-suite Z-Data-Test
                           , HUnit
                           , QuickCheck              >= 2.10
                           , quickcheck-instances
-                          , word8
                           , scientific
                           , primitive
                           , time
