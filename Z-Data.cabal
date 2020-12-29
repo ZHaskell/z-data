@@ -188,7 +188,7 @@ library
                           , QuickCheck              >= 2.10
                           , tagged                  == 0.8.*
                           , template-haskell        >= 2.14.0
-                          , time                    >= 1.8 && < 2.0
+                          , time                    >= 1.9 && < 2.0
                           , unordered-containers    == 0.2.*
 
     if os(windows)
