@@ -27,8 +27,8 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
 
-      - run: cabal update
-      - run: cabal freeze $CONFIG
+      - run: cabal v2-update
+      - run: cabal v2-freeze $CONFIG
       - uses: actions/cache@v2
         with:
           path: |
@@ -38,12 +38,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - run: cabal configure $CONFIG
-      - run: cabal build
+      - run: cabal v2-build $CONFIG
 
       - if: matrix.cabal == '2.4.1.0'
-        run: cabal test 
+        run: cabal v2-test 
       - if: matrix.cabal == '3.4.0.0'
-        run: cabal test --test-show-details=direct
-      - run: cabal haddock
-      - run: cabal sdist
+        run: cabal v2-test --test-show-details=direct
+      - run: cabal v2-haddock
+      - run: cabal v2-sdist

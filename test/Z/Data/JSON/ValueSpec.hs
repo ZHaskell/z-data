@@ -7,7 +7,6 @@ import qualified Data.List                as L
 import           Data.Word
 import           Data.Int
 import           GHC.Float
-import           Data.Word8                  (toLower, toUpper)
 import qualified Z.Data.Builder         as B
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
