@@ -45,7 +45,6 @@ import           Data.Typeable
 import           Data.Word
 import           GHC.Generics
 import qualified Z.Data.Parser          as P
-import           Z.Data.Parser          ((<?>))
 import qualified Z.Data.Text.Base       as T
 import           Z.Data.Text.Print     (Print(..))
 import           Z.Data.Vector.Base     as V
@@ -162,7 +161,7 @@ skipSpaces = P.skipWhile (\ w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x0
 -- | JSON 'Value' parser.
 value :: P.Parser Value
 {-# INLINABLE value #-}
-value = "Z.Data.JSON.Value.value" <?> do
+value = do
     skipSpaces
     w <- P.peek
     case w of
@@ -178,7 +177,7 @@ value = "Z.Data.JSON.Value.value" <?> do
 -- | parse json array with leading OPEN_SQUARE.
 array :: P.Parser (V.Vector Value)
 {-# INLINE array #-}
-array = "Z.Data.JSON.Value.array" <?> P.word8 OPEN_SQUARE *> array_
+array = P.word8 OPEN_SQUARE *> array_
 
 -- | parse json array without leading OPEN_SQUARE.
 array_ :: P.Parser (V.Vector Value)
@@ -203,7 +202,7 @@ array_ = do
 -- | parse json array with leading OPEN_CURLY.
 object :: P.Parser (V.Vector (T.Text, Value))
 {-# INLINE object #-}
-object = "Z.Data.JSON.Value.object" <?> P.word8 OPEN_CURLY *> object_
+object = P.word8 OPEN_CURLY *> object_
 
 -- | parse json object without leading OPEN_CURLY.
 object_ :: P.Parser (V.Vector (T.Text, Value))
@@ -232,7 +231,7 @@ object_ = do
 
 string :: P.Parser T.Text
 {-# INLINE string #-}
-string = "Z.Data.JSON.Value.string" <?> P.word8 DOUBLE_QUOTE *> string_
+string = P.word8 DOUBLE_QUOTE *> string_
 
 string_ :: P.Parser T.Text
 {-# INLINE string_ #-}

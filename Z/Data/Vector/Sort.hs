@@ -53,7 +53,6 @@ import           Control.Monad.ST
 import           Data.Bits
 import           Data.Int
 import           Data.Ord               (Down (..))
-import           Data.Primitive         (sizeOf)
 import           Data.Word
 import           Prelude                hiding (splitAt)
 import           Z.Data.Array

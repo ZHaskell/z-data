@@ -28,7 +28,7 @@ module Z.Data.Parser.Base
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeN, takeTill, takeWhile, takeWhile1, bytes, bytesCI
+  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Misc
   , fail'
@@ -284,6 +284,8 @@ decodePrim :: forall a. (Unaligned a) => Parser a
 {-# SPECIALIZE INLINE decodePrim :: Parser Int32 #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Int16 #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Int8  #-}
+{-# SPECIALIZE INLINE decodePrim :: Parser Double #-}
+{-# SPECIALIZE INLINE decodePrim :: Parser Float #-}
 decodePrim = do
     ensureN n ["Z.Data.Parser.Base.decodePrim: not enough bytes"]
     Parser (\ _ k (V.PrimVector ba i len) ->
@@ -302,6 +304,8 @@ decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Int64 #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Int32 #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Int16 #-}
+{-# SPECIALIZE INLINE decodePrimLE :: Parser Double #-}
+{-# SPECIALIZE INLINE decodePrimLE :: Parser Float #-}
 decodePrimLE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimLE: not enough bytes"]
     Parser (\ _ k (V.PrimVector ba i len) ->
@@ -320,6 +324,8 @@ decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Int64 #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Int32 #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Int16 #-}
+{-# SPECIALIZE INLINE decodePrimBE :: Parser Double #-}
+{-# SPECIALIZE INLINE decodePrimBE :: Parser Float #-}
 decodePrimBE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimBE: not enough bytes"]
     Parser (\ _ k (V.PrimVector ba i len) ->
@@ -625,6 +631,20 @@ takeWhile1 p = do
     if V.null bs
     then fail' "Z.Data.Parser.Base.takeWhile1: no satisfied byte"
     else return bs
+
+-- | Take all the remaining input chunks and return as 'V.Bytes'.
+takeRemaining :: Parser V.Bytes
+{-# INLINE takeRemaining #-}
+takeRemaining = Parser (\ _ k inp -> Partial (takeRemainingPartial k inp))
+  where
+    {-# INLINABLE takeRemainingPartial #-}
+    takeRemainingPartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
+    takeRemainingPartial k want =
+        let go acc = \ inp ->
+                if V.null inp
+                then let !r = V.concat (reverse acc) in k r inp
+                else let acc' = inp : acc in Partial (go acc')
+        in go [want]
 
 -- | Similar to 'take', but requires the predicate to succeed on next N bytes
 -- of input, and take N bytes(no matter if N+1 byte satisfy predicate or not).

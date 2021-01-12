@@ -64,7 +64,7 @@ import           Z.Data.ASCII
 import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Text.UTF8Codec            as T
 import qualified Z.Data.Vector.Base               as V
-import qualified Z.Data.Vector                    as V
+import qualified Z.Data.Array                     as A
 import           Z.Foreign
 import           System.IO.Unsafe
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
@@ -176,6 +176,7 @@ charModifiedUTF8 chr = do
     ensureN 4 (\ mba i -> T.encodeCharModifiedUTF8 mba i chr)
 
 packAddrModified :: Addr# -> Builder ()
+{-# INLINE packAddrModified #-}
 packAddrModified addr0# = copy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
@@ -328,6 +329,8 @@ encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrim :: Int32 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrim :: Int16 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrim :: Int8 -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrim :: Double -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrim :: Float -> Builder () #-}
 encodePrim x = do
     writeN n (\ mpa i -> writePrimWord8ArrayAs mpa i x)
   where
@@ -344,6 +347,8 @@ encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrimLE :: Int64 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimLE :: Int32 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimLE :: Int16 -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrimLE :: Double -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrimLE :: Float -> Builder () #-}
 encodePrimLE = encodePrim . LE
 
 -- | Write a primitive type with big endianess.
@@ -357,6 +362,8 @@ encodePrimBE :: forall a. Unaligned (BE a) => a -> Builder ()
 {-# SPECIALIZE INLINE encodePrimBE :: Int64 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimBE :: Int32 -> Builder () #-}
 {-# SPECIALIZE INLINE encodePrimBE :: Int16 -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrimBE :: Double -> Builder () #-}
+{-# SPECIALIZE INLINE encodePrimBE :: Float -> Builder () #-}
 encodePrimBE = encodePrim . BE
 
 --------------------------------------------------------------------------------
@@ -381,6 +388,7 @@ stringUTF8 :: String -> Builder ()
 stringUTF8 = mapM_ charUTF8
 
 packASCIIAddr :: Addr# -> Builder ()
+{-# INLINE packASCIIAddr #-}
 packASCIIAddr addr0# = copy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
@@ -388,6 +396,7 @@ packASCIIAddr addr0# = copy addr0#
         writeN len (\ mba i -> copyPtrToMutablePrimArray mba i (Ptr addr#) len)
 
 packUTF8Addr :: Addr# -> Builder ()
+{-# INLINE packUTF8Addr #-}
 packUTF8Addr addr0# = validateAndCopy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
@@ -443,8 +452,7 @@ string8 = mapM_ char8
 -- by this builder may not be legal UTF8 encoding bytes.
 char8 :: Char -> Builder ()
 {-# INLINE char8 #-}
-char8 chr = do
-    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr))
+char8 chr = writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr))
 
 -- | Turn 'Word8' into 'Builder' with ASCII8 encoding, (alias to 'encodePrim').
 --
@@ -522,9 +530,17 @@ intercalateVec :: (V.Vec v a)
             -> v a                  -- ^ value vector
             ->  Builder ()
 {-# INLINE intercalateVec #-}
-intercalateVec s f v = do
-    V.traverseVec_ (\ x -> f x >> s) (V.initMayEmpty v)
-    forM_ (V.lastMaybe v) f
+intercalateVec sep f (V.Vec a s l)
+    | l == 0 = return ()
+    | otherwise = go s
+  where
+    !end = s + l - 1
+    go !i | i == end = do
+                f =<< A.indexArrM a i
+          | otherwise = do
+                f =<< A.indexArrM a i
+                sep
+                go (i+1)
 
 -- | Use separator to connect list of builders.
 --

@@ -23,6 +23,7 @@ module Z.Data.Vector.Base (
   -- * The Vec typeclass
     Vec(..)
   , pattern Vec
+  , arrVec
   , indexMaybe
   -- * Boxed and unboxed vector type
   , Vector(..)
@@ -33,7 +34,7 @@ module Z.Data.Vector.Base (
   , create, create', creating, creating', createN, createN2
   , empty, singleton, copy
   -- * Conversion between list
-  , pack, packN, packR, packRN
+  , pack, packN, packN', packR, packRN, packRN'
   , unpack, unpackR
   -- * Basic interface
   , null
@@ -106,6 +107,7 @@ import           Prelude                       hiding (concat, concatMap,
                                                 maximum, minimum, product, sum,
                                                 all, any, replicate, traverse)
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
+import           Text.Read                     (Read(..))
 import           System.IO.Unsafe              (unsafeDupablePerformIO)
 
 import           Z.Data.Array
@@ -127,6 +129,11 @@ class (Arr (IArray v) a) => Vec v a where
     toArr :: v a -> (IArray v a, Int, Int)
     -- | Create a vector by slicing an array(with offset and length).
     fromArr :: IArray v a -> Int -> Int -> v a
+
+-- | Construct a 'Vec' by slicing a whole array.
+arrVec :: Vec v a => IArray v a -> v a
+{-# INLINE arrVec #-}
+arrVec arr = fromArr arr 0 (sizeofArr arr)
 
 instance Vec Array a where
     type IArray Array = Array
@@ -193,6 +200,15 @@ instance Vec Vector a where
     {-# INLINE fromArr #-}
     fromArr = Vector
 
+instance IsList (Vector a) where
+    type Item (Vector a) = a
+    {-# INLINE fromList #-}
+    fromList = pack
+    {-# INLINE toList #-}
+    toList = unpack
+    {-# INLINE fromListN #-}
+    fromListN = packN
+
 instance Eq a => Eq (Vector a) where
     {-# INLINABLE (==) #-}
     v1 == v2 = eqVector v1 v2
@@ -252,7 +268,7 @@ instance (Show a) => Show (Vector a) where
     showsPrec p v = showsPrec p (unpack v)
 
 instance (Read a) => Read (Vector a) where
-    readsPrec p str = [ (pack x, y) | (x, y) <- readsPrec p str ]
+    readPrec = pack <$> readPrec
 
 instance Functor Vector where
     {-# INLINE fmap #-}
@@ -308,12 +324,14 @@ instance Hashable1 Vector where
             | i >= end  = salt
             | otherwise = go (h salt (indexArr arr i)) (i+1)
 
+-- | Traverse vector and gather result in another vector,
 traverseVec :: (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseVec #-}
 {-# RULES "traverseVec/ST" forall f. traverseVec f = traverseWithIndexST (const f) #-}
 {-# RULES "traverseVec/IO" forall f. traverseVec f = traverseWithIndexIO (const f) #-}
 traverseVec f v = packN (length v) <$> T.traverse f (unpack v)
 
+-- | Traverse vector and gather result in another vector,
 traverseWithIndex :: (Vec v a, Vec u b, Applicative f) => (Int -> a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseWithIndex #-}
 {-# RULES "traverseWithIndex/ST" traverseWithIndex = traverseWithIndexST #-}
@@ -356,10 +374,17 @@ traverseWithIndexIO f (Vec arr s l)
             writeArr marr i =<< f i x
             go marr (i+1)
 
+-- | Traverse vector without gathering result.
 traverseVec_ :: (Vec v a, Applicative f) => (a -> f b) -> v a -> f ()
 {-# INLINE traverseVec_ #-}
-traverseVec_ f = traverseWithIndex_ (\ _ x -> f x)
+traverseVec_ f (Vec arr s l) = go s
+  where
+    end = s + l
+    go !i
+        | i >= end = pure ()
+        | otherwise = f (indexArr arr i) *> go (i+1)
 
+-- | Traverse vector with index.
 traverseWithIndex_ :: (Vec v a, Applicative f) => (Int -> a -> f b) -> v a -> f ()
 {-# INLINE traverseWithIndex_ #-}
 traverseWithIndex_ f (Vec arr s l) = go s
@@ -451,7 +476,7 @@ instance (Prim a, Show a) => Show (PrimVector a) where
     showsPrec p v = showsPrec p (unpack v)
 
 instance (Prim a, Read a) => Read (PrimVector a) where
-    readsPrec p str = [ (pack x, y) | (x, y) <- readsPrec p str ]
+    readPrec = pack <$> readPrec
 
 instance (Prim a, Arbitrary a) => Arbitrary (PrimVector a) where
     arbitrary = pack <$> arbitrary
@@ -492,6 +517,15 @@ instance (a ~ Word8) => IsString (PrimVector a) where
     {-# INLINE fromString #-}
     fromString = packASCII
 
+instance Prim a => IsList (PrimVector a) where
+    type Item (PrimVector a) = a
+    {-# INLINE fromList #-}
+    fromList = pack
+    {-# INLINE toList #-}
+    toList = unpack
+    {-# INLINE fromListN #-}
+    fromListN = packN
+
 instance CI.FoldCase Bytes where
     {-# INLINE foldCase #-}
     foldCase = map toLower8
@@ -512,6 +546,7 @@ packASCII :: String -> Bytes
 packASCII = pack . fmap (fromIntegral . ord)
 
 packASCIIAddr :: Addr# -> Bytes
+{-# INLINE packASCIIAddr #-}
 packASCIIAddr addr0# = go addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
@@ -685,13 +720,12 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
                               (IPair i marr') <- foldM go (IPair 0 marr) ws0
                               shrinkMutableArr marr' i
                               ba <- unsafeFreezeArr marr'
-                              return $! fromArr ba 0 i
-                          )
+                              return $! fromArr ba 0 i)
   where
     -- It's critical that this function get specialized and unboxed
     -- Keep an eye on its core!
     go :: IPair (MArr (IArray v) s a) -> a -> ST s (IPair (MArr (IArray v) s a))
-    go (IPair i marr) x = do
+    go (IPair i marr) !x = do
         n <- sizeofMutableArr marr
         if i < n
         then do writeArr marr i x
@@ -700,6 +734,29 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
                 !marr' <- resizeMutableArr marr n'
                 writeArr marr' i x
                 return (IPair (i+1) marr')
+
+-- | /O(n)/ Convert a list into a vector with given size.
+--
+-- If the list's length is large than the size given, we drop the rest elements.
+--
+-- This function is a /good consumer/ in the sense of build/foldr fusion.
+--
+packN' :: forall v a. Vec v a => Int -> [a] -> v a
+{-# INLINE packN' #-}
+packN' n = \ ws0 -> runST (do marr <- newArr n
+                              (IPair i marr') <- foldM go (IPair 0 marr) ws0
+                              shrinkMutableArr marr' i
+                              ba <- unsafeFreezeArr marr'
+                              return $! fromArr ba 0 i)
+  where
+    -- It's critical that this function get specialized and unboxed
+    -- Keep an eye on its core!
+    go :: IPair (MArr (IArray v) s a) -> a -> ST s (IPair (MArr (IArray v) s a))
+    go (IPair i marr) !x = do
+        if i < n
+        then do writeArr marr i x
+                return (IPair (i+1) marr)
+        else return (IPair i marr)
 
 -- | /O(n)/ Alias for @'packRN' 'defaultInitSize'@.
 --
@@ -719,8 +776,7 @@ packRN n0 = \ ws0 -> runST (do let n = max 4 n0
                                ba <- unsafeFreezeArr marr'
                                let i' = i + 1
                                    n' = sizeofArr ba
-                               return $! fromArr ba i' (n'-i')
-                           )
+                               return $! fromArr ba i' (n'-i'))
   where
     go :: IPair (MArr (IArray v) s a) -> a -> ST s (IPair (MArr (IArray v) s a))
     go (IPair i marr) !x = do
@@ -733,6 +789,29 @@ packRN n0 = \ ws0 -> runST (do let n = max 4 n0
                 copyMutableArr marr' n marr 0 n
                 writeArr marr' (n-1) x
                 return (IPair (n-2) marr')
+
+-- | /O(n)/ 'packN'' in reverse order.
+--
+-- >>> packRN' 3 [1,2,3,4,5]
+-- >>> [3,2,1]
+--
+-- This function is a /good consumer/ in the sense of build/foldr fusion.
+--
+packRN' :: forall v a. Vec v a => Int -> [a] -> v a
+{-# INLINE packRN' #-}
+packRN' n = \ ws0 -> runST (do marr <- newArr n
+                               (IPair i marr') <- foldM go (IPair (n-1) marr) ws0
+                               ba <- unsafeFreezeArr marr'
+                               let i' = i + 1
+                                   n' = sizeofArr ba
+                               return $! fromArr ba i' (n'-i'))
+  where
+    go :: IPair (MArr (IArray v) s a) -> a -> ST s (IPair (MArr (IArray v) s a))
+    go (IPair i marr) !x = do
+        if i >= 0
+        then do writeArr marr i x
+                return (IPair (i-1) marr)
+        else return (IPair i marr)
 
 -- | /O(n)/ Convert vector to a list.
 --

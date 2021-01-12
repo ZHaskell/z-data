@@ -50,18 +50,14 @@ instance T.Print HexBytes where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (HexBytes bs) = B.quotes (hexEncodeBuilder True bs)
 
-instance JSON.FromValue HexBytes where
+instance JSON.JSON HexBytes where
     {-# INLINE fromValue #-}
     fromValue = JSON.withText "Z.Data.Text.HexBytes" $ \ t ->
         case hexDecode (T.getUTF8Bytes t) of
             Just bs -> return (HexBytes bs)
             Nothing -> JSON.fail' "illegal hex encoding bytes"
-
-instance JSON.ToValue HexBytes where
     {-# INLINE toValue #-}
     toValue (HexBytes bs) = JSON.String (hexEncodeText True bs)
-
-instance JSON.EncodeJSON HexBytes where
     {-# INLINE encodeJSON #-}
     encodeJSON (HexBytes bs) = hexEncodeBuilder True bs
 

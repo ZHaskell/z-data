@@ -39,7 +39,7 @@ module Z.Data.Parser
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeTill, takeWhile, takeWhile1, bytes, bytesCI
+  , take, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Numeric parsers
     -- ** Decimal

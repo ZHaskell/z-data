@@ -833,7 +833,7 @@ instance Unaligned (LE Double) where
 
 instance Unaligned (BE Double) where
     {-# INLINE unalignedSize #-}
-    unalignedSize = UnalignedSize 4
+    unalignedSize = UnalignedSize 8
 #if defined(WORDS_BIGENDIAN) || defined(USE_SHIFT)
     USE_HOST_IMPL(BE)
 #else

@@ -68,6 +68,7 @@ import qualified Z.Data.Vector.Base         as V
 import           Z.Foreign                  hiding (fromStdString)
 import           System.IO.Unsafe           (unsafeDupablePerformIO)
 import           Test.QuickCheck.Arbitrary  (Arbitrary(..), CoArbitrary(..))
+import           Text.Read                 (Read(..))
 
 -- | A efficient wrapper for short immutable null-terminated byte sequences which can be
 -- automatically freed by ghc garbage collector.
@@ -122,7 +123,7 @@ instance Show CBytes where
     showsPrec p t = showsPrec p (unpack t)
 
 instance Read CBytes where
-    readsPrec p s = [(pack x, r) | (x, r) <- readsPrec p s]
+    readPrec = pack <$> readPrec
 
 instance NFData CBytes where
     {-# INLINE rnf #-}
@@ -211,7 +212,7 @@ instance T.Print CBytes where
 -- > encodeText ("hello\\NUL" :: CBytes)     -- @\\NUL@ is encoded as C0 80
 -- "[104,101,108,108,111,192,128]"
 -- @
-instance JSON.FromValue CBytes where
+instance JSON.JSON CBytes where
     {-# INLINE fromValue #-}
     fromValue value =
         case value of
@@ -222,13 +223,10 @@ instance JSON.FromValue CBytes where
                     (\ k v -> JSON.fromValue v <?> JSON.Index k) arr
             _ -> JSON.fail'
                     "converting Z.Data.CBytes.CBytes failed, expected array or string"
-
-instance JSON.ToValue CBytes where
     {-# INLINE toValue #-}
     toValue cbytes = case toTextMaybe cbytes of
         Just t -> JSON.toValue t
         Nothing -> JSON.toValue (toBytes cbytes)
-instance JSON.EncodeJSON CBytes where
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t -> JSON.encodeJSON t
@@ -349,6 +347,7 @@ instance IsString CBytes where
  #-}
 
 packAddr :: Addr# -> CBytes
+{-# INLINE packAddr #-}
 packAddr addr0# = go addr0#
   where
     len = (fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#) + 1

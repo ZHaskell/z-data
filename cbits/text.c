@@ -280,8 +280,8 @@ surrogate2:
 HsInt find_json_string_end(uint32_t* state, const unsigned char* ba, HsInt offset, HsInt len){
     const unsigned char *s   = ba + offset;
     const unsigned char *end = s + len;
-    uint32_t skip = *state >> 8;
-    uint32_t escaped = *state & 0xFF;
+    long skip = *state >> 8;
+    long escaped = *state & 0xFF;
     for (; s < end; s++) {
         if (skip == 1){
             skip = 0;       // skip this char

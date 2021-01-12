@@ -60,7 +60,8 @@ specialized these functions, it should be regarded as a bug either in this libra
 
 module Z.Data.Vector (
   -- * The Vec typeclass
-    Vec(IArray)
+    Vec(IArray, toArr)
+  , arrVec
   , indexMaybe, index, indexM
   -- * Boxed and unboxed vector type
   , Vector
@@ -70,7 +71,7 @@ module Z.Data.Vector (
   -- * Basic creating
   , empty, singleton, copy
   -- * Conversion between list
-  , pack, packN, packR, packRN
+  , pack, packN, packN', packR, packRN, packRN'
   , unpack, unpackR
   -- * Basic interface
   , null

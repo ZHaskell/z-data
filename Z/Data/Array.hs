@@ -52,6 +52,8 @@ module Z.Data.Array (
   , Cast
   , castArray
   , castMutableArray
+  -- * Re-export
+  , sizeOf
   ) where
 
 import           Control.Exception            (ArrayException (..), throw)

@@ -52,18 +52,14 @@ instance T.Print Base64Bytes where
     {-# INLINABLE toUTF8BuilderP #-}
     toUTF8BuilderP _ (Base64Bytes bs) = B.quotes (base64EncodeBuilder bs)
 
-instance JSON.FromValue Base64Bytes where
+instance JSON.JSON Base64Bytes where
     {-# INLINE fromValue #-}
     fromValue = JSON.withText "Z.Data.Text.Base64Bytes" $ \ t ->
         case base64Decode (T.getUTF8Bytes t) of
             Just bs -> return (Base64Bytes bs)
             Nothing -> JSON.fail' "illegal base64 encoding bytes"
-
-instance JSON.ToValue Base64Bytes where
     {-# INLINE toValue #-}
     toValue (Base64Bytes bs) = JSON.String (base64EncodeText bs)
-
-instance JSON.EncodeJSON Base64Bytes where
     {-# INLINE encodeJSON #-}
     encodeJSON (Base64Bytes bs) = base64EncodeBuilder bs
 

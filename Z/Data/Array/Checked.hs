@@ -68,6 +68,8 @@ module Z.Data.Array.Checked
   , A.Cast
   , A.castArray
   , A.castMutableArray
+  -- * Re-export
+  , sizeOf
   ) where
 
 import           Control.Exception       (ArrayException (..), throw)

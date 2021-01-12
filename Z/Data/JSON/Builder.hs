@@ -41,7 +41,7 @@ kv :: T.Text -> B.Builder () -> B.Builder ()
 {-# INLINE kv #-}
 l `kv` b = B.quotes (B.text l) >> B.colon >> b
 
--- | Use @:@ as separator to connect a label(escaped and add quotes) with field builders.
+-- | Use @:@ as separator to connect a label(escape the label and add quotes) with field builders.
 kv' :: T.Text -> B.Builder () -> B.Builder ()
 {-# INLINE kv' #-}
 l `kv'` b = string l >> B.colon >> b
@@ -55,7 +55,7 @@ value (String t) = string t
 value (Number n) = scientific n
 value (Bool True) = "true"
 value (Bool False) = "false"
-value Null = "null"
+value _ = "null"
 
 array :: V.Vector Value -> B.Builder ()
 {-# INLINE array #-}

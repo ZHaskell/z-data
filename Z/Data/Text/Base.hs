@@ -148,12 +148,22 @@ import           Prelude                   hiding (concat, concatMap,
                                                 all, any, replicate, traverse)
 
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
+import           Text.Read                 (Read(..))
 
 -- | 'Text' represented as UTF-8 encoded 'Bytes'
 --
 newtype Text = Text
     { getUTF8Bytes :: Bytes -- ^ Extract UTF-8 encoded 'Bytes' from 'Text'
     } deriving newtype (Monoid, Semigroup)
+
+instance IsList Text where
+    type Item Text = Char
+    {-# INLINE fromList #-}
+    fromList = pack
+    {-# INLINE toList #-}
+    toList = unpack
+    {-# INLINE fromListN #-}
+    fromListN = packN
 
 instance Eq Text where
     Text b1 == Text b2 = b1 == b2
@@ -184,6 +194,10 @@ foreign import ccall unsafe escape_json_string_length
 
 foreign import ccall unsafe escape_json_string
     :: ByteArray# -> Int -> Int -> MutableByteArray# RealWorld -> Int -> IO Int
+
+-- | Accepted syntax and escaping rules are same with 'String', which is different from 'Show' instance.
+instance Read Text where
+    readPrec = pack <$> readPrec
 
 instance NFData Text where
     rnf (Text bs) = rnf bs
@@ -359,6 +373,7 @@ pack = packN V.defaultInitSize
 {-# RULES "pack/packUTF8Addr" forall addr . pack (unpackCStringUtf8# addr) = packUTF8Addr addr #-}
 
 packASCIIAddr :: Addr# -> Text
+{-# INLINE packASCIIAddr #-}
 packASCIIAddr addr0# = go addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#
@@ -369,6 +384,7 @@ packASCIIAddr addr0# = go addr0#
         return $ Text (PrimVector arr 0 len)
 
 packUTF8Addr :: Addr# -> Text
+{-# INLINE packUTF8Addr #-}
 packUTF8Addr addr0# = validateAndCopy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ c_strlen addr0#

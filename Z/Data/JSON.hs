@@ -1,7 +1,7 @@
 {-|
 Module      : Z.Data.JSON
 Description : Fast JSON serialization/deserialization
-Copyright   : (c) Dong Han, 2019
+Copyright   : (c) Dong Han, 2020
 License     : BSD
 Maintainer  : winterland1989@gmail.com
 Stability   : experimental
@@ -9,9 +9,10 @@ Portability : non-portable
 
 Types and functions for working efficiently with JSON data, the design is quite similar to @aeson@ or @json@:
 
-  * Encode to bytes can be done directly via 'EncodeJSON'.
-  * Decode are split in two step, first we parse JSON doc into 'Value', then convert to haskell data via 'FromValue'.
+  * Encode to bytes can be done directly via 'encodeJSON'.
+  * Decode are split in two step, first we parse JSON doc into 'Value', then convert to haskell data via 'fromValue'.
   * 'ToValue' are provided so that other doc formats can be easily supported, such as 'YAML'.
+
 -}
 module Z.Data.JSON
   ( -- * How to use this module
@@ -21,22 +22,19 @@ module Z.Data.JSON
     -- ** Write instances manually
     -- $manually-instance
 
+    -- * JSON Class
+    JSON(..), Value(..), defaultSettings, Settings(..)
+  , snakeCase, trainCase
     -- * Encode & Decode
-    DecodeError
+  , DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
   , encode, encodeChunks, encodeText
-    -- * Value type
-  , Value(..)
     -- * parse into JSON Value
   , parseValue, parseValue', parseValueChunks, parseValueChunks'
-  -- * FromValue, ToValue & EncodeJSON
-  , FromValue(..)
-  , ToValue(..)
-  , EncodeJSON(..)
-  , defaultSettings, Settings(..), snakeCase, trainCase
+  -- * Generic functions
   , gToValue, gFromValue, gEncodeJSON
   -- * Convert 'Value' to Haskell data
-  , convert, convert', Converter(..), fail', (<?>), prependContext
+  , convertValue, Converter(..), fail', (<?>), prependContext
   , PathElement(..), ConvertError(..)
   , typeMismatch, fromNull, withBool, withScientific, withBoundedScientific, withRealFloat
   , withBoundedIntegral, withText, withArray, withKeyValues, withFlatMap, withFlatMapR
@@ -58,11 +56,11 @@ import qualified Z.Data.Text      as T
 -- > import           Z.Data.JSON ((.:), ToValue(..), FromValue(..), EncodeJSON(..))
 --
 -- The easiest way to use the library is to define target data type, deriving
--- 'GHC.Generics.Generic' and following instances:
+-- 'GHC.Generics.Generic' and 'JSON' instances, which provides:
 --
---   * 'FromValue', which provides 'fromValue' to convert 'Value' to Haskell values.
---   * 'ToValue', which provides 'ToValue' to convert Haskell values to 'Value'.
---   * 'EncodeJSON', which provides 'encodeJSON' to directly write Haskell value into JSON bytes.
+--   * 'fromValue' to convert 'Value' to Haskell values.
+--   * 'toValue' to convert Haskell values to 'Value'.
+--   * 'encodeJSON' to directly write Haskell value into JSON bytes.
 --
 -- For example,
 --
@@ -75,7 +73,7 @@ import qualified Z.Data.Text      as T
 -- >
 -- > data Person = Person {name :: T.Text, age :: Int}
 -- >     deriving (Show, Generic)
--- >     deriving anyclass (JSON.FromValue, JSON.ToValue, JSON.EncodeJSON)
+-- >     deriving anyclass (JSON.JSON)
 --
 -- We can now encode & decode with 'T.Text' like so:
 --
@@ -130,7 +128,7 @@ import qualified Z.Data.Text      as T
 --
 -- $manually-instance
 --
--- You can write 'ToValue' and 'FromValue' instances by hand if the 'Generic' based one doesn't suit you.
+-- You can write 'JSON' instances by hand if the 'Generic' based one doesn't suit you.
 -- Here is an example similar to aeson's.
 --
 -- @
@@ -138,19 +136,17 @@ import qualified Z.Data.Text      as T
 -- import qualified Z.Data.Vector        as V
 -- import qualified Z.Data.Builder       as B
 -- import qualified Z.Data.JSON          as JSON
--- import           Z.Data.JSON          ((.:), (.=), (.!), FromValue(..), ToValue(..), EncodeJSON(..))
+-- import           Z.Data.JSON          ((.:), (.=), (.!), JSON(..))
 --
 -- data Person = Person { name :: T.Text , age  :: Int } deriving Show
 --
--- instance FromValue Person where
+-- instance JSON Person where
 --     fromValue = JSON.withFlatMapR \"Person\" $ \\ v -> Person
 --                     \<$\> v .: \"name\"
 --                     \<*\> v .: \"age\"
 --
--- instance ToValue Person where
 --     toValue (Person n a) = JSON.object [\"name\" .= n, \"age\" .= a]
 --
--- instance EncodeJSON Person where
 --     encodeJSON (Person n a) = JSON.object' $ (\"name\" .! n <> \"age\" .! a)
 -- @
 --

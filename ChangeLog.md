@@ -1,5 +1,13 @@
 # Revision history for Z-Data
 
+## 0.4.0.0  -- 2020-01-11
+
+* Merge `FromValue`, `ToValue`, `EncodeJSON` to `JSON` class, add instances for containers.
+* A new `Z.Data.JSON.Converter` module to be reused in other protocol decoding.
+* Add more tests for JSON module, fix buggy instances(`Ordering`, `DayOfWeek`).
+* Fix a bug in `BE Double` `Unaligned` instance.
+* Add `arrVec` to `Z.Data.Vector` to convert a whole array to vector.
+
 ## 0.3.0.0  -- 2020-12-29
 
 * Hide `Text` constructor from `Z.Data.Text`.

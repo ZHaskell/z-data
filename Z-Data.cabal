@@ -172,6 +172,7 @@ library
 
                             Z.Data.JSON
                             Z.Data.JSON.Base
+                            Z.Data.JSON.Converter
                             Z.Data.JSON.Builder
                             Z.Data.JSON.Value
 
@@ -190,6 +191,7 @@ library
                           , template-haskell        >= 2.14.0
                           , time                    >= 1.9 && < 2.0
                           , unordered-containers    == 0.2.*
+                          , containers              == 0.6.*
 
     if os(windows)
         extra-libraries:    stdc++
@@ -356,6 +358,8 @@ test-suite Z-Data-Test
                           , quickcheck-instances
                           , scientific
                           , primitive
+                          , containers             
+                          , unordered-containers              
                           , time
 
     c-sources:              test/cbits/ffi.c

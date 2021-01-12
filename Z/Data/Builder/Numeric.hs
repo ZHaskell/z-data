@@ -601,14 +601,15 @@ doubleWith fmt decs x
 
 -- | A faster version of 'Sci.toDecimalDigits' in case of small coefficient.
 positiveSciToDigits :: Sci.Scientific -> ([Int], Int)
+{-# INLINE positiveSciToDigits #-}
 positiveSciToDigits sci =
     if c == 0
-        then ([0], 0)
-        else case c of
+    then ([0], 0)
+    else case c of
 #ifdef INTEGER_GMP
-            (S# i#) -> goI (I# i#) 0 []
+        (S# i#) -> goI (I# i#) 0 []
 #endif
-            _ -> go c 0 []
+        _ -> go c 0 []
   where
     sci' = Sci.normalize sci
     !c = Sci.coefficient sci'
@@ -617,9 +618,7 @@ positiveSciToDigits sci =
     go :: Integer -> Int -> [Int] -> ([Int], Int)
     go 0 !n ds = let !ne = n + e in (ds, ne)
     go i !n ds = case i `quotRemInteger` 10 of
-                     (# q, r #) -> go q (n+1) (d:ds)
-                       where
-                         !d = fromIntegral r
+                     (# q, r #) -> let !d = fromIntegral r in go q (n+1) (d:ds)
 #ifdef INTEGER_GMP
     goI :: Int -> Int -> [Int] -> ([Int], Int)
     goI 0 !n ds = let !ne = n + e in (ds, ne)
