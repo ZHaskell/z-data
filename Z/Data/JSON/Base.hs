@@ -13,8 +13,8 @@ user define 'JSON' instance.
 -}
 
 module Z.Data.JSON.Base
-  -- * JSON Class
-  ( JSON(..), Value(..), defaultSettings, Settings(..)
+  ( -- * JSON Class
+    JSON(..), Value(..), defaultSettings, Settings(..)
   , -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
