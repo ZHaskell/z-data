@@ -66,7 +66,7 @@ fromListN 7 [4,5,6,7,8,9,10]
 >
 > -- JSON module support deriving through Generic
 > :set -XDeriveAnyClass -XDeriveGeneric
-> data Foo = Foo {foo :: Double} deriving (JSON.FromValue, JSON.ToValue, JSON.EncodeJSON, Generic)
+> data Foo = Foo {foo :: Double} deriving (JSON.JSON, Generic)
 > JSON.toValue (Foo 0.01)
 Object [("foo",Number 1.0e-2)]
 > JSON.encodeText (Foo 0.01)

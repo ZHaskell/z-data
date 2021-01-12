@@ -83,7 +83,6 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 --    \'\\t\':  \"\\t\"
 --    \'\"\':  \"\\\"\"
 --    \'\\\':  \"\\\\\"
---    \'\/\':  \"\\/\"
 --    other chars <= 0x1F: "\\u00XX"
 -- @
 --
