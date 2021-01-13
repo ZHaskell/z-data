@@ -1131,7 +1131,7 @@ INT_JSON_INSTANCE(Word16)
 INT_JSON_INSTANCE(Word32)
 INT_JSON_INSTANCE(Word64)
 
--- | This instance includes a bounds check to prevent maliciously large inputs to fill up the memory of the target system. You can newtype Scientific and provide your own instance using 'withScientific' if you want to allow larger inputs.
+-- | This instance includes a bounds check to prevent maliciously large inputs to fill up the memory of the target system. You can newtype 'Integer' and provide your own instance using 'withScientific' if you want to allow larger inputs.
 instance JSON Integer where
     {-# INLINE fromValue #-}
     fromValue = withBoundedScientific "Integer" $ \ n ->
@@ -1145,6 +1145,7 @@ instance JSON Integer where
     {-# INLINE encodeJSON #-}
     encodeJSON = B.integer
 
+-- | This instance includes a bounds check to prevent maliciously large inputs to fill up the memory of the target system. You can newtype 'Natural' and provide your own instance using 'withScientific' if you want to allow larger inputs.
 instance JSON Natural where
     {-# INLINE fromValue #-}
     fromValue = withBoundedScientific "Natural" $ \ n ->

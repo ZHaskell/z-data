@@ -53,7 +53,7 @@ import qualified Z.Data.Text      as T
 -- This module is intended to be used qualified, e.g.
 --
 -- > import qualified Z.Data.JSON as JSON
--- > import           Z.Data.JSON ((.:), ToValue(..), FromValue(..), EncodeJSON(..))
+-- > import           Z.Data.JSON ((.:), JSON(..))
 --
 -- The easiest way to use the library is to define target data type, deriving
 -- 'GHC.Generics.Generic' and 'JSON' instances, which provides:
