@@ -19,7 +19,7 @@ module Z.Data.Parser.Base
   , Parser(..)
   , (<?>)
     -- * Running a parser
-  , parse, parse', parseChunk, parseChunks, finishParsing
+  , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
@@ -172,12 +172,15 @@ finishParsing r = case r of
     Failure errs rest -> (rest, Left errs)
     Partial f         -> finishParsing (f V.empty)
 
+-- | Type alias for a streaming parser, draw chunk from Monad m, and return result in @Either err x@.
+type ParseChunks m chunk err x = m chunk -> chunk -> m (chunk, Either err x)
+
 -- | Run a parser with an initial input string, and a monadic action
 -- that can supply more input if needed.
 --
 -- Note, once the monadic action return empty bytes, parsers will stop drawing
 -- more bytes (take it as 'endOfInput').
-parseChunks :: Monad m => Parser a -> m V.Bytes -> V.Bytes -> m (V.Bytes, Either ParseError a)
+parseChunks :: Monad m => Parser a -> ParseChunks m V.Bytes ParseError a
 {-# INLINABLE parseChunks #-}
 parseChunks (Parser p) m0 inp = go m0 (p Failure Success inp)
   where

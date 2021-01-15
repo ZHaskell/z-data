@@ -82,6 +82,9 @@ module Z.Foreign
   , castPtr
   , fromNullTerminated, fromPtr, fromPrimPtr
   , StdString, fromStdString
+  -- ** convert between bytestring
+  , fromByteString
+  , toByteString
   -- ** re-export
   , RealWorld
   , touch
@@ -112,6 +115,10 @@ import           Z.Data.Array
 import           Z.Data.Array.Unaligned
 import           Z.Data.Array.UnliftedArray
 import           Z.Data.Vector.Base
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as B
+import qualified Data.ByteString.Unsafe     as B
+import           Data.ByteString.Short.Internal (ShortByteString(..), fromShort, toShort)
 
 -- | Type alias for 'ByteArray#'.
 --
@@ -488,3 +495,12 @@ fromStdString f = bracket f hs_delete_std_string
 foreign import ccall unsafe hs_std_string_size :: Ptr StdString -> IO Int
 foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> Int -> MBA# Word8 -> IO ()
 foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()
+
+-- | O(n), Convert from 'ByteString'.
+fromByteString :: ByteString -> Bytes
+fromByteString bs = case toShort bs of
+    (SBS ba#) -> PrimVector (PrimArray ba#) 0 (B.length bs)
+
+-- | O(n), Convert tp 'ByteString'.
+toByteString :: Bytes -> ByteString
+toByteString (PrimVector (PrimArray ba#) s l) = B.unsafeTake l . B.unsafeDrop s . fromShort $ SBS ba#

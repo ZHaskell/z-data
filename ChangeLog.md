@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.5.0.0  -- 2020-01-15
+
+* Add `ParseChunks` alias, remove `parseChunks'` from `Z.Data.JSON`.
+* Add `fromByteString` and `toByteString` to `Z.Foreign`.
+
 ## 0.4.0.0  -- 2020-01-11
 
 * Merge `FromValue`, `ToValue`, `EncodeJSON` to `JSON` class, add instances for containers.

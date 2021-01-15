@@ -17,7 +17,7 @@ module Z.Data.JSON.Base
     JSON(..), Value(..), defaultSettings, Settings(..)
   , -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
+  , decode, decode', decodeText, decodeText', P.ParseChunks, decodeChunks
   , encode, encodeChunks, encodeText
     -- * parse into JSON Value
   , JV.parseValue, JV.parseValue', JV.parseValueChunks, JV.parseValueChunks'
@@ -162,7 +162,7 @@ decode bs = case P.parse JV.value bs of
         Right r   -> (bs', Right r)
 
 -- | Decode JSON doc chunks, return trailing bytes.
-decodeChunks :: (JSON a, Monad m) => m V.Bytes -> V.Bytes -> m (V.Bytes, Either DecodeError a)
+decodeChunks :: (JSON a, Monad m) => P.ParseChunks m V.Bytes DecodeError a
 {-# INLINE decodeChunks #-}
 decodeChunks mb bs = do
     mr <- P.parseChunks JV.value mb bs
@@ -172,18 +172,6 @@ decodeChunks mb bs = do
             case convertValue v of
                 Left cErr -> pure (bs', Left (Right cErr))
                 Right r   -> pure (bs', Right r)
-
--- | Decode JSON doc chunks, consuming trailing JSON whitespaces (other trailing bytes are not allowed).
-decodeChunks' :: (JSON a, Monad m) => m V.Bytes -> V.Bytes -> m (Either DecodeError a)
-{-# INLINE decodeChunks' #-}
-decodeChunks' mb bs = do
-    mr <- P.parseChunks (JV.value <* JV.skipSpaces <* P.endOfInput) mb bs
-    case mr of
-        (_, Left pErr) -> pure (Left (Left pErr))
-        (_, Right v) ->
-            case convertValue v of
-                Left cErr -> pure (Left (Right cErr))
-                Right r   -> pure (Right r)
 
 -- | Directly encode data to JSON bytes.
 encode :: JSON a => a -> V.Bytes

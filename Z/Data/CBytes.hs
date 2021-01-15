@@ -462,7 +462,7 @@ fromBytes v@(V.PrimVector arr s l)
 -- | /O(n)/, convert to 'T.Text' using UTF8 encoding assumption.
 --
 -- Throw 'T.InvalidUTF8Exception' in case of invalid codepoint.
-toText :: CBytes -> T.Text
+toText :: HasCallStack => CBytes -> T.Text
 {-# INLINABLE toText #-}
 toText = T.validate . toBytes
 

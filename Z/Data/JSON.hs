@@ -27,7 +27,7 @@ module Z.Data.JSON
   , snakeCase, trainCase
     -- * Encode & Decode
   , DecodeError
-  , decode, decode', decodeText, decodeText', decodeChunks, decodeChunks'
+  , decode, decode', decodeText, decodeText', ParseChunks, decodeChunks
   , encode, encodeChunks, encodeText
     -- * parse into JSON Value
   , parseValue, parseValue', parseValueChunks, parseValueChunks'

@@ -30,7 +30,7 @@ module Z.Data.Parser
   , Parser
   , (<?>)
     -- * Running a parser
-  , parse, parse', parseChunk, parseChunks, finishParsing
+  , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
