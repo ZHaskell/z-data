@@ -77,14 +77,13 @@ import           Data.Time                      (Day, DiffTime, LocalTime, Nomin
 import           Data.Time.Calendar             (CalendarDiffDays (..), DayOfWeek (..))
 import           Data.Time.LocalTime            (CalendarDiffTime (..))
 import           Data.Time.Clock.System         (SystemTime (..))
-import           Data.Version                   (Version, parseVersion)
+import           Data.Version                   (Version(versionBranch), makeVersion)
 import           Data.Word
 import           Foreign.C.Types
 import           GHC.Exts                       (Proxy#, proxy#)
 import           GHC.Generics
 import           GHC.Natural
 import           System.Exit
-import           Text.ParserCombinators.ReadP   (readP_to_S)
 import qualified Z.Data.Array                   as A
 import qualified Z.Data.Builder                 as B
 import           Z.Data.Generics.Utils
@@ -478,8 +477,8 @@ instance (GToValue f, Selector (MetaSel (Just l) u ss ds)) => GWriteFields (S1 (
 instance (GToValue f, Selector (MetaSel (Just l) u ss ds)) => GToValue (S1 (MetaSel (Just l) u ss ds) f) where
     {-# INLINE gToValue #-}
     gToValue s m1@(M1 x) =
-        let k = fieldFmt s $ selName m1
-            v = gToValue s x
+        let !k = fieldFmt s $ selName m1
+            !v = gToValue s x
         in Object (V.singleton (k, v))
 
 instance GToValue f => GToValue (S1 (MetaSel Nothing u ss ds) f) where
@@ -677,8 +676,8 @@ instance (ProductSize a, GFromFields a, GFromFields b, LookupTable a ~ LookupTab
     => GFromFields (a :*: b) where
     {-# INLINE gFromFields #-}
     gFromFields s v idx = do
-        a <- gFromFields s v idx
-        b <- gFromFields s v (idx + productSize (proxy# :: Proxy# a))
+        !a <- gFromFields s v idx
+        !b <- gFromFields s v (idx + productSize (proxy# :: Proxy# a))
         pure (a :*: b)
 
 instance (GFromValue f) => GFromFields (S1 (MetaSel Nothing u ss ds) f) where
@@ -1199,29 +1198,22 @@ instance JSON ExitCode where
     encodeJSON ExitSuccess     = "\"ExitSuccess\""
     encodeJSON (ExitFailure n) = B.int n
 
+-- | Only round trip 'versionBranch' as JSON array.
 instance JSON Version where
     {-# INLINE fromValue #-}
-    fromValue = withText "Version" (go . readP_to_S parseVersion . T.unpack)
-      where
-        go [(v,[])] = pure v
-        go (_ : xs) = go xs
-        go _        = fail "converting Version failed"
-
+    fromValue v = makeVersion <$> fromValue v
     {-# INLINE toValue #-}
-    toValue = String . T.pack . show
-
+    toValue = toValue . versionBranch
     {-# INLINE encodeJSON #-}
-    encodeJSON = B.string7 . show
+    encodeJSON = encodeJSON . versionBranch
 
 instance JSON a => JSON (Maybe a) where
     {-# INLINE fromValue #-}
     fromValue Null = pure Nothing
     fromValue v    = Just <$> fromValue v
-
     {-# INLINE toValue #-}
     toValue Nothing  = Null
     toValue (Just x) = toValue x
-
     {-# INLINE encodeJSON #-}
     encodeJSON Nothing  = "null"
     encodeJSON (Just x) = encodeJSON x

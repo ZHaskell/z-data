@@ -172,7 +172,7 @@ finishParsing r = case r of
     Failure errs rest -> (rest, Left errs)
     Partial f         -> finishParsing (f V.empty)
 
--- | Type alias for a streaming parser, draw chunk from Monad m, and return result in @Either err x@.
+-- | Type alias for a streaming parser, draw chunk from Monad m (with a initial chunk), return result in @Either err x@.
 type ParseChunks m chunk err x = m chunk -> chunk -> m (chunk, Either err x)
 
 -- | Run a parser with an initial input string, and a monadic action

@@ -4,10 +4,10 @@
 
 This package is part of [Z](https://github.com/haskell-Z/Z) project, provides basic data structures and functions:
 
-* Array, vector(array slice)
-* Text based UTF-8, basic unicode manipulating
+* Array, vector(array slice), sorting, searching
+* Text based UTF-8, basic unicode manipulating, regex
 * FFI utilties
-* Parsing and building monad
+* Fast parsing and building monad
 * JSON encoding and decoding
 
 ## Requirements
@@ -55,7 +55,7 @@ fromListN 7 [4,5,6,7,8,9,10]
 > B.buildBytes $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 [98,117,105,108,100,101,114,115,58,32,48,48,48,51,44,49,46,50,51,52,53,54,55,56]
 > 
-> T.validate . B.buildBytes $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
+> B.buildText $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 "builders: 0003,1.2345678"
 >
 > import qualified Z.Data.JSON as JSON
@@ -82,7 +82,7 @@ cd z-data
 # build
 cabal build
 # test
-cabal run Z-Data-Test
+cabal test --test-show-details=direct
 # install 
 cabal install
 # generate document

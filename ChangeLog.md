@@ -2,8 +2,10 @@
 
 ## 0.5.0.0  -- 2020-01-15
 
-* Add `ParseChunks` alias, remove `parseChunks'` from `Z.Data.JSON`.
+* Add `ParseChunks` type alias, remove `parseChunks'` from `Z.Data.JSON`.
+* Change JSON instance of `Data.Version` to use JSON Array.
 * Add `fromByteString` and `toByteString` to `Z.Foreign`.
+* Change license's copyright to test --test-show-details=direct
 
 ## 0.4.0.0  -- 2020-01-11
 
