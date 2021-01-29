@@ -1,4 +1,6 @@
-module Z.Data.Vector.Shuffle where
+module Z.Data.Vector.Shuffle (
+    shuffle
+) where
 
 import Z.Data.Vector           ( Vec(toArr), length )
 
@@ -10,7 +12,7 @@ import Prelude hiding          ( length )
 
 
 
-
+-- A shuffle function implements Fisher Yates algorithms. 
 shuffle :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Vec v a) => v a -> g -> m (v a)
 shuffle v g = do
     let n = length v
