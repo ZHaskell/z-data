@@ -135,6 +135,7 @@ library
                             Z.Data.Vector.Base
                             Z.Data.Vector.Extra
                             Z.Data.Vector.Search
+                            Z.Data.Vector.Shuffle
                             Z.Data.Vector.Sort
                             Z.Data.Vector.QQ
                             Z.Data.Vector.FlatIntMap
@@ -193,6 +194,7 @@ library
                           , time                    >= 1.9 && < 2.0
                           , unordered-containers    == 0.2.*
                           , containers              == 0.6.*
+                          , random                  >= 1.2.0
 
     if os(windows)
         extra-libraries:    stdc++
@@ -343,6 +345,7 @@ test-suite Z-Data-Test
                             Z.Data.Vector.BaseSpec
                             Z.Data.Vector.ExtraSpec
                             Z.Data.Vector.SearchSpec
+                            Z.Data.Vector.ShuffleSpec
                             Z.Data.Vector.SortSpec
                             Z.Data.Vector.FlatMapSpec
                             Z.Data.Vector.FlatSetSpec
@@ -362,6 +365,7 @@ test-suite Z-Data-Test
                           , containers             
                           , unordered-containers              
                           , time
+                          , random                  >= 1.2.0
 
     c-sources:              test/cbits/ffi.c
 
