@@ -20,7 +20,7 @@ module Z.Data.JSON.Base
   , decode, decode', decodeText, decodeText', P.ParseChunks, decodeChunks
   , encode, encodeChunks, encodeText
     -- * parse into JSON Value
-  , JV.parseValue, JV.parseValue', JV.parseValueChunks, JV.parseValueChunks'
+  , JV.parseValue, JV.parseValue', JV.parseValueChunks
   -- * Generic functions
   , gToValue, gFromValue, gEncodeJSON
   -- * Convert 'Value' to Haskell data

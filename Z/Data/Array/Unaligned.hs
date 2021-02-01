@@ -17,6 +17,7 @@ module Z.Data.Array.Unaligned where
 import           Control.Monad.Primitive
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
+import           Data.Primitive.Types
 import           GHC.Int
 import           GHC.IO
 import           GHC.Exts
@@ -124,6 +125,36 @@ readPrimWord8ArrayAs (MutablePrimArray mba#) (I# i#) = primitive (readWord8Array
 indexPrimWord8ArrayAs :: Unaligned a => PrimArray Word8 -> Int -> a
 {-# INLINE indexPrimWord8ArrayAs #-}
 indexPrimWord8ArrayAs (PrimArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
+
+-- | Encode PrimArray elements in big endian.
+primArrayToBE :: forall a. (Prim a, Unaligned (BE a)) => PrimArray a -> Int -> Int -> PrimArray Word8
+{-# INLINE primArrayToBE #-}
+primArrayToBE parr off len = unsafeDupablePerformIO $ do
+    buf <- newPrimArray siz
+    go buf off 0
+  where
+    s = getUnalignedSize (unalignedSize @(BE a))
+    siz = len * s
+    go buf !i !j
+        | j == siz = unsafeFreezePrimArray buf
+        | otherwise = do
+            writePrimWord8ArrayAs  buf j (BE (indexPrimArray parr i))
+            go buf (i+1) (j+s)
+
+-- | Decode PrimArray elements in big endian.
+primArrayFromBE :: forall a. (Prim a, Unaligned (BE a)) => PrimArray Word8 -> Int -> Int -> PrimArray a
+{-# INLINE primArrayFromBE #-}
+primArrayFromBE parr off len = unsafeDupablePerformIO $ do
+    buf <- newPrimArray siz
+    go buf off 0
+  where
+    s = getUnalignedSize (unalignedSize @(BE a))
+    siz = len `quot` s
+    go buf !i !j
+        | j == siz = unsafeFreezePrimArray buf
+        | otherwise = do
+            writePrimArray buf j (getBE (indexPrimWord8ArrayAs parr i))
+            go buf (i+s) (j+1)
 
 instance Unaligned Word8 where
     {-# INLINE unalignedSize #-}

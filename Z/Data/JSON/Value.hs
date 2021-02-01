@@ -28,7 +28,6 @@ module Z.Data.JSON.Value
   , parseValue
   , parseValue'
   , parseValueChunks
-  , parseValueChunks'
     -- * Value Parsers
   , value
   , object
@@ -140,15 +139,9 @@ parseValue' :: V.Bytes -> Either P.ParseError Value
 parseValue' = P.parse' (value <* skipSpaces <* P.endOfInput)
 
 -- | Increamental parse 'Value' without consuming trailing bytes.
-parseValueChunks :: Monad m => m V.Bytes -> V.Bytes -> m (V.Bytes, Either P.ParseError Value)
+parseValueChunks :: Monad m => P.ParseChunks m V.Bytes P.ParseError Value
 {-# INLINE parseValueChunks #-}
 parseValueChunks = P.parseChunks value
-
--- | Increamental parse 'Value' and consume all trailing JSON white spaces, if there're
--- bytes left, parsing will fail.
-parseValueChunks' :: Monad m => m V.Bytes -> V.Bytes -> m (Either P.ParseError Value)
-{-# INLINE parseValueChunks' #-}
-parseValueChunks' mi inp = snd <$> P.parseChunks (value <* skipSpaces <* P.endOfInput) mi inp
 
 --------------------------------------------------------------------------------
 
