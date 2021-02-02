@@ -2,8 +2,9 @@
 
 ## 0.6.0.0  -- TBD
 
-* Change `[Char]` 's JSON instance to JSON text.
 * Add `primArrayFromBE/primArrayFromBE` to `Z.Data.Array.Unaligned`.
+* Change `[Char]` 's JSON instance to JSON text, Add `Bytes` 's JSON instance to use base64 encoding.
+* Add `escapeCBytes`, `toEscapedText` to `Z.Data.CBytes`, change `CBytes` 's JSON instance to use base64 encoding.
 
 ## 0.5.0.0  -- 2020-01-15
 

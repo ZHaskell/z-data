@@ -22,6 +22,7 @@ import qualified Data.Tree                      as Tree
 import qualified Z.Data.Text                    as T
 import qualified Z.Data.Vector                  as V
 import qualified Z.Data.Builder                 as B
+import qualified Z.Data.CBytes                  as CBytes
 import           Data.Time                      (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import           Data.Time.Calendar             (CalendarDiffDays (..), DayOfWeek (..))
 import           Data.Time.LocalTime            (CalendarDiffTime (..))
@@ -104,36 +105,37 @@ spec = do
                 \\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f\""
 
         -- tests from MessagePack suit
-        it "int"    $ property $ \(a :: Int   ) -> a `shouldBe` mid a
-        it "int8"   $ property $ \(a :: Int8  ) -> a `shouldBe` mid a
-        it "int16"  $ property $ \(a :: Int16 ) -> a `shouldBe` mid a
-        it "int32"  $ property $ \(a :: Int32 ) -> a `shouldBe` mid a
-        it "int64"  $ property $ \(a :: Int64 ) -> a `shouldBe` mid a
-        it "word"   $ property $ \(a :: Word  ) -> a `shouldBe` mid a
-        it "word8"  $ property $ \(a :: Word8 ) -> a `shouldBe` mid a
-        it "word16" $ property $ \(a :: Word16) -> a `shouldBe` mid a
-        it "word32" $ property $ \(a :: Word32) -> a `shouldBe` mid a
-        it "word64" $ property $ \(a :: Word64) -> a `shouldBe` mid a
+        it "Int"    $ property $ \(a :: Int   ) -> a `shouldBe` mid a
+        it "Int8"   $ property $ \(a :: Int8  ) -> a `shouldBe` mid a
+        it "Int16"  $ property $ \(a :: Int16 ) -> a `shouldBe` mid a
+        it "Int32"  $ property $ \(a :: Int32 ) -> a `shouldBe` mid a
+        it "Int64"  $ property $ \(a :: Int64 ) -> a `shouldBe` mid a
+        it "Word"   $ property $ \(a :: Word  ) -> a `shouldBe` mid a
+        it "Word8"  $ property $ \(a :: Word8 ) -> a `shouldBe` mid a
+        it "Word16" $ property $ \(a :: Word16) -> a `shouldBe` mid a
+        it "Word32" $ property $ \(a :: Word32) -> a `shouldBe` mid a
+        it "Word64" $ property $ \(a :: Word64) -> a `shouldBe` mid a
 
         it "()"                                  $ property $ \(a :: ())                                   -> a `shouldBe` mid a
-        it "bool"                                $ property $ \(a :: Bool)                                 -> a `shouldBe` mid a
-        it "float"                               $ property $ \(a :: Float)                                -> a `shouldBe` mid a
-        it "double"                              $ property $ \(a :: Double)                               -> a `shouldBe` mid a
-        it "string"                              $ property $ \(a :: String)                               -> a `shouldBe` mid a
-        it "bytes"                               $ property $ \(a :: V.Bytes)                              -> a `shouldBe` mid a
-        it "primvector"                          $ property $ \(a :: V.PrimVector Int)                     -> a `shouldBe` mid a
-        it "vector"                              $ property $ \(a :: V.Vector [Integer])                   -> a `shouldBe` mid a
-        it "maybe int"                           $ property $ \(a :: (Maybe Int))                          -> a `shouldBe` mid a
-        it "[int]"                               $ property $ \(a :: [Int])                                -> a `shouldBe` mid a
-        it "[string]"                            $ property $ \(a :: [String])                             -> a `shouldBe` mid a
-        it "(int, int)"                          $ property $ \(a :: (Int, Int))                           -> a `shouldBe` mid a
-        it "(int, int, int)"                     $ property $ \(a :: (Int, Int, Int))                      -> a `shouldBe` mid a
-        it "(int, int, int, int)"                $ property $ \(a :: (Int, Int, Int, Int))                 -> a `shouldBe` mid a
-        it "(int, int, int, int, int)"           $ property $ \(a :: (Int, Int, Int, Int, Int))            -> a `shouldBe` mid a
-        it "(int, int, int, int, int, int)"      $ property $ \(a :: (Int, Int, Int, Int, Int, Int))       -> a `shouldBe` mid a
-        it "(int, int, int, int, int, int, int)" $ property $ \(a :: (Int, Int, Int, Int, Int, Int, Int))  -> a `shouldBe` mid a
-        it "[(int, double)]"                     $ property $ \(a :: [(Int, Double)])                      -> a `shouldBe` mid a
-        it "[(string, string)]"                  $ property $ \(a :: [(String, String)])                   -> a `shouldBe` mid a
+        it "Bool"                                $ property $ \(a :: Bool)                                 -> a `shouldBe` mid a
+        it "Float"                               $ property $ \(a :: Float)                                -> a `shouldBe` mid a
+        it "Double"                              $ property $ \(a :: Double)                               -> a `shouldBe` mid a
+        it "String"                              $ property $ \(a :: String)                               -> a `shouldBe` mid a
+        it "Bytes"                               $ property $ \(a :: CBytes.CBytes)                        -> a `shouldBe` mid a
+        it "CByte"                               $ property $ \(a :: V.Bytes)                              -> a `shouldBe` mid a
+        it "PrimVector"                          $ property $ \(a :: V.PrimVector Int)                     -> a `shouldBe` mid a
+        it "Vector"                              $ property $ \(a :: V.Vector [Integer])                   -> a `shouldBe` mid a
+        it "Maybe Int"                           $ property $ \(a :: (Maybe Int))                          -> a `shouldBe` mid a
+        it "[Int]"                               $ property $ \(a :: [Int])                                -> a `shouldBe` mid a
+        it "[String]"                            $ property $ \(a :: [String])                             -> a `shouldBe` mid a
+        it "(Int, Int)"                          $ property $ \(a :: (Int, Int))                           -> a `shouldBe` mid a
+        it "(Int, Int, Int)"                     $ property $ \(a :: (Int, Int, Int))                      -> a `shouldBe` mid a
+        it "(Int, Int, Int, Int)"                $ property $ \(a :: (Int, Int, Int, Int))                 -> a `shouldBe` mid a
+        it "(Int, Int, Int, Int, Int)"           $ property $ \(a :: (Int, Int, Int, Int, Int))            -> a `shouldBe` mid a
+        it "(Int, Int, Int, Int, Int, Int)"      $ property $ \(a :: (Int, Int, Int, Int, Int, Int))       -> a `shouldBe` mid a
+        it "(Int, Int, Int, Int, Int, Int, Int)" $ property $ \(a :: (Int, Int, Int, Int, Int, Int, Int))  -> a `shouldBe` mid a
+        it "[(Int, Double)]"                     $ property $ \(a :: [(Int, Double)])                      -> a `shouldBe` mid a
+        it "[(String, String)]"                  $ property $ \(a :: [(String, String)])                   -> a `shouldBe` mid a
         it "HashMap Text Int"                    $ property $ \(a :: HM.HashMap T.Text Int)                -> a `shouldBe` mid a
         it "HashSet Text"                        $ property $ \(a :: HS.HashSet T.Text)                    -> a `shouldBe` mid a
         it "Map Text Int"                        $ property $ \(a :: M.Map T.Text Int)                     -> a `shouldBe` mid a
@@ -142,21 +144,21 @@ spec = do
         it "IntSet"                              $ property $ \(a :: IS.IntSet)                            -> a `shouldBe` mid a
         it "Seq Int"                             $ property $ \(a :: Seq.Seq Int)                          -> a `shouldBe` mid a
         it "Tree Int"                            $ property $ \(a :: Tree.Tree Int)                        -> a `shouldBe` mid a
-        it "maybe int"                           $ property $ \(a :: Maybe Int)                            -> a `shouldBe` mid a
-        it "maybe nil"                           $ property $ \(a :: Maybe ())                             -> a `shouldBe` mid a
-        it "maybe bool"                          $ property $ \(a :: Maybe Bool)                           -> a `shouldBe` mid a
-        it "maybe double"                        $ property $ \(a :: Maybe Double)                         -> a `shouldBe` mid a
-        it "maybe string"                        $ property $ \(a :: Maybe String)                         -> a `shouldBe` mid a
-        it "maybe bytes"                         $ property $ \ (a :: Maybe V.Bytes)                       -> a `shouldBe` mid a
-        it "maybe [int]"                         $ property $ \(a :: Maybe [Int])                          -> a `shouldBe` mid a
-        it "maybe [string]"                      $ property $ \(a :: Maybe [String])                       -> a `shouldBe` mid a
-        it "maybe (int, int)"                    $ property $ \(a :: Maybe (Int, Int))                     -> a `shouldBe` mid a
-        it "maybe (int, int, int)"               $ property $ \(a :: Maybe (Int, Int, Int))                -> a `shouldBe` mid a
-        it "maybe (int, int, int, int)"          $ property $ \(a :: Maybe (Int, Int, Int, Int))           -> a `shouldBe` mid a
-        it "maybe (int, int, int, int, int)"     $ property $ \(a :: Maybe (Int, Int, Int, Int, Int))      -> a `shouldBe` mid a
-        it "maybe [(int, double)]"               $ property $ \(a :: Maybe [(Int, Double)])                -> a `shouldBe` mid a
-        it "maybe [(string, string)]"            $ property $ \(a :: Maybe [(String, String)])             -> a `shouldBe` mid a
-        it "either int float"                    $ property $ \(a :: Either Int Float)                     -> a `shouldBe` mid a
+        it "Maybe Int"                           $ property $ \(a :: Maybe Int)                            -> a `shouldBe` mid a
+        it "Maybe Nil"                           $ property $ \(a :: Maybe ())                             -> a `shouldBe` mid a
+        it "Maybe Bool"                          $ property $ \(a :: Maybe Bool)                           -> a `shouldBe` mid a
+        it "Maybe Double"                        $ property $ \(a :: Maybe Double)                         -> a `shouldBe` mid a
+        it "Maybe String"                        $ property $ \(a :: Maybe String)                         -> a `shouldBe` mid a
+        it "Maybe Bytes"                         $ property $ \ (a :: Maybe V.Bytes)                       -> a `shouldBe` mid a
+        it "Maybe [Int]"                         $ property $ \(a :: Maybe [Int])                          -> a `shouldBe` mid a
+        it "Maybe [String]"                      $ property $ \(a :: Maybe [String])                       -> a `shouldBe` mid a
+        it "Maybe (Int, Int)"                    $ property $ \(a :: Maybe (Int, Int))                     -> a `shouldBe` mid a
+        it "Maybe (Int, Int, Int)"               $ property $ \(a :: Maybe (Int, Int, Int))                -> a `shouldBe` mid a
+        it "Maybe (Int, Int, Int, Int)"          $ property $ \(a :: Maybe (Int, Int, Int, Int))           -> a `shouldBe` mid a
+        it "Maybe (Int, Int, Int, Int, Int)"     $ property $ \(a :: Maybe (Int, Int, Int, Int, Int))      -> a `shouldBe` mid a
+        it "Maybe [(Int, Double)]"               $ property $ \(a :: Maybe [(Int, Double)])                -> a `shouldBe` mid a
+        it "Maybe [(String, String)]"            $ property $ \(a :: Maybe [(String, String)])             -> a `shouldBe` mid a
+        it "Either Int float"                    $ property $ \(a :: Either Int Float)                     -> a `shouldBe` mid a
         it "Day"                                 $ property $ \(a :: Day)                                  -> a `shouldBe` mid a
         it "DiffTime"                            $ property $ \(a :: DiffTime)                             -> a `shouldBe` mid a
         it "LocalTime"                           $ property $ \(a :: LocalTime)                            -> a `shouldBe` mid a
