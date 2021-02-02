@@ -47,6 +47,7 @@ data T a
 
     | RecordII { testFour   :: Double }
     | List [a]
+    | Str String
    deriving (Show, Eq, Generic, JSON)
 
 mid :: JSON a => a -> a
@@ -199,6 +200,10 @@ spec = do
                     , Unary 123456
                     , (Product "ABC" (Just 'x') (123456::Integer))
                     , (Record 0.123456 Nothing (Just (123456::Integer)))])
+
+        it "List are encode as string" $
+            JSON.encodeText (Str "hello" :: T ()) == encodeText' (Str "hello" :: T ())
+
 
         it "control characters are escaped" $
             JSON.encodeText (T.pack $ map toEnum [0..0x1F]) ===

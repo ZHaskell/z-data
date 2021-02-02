@@ -1046,6 +1046,15 @@ instance JSON a => JSON [a] where
     {-# INLINE encodeJSON #-}
     encodeJSON = B.square . commaSepList
 
+-- | This is an INCOHERENT instance, to provide JSON text encoding behaviour.
+instance {-# INCOHERENT #-} JSON [Char] where
+    {-# INLINE fromValue #-}
+    fromValue = withText "String" (pure . T.unpack)
+    {-# INLINE toValue #-}
+    toValue = String . T.pack
+    {-# INLINE encodeJSON #-}
+    encodeJSON = JB.string . T.pack
+
 instance JSON a => JSON (NonEmpty a) where
     {-# INLINE fromValue #-}
     fromValue = withArray "NonEmpty" $ \ vs -> do
