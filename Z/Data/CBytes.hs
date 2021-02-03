@@ -106,12 +106,15 @@ fromPrimArray arr = runST (do
     let l = case V.elemIndex 0 arr of
             Just i -> i
             _ -> sizeofPrimArray arr
-    mpa <- newPrimArray (l+1)
-    copyPrimArray mpa 0 arr 0 l
-    -- write \\NUL terminator
-    writePrimArray mpa l 0
-    pa <- unsafeFreezePrimArray mpa
-    return (CBytes pa))
+    if l+1 == sizeofPrimArray arr
+    then return (CBytes arr)
+    else do
+        mpa <- newPrimArray (l+1)
+        copyPrimArray mpa 0 arr 0 l
+        -- write \\NUL terminator
+        writePrimArray mpa l 0
+        pa <- unsafeFreezePrimArray mpa
+        return (CBytes pa))
 
 -- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first @\\NUL@ byte if there's any.
 pattern CB :: V.Bytes -> CBytes
