@@ -101,8 +101,9 @@ import qualified Z.Data.Text      as T
 -- different behaviour, namely:
 --
 --   * @Maybe a@ are encoded as JSON @null@ in 'Nothing' case, or directly encoded to its payload in 'Just' case.
---   * @[a]@ are encoded to JSON array, including @[Char]@, i.e. there's no special treatment to 'String'. To get JSON string, use 'T.Text'.
+--   * @[a]@ are encoded to JSON array, @[Char]@ are encoded into JSON string.
 --   * 'NonEmpty', 'Vector', 'PrimVector', 'HashSet', 'FlatSet', 'FlatIntSet' are also encoded to JSON array.
+--   * 'Bytes' are encoded into JSON text using base64 encoding.
 --   * 'HashMap', 'FlatMap', 'FlatIntMap' are encoded to JSON object.
 
 -- $custom-settings

@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.6.0.0  -- TBD
+
+* Add `primArrayFromBE/primArrayFromBE` to `Z.Data.Array.Unaligned`.
+* Change `[Char]` 's JSON instance to JSON text, Add `Bytes` 's JSON instance to use base64 encoding.
+* Add `escapeCBytes`, `toEscapedText` to `Z.Data.CBytes`, change `CBytes` 's JSON instance to use base64 encoding.
+
 ## 0.5.0.0  -- 2020-01-15
 
 * Add `ParseChunks` type alias, remove `parseChunks'` from `Z.Data.JSON`.

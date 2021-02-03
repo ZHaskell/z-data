@@ -31,6 +31,7 @@ module Z.Data.CBytes
 
 import           Control.DeepSeq
 import           Control.Monad
+import           Control.Applicative        ((<|>))
 import           Control.Exception
 import           Control.Monad.Primitive
 import           Control.Monad.ST
@@ -62,7 +63,7 @@ import qualified Z.Data.Text                as T
 import qualified Z.Data.Text.Print          as T
 import qualified Z.Data.Text.UTF8Codec      as T
 import qualified Z.Data.JSON.Base           as JSON
-import           Z.Data.JSON.Base           ((<?>))
+import           Z.Data.JSON.Base           ((.=), (.!), (.:))
 import           Z.Data.Text.UTF8Codec      (encodeCharModifiedUTF8, decodeChar)
 import qualified Z.Data.Vector.Base         as V
 import           Z.Foreign                  hiding (fromStdString)
@@ -206,34 +207,27 @@ instance T.Print CBytes where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = T.stringUTF8 . show . unpack
 
--- | JSON instances check if 'CBytes' is proper UTF8 encoded,
--- if it is, decode/encode it as 'T.Text', otherwise as 'V.Bytes'.
+-- | JSON instances check if 'CBytes' is properly UTF8 encoded,
+-- if it is, decode/encode it as 'T.Text', otherwise as an object with a base64 field.
 --
 -- @
 -- > encodeText ("hello" :: CBytes)
 -- "\"hello\""
--- > encodeText ("hello\\NUL" :: CBytes)     -- @\\NUL@ is encoded as C0 80
--- "[104,101,108,108,111,192,128]"
+-- > encodeText ("hello\\NUL" :: CBytes)     -- @\\NUL@ is encoded as C0 80, which is illegal UTF8
+-- "{\"base64\":\"aGVsbG/AgA==\"}"
 -- @
 instance JSON.JSON CBytes where
     {-# INLINE fromValue #-}
-    fromValue value =
-        case value of
-            JSON.String t ->
-                return (fromText t)
-            JSON.Array arr ->
-                fromBytes <$> V.traverseWithIndex
-                    (\ k v -> JSON.fromValue v <?> JSON.Index k) arr
-            _ -> JSON.fail'
-                    "converting Z.Data.CBytes.CBytes failed, expected array or string"
+    fromValue v = JSON.withText "Z.Data.CBytes" (pure . fromText) v
+                <|> JSON.withFlatMapR "Z.Data.CBytes" (\ o -> fromBytes <$> o .: "base64") v
     {-# INLINE toValue #-}
     toValue cbytes = case toTextMaybe cbytes of
         Just t -> JSON.toValue t
-        Nothing -> JSON.toValue (toBytes cbytes)
+        Nothing -> JSON.object $ [ "base64" .= toBytes cbytes ]
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t -> JSON.encodeJSON t
-        Nothing -> B.square . JSON.commaSepVec . toBytes $ cbytes
+        Nothing -> JSON.object' $ "base64" .! toBytes cbytes
 
 -- | Concatenate two 'CBytes'.
 append :: CBytes -> CBytes -> CBytes

@@ -97,6 +97,7 @@ import qualified Z.Data.Text.Base               as T
 import qualified Z.Data.Text                    as T
 import qualified Z.Data.Text.Print              as T
 import qualified Z.Data.Vector.Base             as V
+import qualified Z.Data.Vector.Base64           as Base64
 import qualified Z.Data.Vector.Extra            as V
 import qualified Z.Data.Vector.FlatIntMap       as FIM
 import qualified Z.Data.Vector.FlatIntSet       as FIS
@@ -1027,6 +1028,17 @@ instance (Prim a, JSON a) => JSON (V.PrimVector a) where
     {-# INLINE encodeJSON #-}
     encodeJSON = B.square . commaSepVec
 
+-- | This is an INCOHERENT instance, encode binary data with base64 encoding.
+instance {-# INCOHERENT #-} JSON V.Bytes where
+    fromValue = withText "Z.Data.Vector.Bytes" $ \ t ->
+        case Base64.base64Decode (T.getUTF8Bytes t) of
+            Just bs -> pure bs
+            Nothing -> fail' "illegal base64 encoding bytes"
+    {-# INLINE toValue #-}
+    toValue = String . Base64.base64EncodeText
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . Base64.base64EncodeBuilder
+
 instance (Eq a, Hashable a, JSON a) => JSON (HS.HashSet a) where
     {-# INLINE fromValue #-}
     fromValue = withArray "Z.Data.Vector.FlatSet.FlatSet" $ \ vs ->
@@ -1045,6 +1057,15 @@ instance JSON a => JSON [a] where
     toValue = Array . V.pack . map toValue
     {-# INLINE encodeJSON #-}
     encodeJSON = B.square . commaSepList
+
+-- | This is an INCOHERENT instance, to provide JSON text encoding behaviour.
+instance {-# INCOHERENT #-} JSON [Char] where
+    {-# INLINE fromValue #-}
+    fromValue = withText "String" (pure . T.unpack)
+    {-# INLINE toValue #-}
+    toValue = String . T.pack
+    {-# INLINE encodeJSON #-}
+    encodeJSON = JB.string . T.pack
 
 instance JSON a => JSON (NonEmpty a) where
     {-# INLINE fromValue #-}
