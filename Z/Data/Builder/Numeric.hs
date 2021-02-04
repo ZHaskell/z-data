@@ -704,7 +704,8 @@ doFmt format decs (is, e) = case format of
     insertDot n     [] = encodePrim DIGIT_0 >> insertDot (n-1) []
     insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
 
- ------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
 ------------------------------------------------------------------------
 

@@ -186,6 +186,7 @@ newtype LE a = LE { getLE :: a } deriving (Show, Eq)
 --
 newtype BE a = BE { getBE :: a } deriving (Show, Eq)
 
+
 #define USE_HOST_IMPL(END) \
     {-# INLINE writeWord8ArrayAs# #-}; \
     writeWord8ArrayAs# mba# i# (END x) = writeWord8ArrayAs# mba# i# x; \

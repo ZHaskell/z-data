@@ -1,8 +1,8 @@
 ## Z-Data
 
-[![Hackage](https://img.shields.io/hackage/v/Z-Data.svg?style=flat)](https://hackage.haskell.org/package/Z-Data) [![Linux Build Status](https://github.com/haskell-Z/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![Windows Build Status](https://github.com/haskell-Z/z-data/workflows/win-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
+[![Hackage](//img.shields.io/hackage/v/Z-Data.svg?style=flat)](//hackage.haskell.org/package/Z-Data) [![Linux Build Status](//github.com/Z.Haskell/z-data/workflows/ubuntu-ci/badge.svg)](//github.com/Z.Haskell/z-data/actions) [![MacOS Build Status](//github.com/Z.Haskell/z-data/workflows/osx-ci/badge.svg)](//github.com/Z.Haskell/z-data/actions) [![Windows Build Status](//github.com/Z.Haskell/z-data/workflows/win-ci/badge.svg)](//github.com/Z.Haskell/z-data/actions)
 
-This package is part of [Z](https://github.com/haskell-Z/Z) project, provides basic data structures and functions:
+This package is part of [Z.Haskell](//zhaskell.github.io/docs/) project, providing basic data structures and functions:
 
 * Array, vector(array slice), sorting, searching
 * Text based UTF-8, basic unicode manipulating, regex
@@ -14,7 +14,7 @@ This package is part of [Z](https://github.com/haskell-Z/Z) project, provides ba
 
 * A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
 
-* Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
+* Tests need [hspec-discover](//hackage.haskell.org/package/hspec-discover).
 
 ## Example usage
 
@@ -77,7 +77,7 @@ Object [("foo",Number 1.0e-2)]
 
 ```bash
 # get code
-git clone --recursive git@github.com:haskell-Z/z-data.git 
+git clone --recursive git@github.com:Z.Haskell/z-data.git 
 cd z-data
 # build
 cabal build

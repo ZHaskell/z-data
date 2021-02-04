@@ -1,13 +1,13 @@
 cabal-version:              2.4
 name:                       Z-Data
-version:                    0.5.0.0
+version:                    0.6.0.0
 synopsis:                   Array, vector and text
 description:                This package provides array, slice and text operations
 license:                    BSD-3-Clause
 license-file:               LICENSE
-author:                     Project Z Contributors
+author:                     Z.Haskell Contributors
 maintainer:                 winterland1989@gmail.com
-copyright:                  (c) Project Z Contributors
+copyright:                  (c) Z.Haskell Contributors
 category:                   Data
 build-type:                 Custom
 homepage:                   https://github.com/haskell-Z/z-data
