@@ -100,13 +100,12 @@ int = intWith defaultIFormat
 --
 -- @
 -- import Z.Data.Builder as B
--- import Z.Data.Text    as T
 --
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat  (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat  (12345 :: Int)
 -- "12345"
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=RightSpacePadding} (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat{width=10, padding=RightSpacePadding} (12345 :: Int)
 -- "12345     "
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=ZeroPadding} (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat{width=10, padding=ZeroPadding} (12345 :: Int)
 -- "0000012345"
 -- @
 --
