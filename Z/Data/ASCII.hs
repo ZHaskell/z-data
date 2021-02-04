@@ -1,3 +1,16 @@
+{-|
+Module      : Z.Data.ASCII
+Description : ASCII chars
+Copyright   : (c) Dong Han, 2020
+License     : BSD
+Maintainer  : winterland1989@gmail.com
+Stability   : experimental
+Portability : non-portable
+
+ASCII Chars utility.
+
+-}
+
 module Z.Data.ASCII where
 
 import GHC.Word

@@ -30,6 +30,7 @@ module Z.Data.Builder
   , writeN
    -- * Pritimive builders
   , encodePrim
+  , BE(..), LE(..)
   , encodePrimLE
   , encodePrimBE
   -- * More builders

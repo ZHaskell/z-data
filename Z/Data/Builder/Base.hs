@@ -42,6 +42,7 @@ module Z.Data.Builder.Base
   , writeN
    -- * Pritimive builders
   , encodePrim
+  , BE(..), LE(..)
   , encodePrimLE
   , encodePrimBE
   -- * More builders
@@ -103,7 +104,7 @@ data BuildResult
 -- Notes on 'IsString' instance: @Builder ()@'s 'IsString' instance use 'stringModifiedUTF8',
 -- which is different from 'stringUTF8' in that it DOES NOT PROVIDE UTF8 GUARANTEES! :
 --
--- * @\\NUL@ will be written as @\xC0 \x80@.
+-- * @\\NUL@ will be written as @\\xC0 \\x80@.
 -- * @\\xD800@ ~ @\\xDFFF@ will be encoded in three bytes as normal UTF-8 codepoints.
 --
 newtype Builder a = Builder { runBuilder :: (a -> BuildStep) -> BuildStep }
@@ -317,6 +318,11 @@ writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
         f buf' offset' >> k () (Buffer buf' (offset'+n)))))
 
 -- | Write a primitive type in host byte order.
+--
+-- @
+-- > encodePrim (256 :: Word16, BE 256 :: BE Word16)
+-- > [0,1,1,0]
+-- @
 encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# INLINE encodePrim #-}
 {-# SPECIALIZE INLINE encodePrim :: Word -> Builder () #-}

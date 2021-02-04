@@ -24,7 +24,8 @@ module Z.Data.Parser.Base
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
     -- * Primitive decoders
-  , decodePrim, decodePrimLE, decodePrimBE
+  , decodePrim, BE(..), LE(..)
+  , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
@@ -275,6 +276,7 @@ atEnd = Parser $ \ _ k inp ->
     then Partial (\ inp' -> k (V.null inp') inp')
     else k False inp
 
+-- | Decode a primitive type in host byte order.
 decodePrim :: forall a. (Unaligned a) => Parser a
 {-# INLINE decodePrim #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Word   #-}
@@ -297,6 +299,7 @@ decodePrim = do
   where
     n = getUnalignedSize (unalignedSize @a)
 
+-- | Decode a primitive type in little endian.
 decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# INLINE decodePrimLE #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Word   #-}
@@ -317,6 +320,7 @@ decodePrimLE = do
   where
     n = getUnalignedSize (unalignedSize @(LE a))
 
+-- | Decode a primitive type in big endian.
 decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# INLINE decodePrimBE #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Word   #-}
