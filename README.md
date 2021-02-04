@@ -1,6 +1,9 @@
 ## Z-Data
 
-[![Hackage](//img.shields.io/hackage/v/Z-Data.svg?style=flat)](//hackage.haskell.org/package/Z-Data) [![Linux Build Status](//github.com/ZHaskell/z-data/workflows/ubuntu-ci/badge.svg)](//github.com/ZHaskell/z-data/actions) [![MacOS Build Status](//github.com/ZHaskell/z-data/workflows/osx-ci/badge.svg)](//github.com/ZHaskell/z-data/actions) [![Windows Build Status](//github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](//github.com/ZHaskell/z-data/actions)
+[![Hackage](https://img.shields.io/hackage/v/Z-Data.svg?style=flat)](https://hackage.haskell.org/package/Z-Data)
+[![Linux Build Status](https://github.com/ZHaskell/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![Windows Build Status](https://github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 
 This package is part of [ZHaskell](//zhaskell.github.io/docs/) project, providing basic data structures and functions:
 
