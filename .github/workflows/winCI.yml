@@ -1,12 +1,12 @@
-on: [push]
+on: [push, pull_request]
 name: win-ci
 jobs:
   build:
     runs-on: windows-latest
     strategy:
       matrix:
-        ghc: ['8.10']    
-        cabal: ['3.2']  
+        ghc: ['8.10']
+        cabal: ['3.2']
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
@@ -33,7 +33,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - run: cabal configure $CONFIG
-      - run: cabal build 
+      - run: cabal build
       - run: cabal test --test-show-details=direct
       - run: cabal haddock
       - run: cabal sdist
