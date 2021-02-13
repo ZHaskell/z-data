@@ -5,7 +5,7 @@
 [![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 [![Windows Build Status](https://github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 
-This package is part of [ZHaskell](//zhaskell.github.io/docs/) project, providing basic data structures and functions:
+This package is part of [ZHaskell](https://z.haskell.world) project, providing basic data structures and functions:
 
 * Array, vector(array slice), sorting, searching
 * Text based UTF-8, basic unicode manipulating, regex
@@ -17,7 +17,7 @@ This package is part of [ZHaskell](//zhaskell.github.io/docs/) project, providin
 
 * A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
 
-* Tests need [hspec-discover](//hackage.haskell.org/package/hspec-discover).
+* Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 
 ## Example usage
 

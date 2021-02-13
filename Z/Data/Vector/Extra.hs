@@ -58,13 +58,17 @@ module Z.Data.Vector.Extra (
   , unsafeDrop
   ) where
 
+import           Control.Exception              (assert)
 import           Control.Monad.ST
+import           Data.Primitive.ByteArray
 import           GHC.Stack
 import           GHC.Word
+import           GHC.Exts
 import           Z.Data.Array
+import           Z.Data.ASCII                   (isSpace)
 import           Z.Data.Vector.Base
 import           Z.Data.Vector.Search
-import           Prelude                       hiding (concat, concatMap,
+import           Prelude                        hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
@@ -74,8 +78,8 @@ import           Prelude                       hiding (concat, concatMap,
                                                 takeWhile, dropWhile,
                                                 break, span, reverse,
                                                 words, lines, unwords, unlines)
-import qualified Data.List                     as List
-import           Control.Exception             (assert)
+import qualified Data.List                      as List
+import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 --------------------------------------------------------------------------------
 -- Slice
@@ -477,7 +481,7 @@ words (Vec arr s l) = go s s
                     if s' == end
                     then []
                     else let !v = fromArr arr s' (end-s') in [v]
-              | isASCIISpace (indexArr arr i) =
+              | isSpace (indexArr arr i) =
                     if s' == i
                     then go (i+1) (i+1)
                     else
@@ -552,7 +556,8 @@ reverse (Vec arr s l) = create l (go s (l-1))
 -- Lists.
 --
 intersperse :: forall v a. Vec v a => a -> v a -> v a
-{-# INLINE intersperse #-}
+{-# INLINE[1] intersperse #-}
+{-# RULES "intersperse/Bytes" intersperse = intersperseBytes #-}
 intersperse x v@(Vec arr s l) | l <= 1 = v
                               | otherwise = create (2*l-1) (go s 0)
    where
@@ -577,6 +582,18 @@ intersperse x v@(Vec arr s l) | l <= 1 = v
             writeArr marr j =<< indexArrM arr i
             writeArr marr (j+1) x
             go (i+1) (j+2) marr
+
+-- | /O(n)/ Special 'intersperse' for 'Bytes' using SIMD
+intersperseBytes :: Word8 -> Bytes -> Bytes
+{-# INLINE intersperseBytes #-}
+intersperseBytes c v@(PrimVector (PrimArray ba#) offset l)
+    | l <= 1 = v
+    | otherwise = unsafeDupablePerformIO $ do
+        mba@(MutableByteArray mba#) <- newByteArray n
+        c_intersperse mba# ba# offset l c
+        (ByteArray ba'#) <- unsafeFreezeByteArray mba
+        return (PrimVector (PrimArray ba'#) 0 n)
+  where n = 2*l-1
 
 -- | /O(n)/ The 'intercalate' function takes a vector and a list of
 -- vectors and concatenates the list after interspersing the first
@@ -727,9 +744,6 @@ rangeCut !r !min' !max' | r < min' = min'
                         | r > max' = max'
                         | otherwise = r
 
-isASCIISpace :: Word8 -> Bool
-{-# INLINE isASCIISpace #-}
-isASCIISpace w = w == 32 || w - 0x9 <= 4 || w == 0xa0
 
 --------------------------------------------------------------------------------
 
@@ -842,3 +856,8 @@ unsafeTake n (Vec arr s l) = assert (0 <= n && n <= l) (fromArr arr s n)
 unsafeDrop :: Vec v a => Int -> v a -> v a
 {-# INLINE unsafeDrop #-}
 unsafeDrop n (Vec arr s l) = assert (0 <= n && n <= l) (fromArr arr (s+n) (l-n))
+
+--------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bytes.h hs_intersperse" c_intersperse ::
+    MutableByteArray# RealWorld -> ByteArray# -> Int -> Int -> Word8 -> IO ()

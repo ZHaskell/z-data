@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.6.1.0  -- 2020-02-04
+
+* Add `get` and `at` to `Z.Data.JSON.Value` for getting value more easily.
+* Port patch from bytestring #301 #310 #315, Improve `stime`, `sconcat`, `intersperse`.
+
 ## 0.6.0.0  -- 2020-02-04
 
 * Add `primArrayFromBE/primArrayFromBE` to `Z.Data.Array.Unaligned`.

@@ -23,7 +23,7 @@ There's no lazy parsers here, every pieces of JSON document will be parsed into 
 
 module Z.Data.JSON.Value
   ( -- * Value type
-    Value(..)
+    Value(..), get, at
     -- * parse into JSON Value
   , parseValue
   , parseValue'
@@ -48,6 +48,7 @@ import qualified Z.Data.Text.Base       as T
 import           Z.Data.Text.Print     (Print(..))
 import           Z.Data.Vector.Base     as V
 import           Z.Data.Vector.Extra    as V
+import           Z.Data.Vector.FlatMap  as FM
 import           Z.Foreign
 import           System.IO.Unsafe         (unsafeDupablePerformIO)
 import           Test.QuickCheck.Arbitrary (Arbitrary(..))
@@ -126,6 +127,23 @@ instance Arbitrary Value where
     shrink (Object kvs) = snd <$> (V.unpack kvs)
     shrink (Array vs) = V.unpack vs
     shrink _          = []
+
+-- | Retrive 'Array' element, return `Null` if 'Value' is not an 'Array' or index not exist.
+--
+at :: Value -> Int -> Value
+{-# INLINABLE at #-}
+Array vs `at` ix = case vs `indexMaybe` ix of
+    Just v -> v
+    _ -> Null
+_        `at` _  = Null
+
+-- | Retrive 'Object' element, return `Null` if 'Value' is not an 'Object' or key not exist.
+get :: Value -> T.Text -> Value
+{-# INLINABLE get #-}
+Object m `get` key = case FM.linearSearchR m key of
+    Just v -> v
+    _ -> Null
+_        `get` _   = Null
 
 -- | Parse 'Value' without consuming trailing bytes.
 parseValue :: V.Bytes -> (V.Bytes, Either P.ParseError Value)

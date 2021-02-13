@@ -86,29 +86,31 @@ import           Control.Exception
 import           Control.Monad
 import           Control.Monad.ST
 import           Data.Bits
-import           Data.Char                     (ord)
-import qualified Data.Foldable                 as F
-import           Data.Hashable                 (Hashable(..))
-import           Data.Hashable.Lifted          (Hashable1(..), hashWithSalt1)
-import qualified Data.List                     as List
+import           Data.Char                      (ord)
+import qualified Data.Foldable                  as F
+import           Data.Hashable                  (Hashable(..))
+import           Data.Hashable.Lifted           (Hashable1(..), hashWithSalt1)
+import qualified Data.List                      as List
+import           Data.List.NonEmpty       (NonEmpty ((:|)))
 import           Data.Maybe
-import qualified Data.CaseInsensitive          as CI
+import qualified Data.CaseInsensitive           as CI
 import           Data.Primitive
 import           Data.Primitive.Ptr
-import qualified Data.Traversable              as T
+import           Data.Semigroup                 (Semigroup (..))
+import qualified Data.Traversable               as T
 import           Foreign.C
 import           GHC.Exts
 import           GHC.Stack
 import           GHC.CString
 import           GHC.Word
-import           Prelude                       hiding (concat, concatMap,
+import           Prelude                        hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
                                                 all, any, replicate, traverse)
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
-import           Text.Read                     (Read(..))
-import           System.IO.Unsafe              (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary      (Arbitrary(..), CoArbitrary(..))
+import           Text.Read                      (Read(..))
+import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 import           Z.Data.Array
 
@@ -247,6 +249,10 @@ compareVector (Vector baA sA lA) (Vector baB sB lB)
 instance Semigroup (Vector a) where
     {-# INLINE (<>) #-}
     (<>)    = append
+    {-# INLINE sconcat #-}
+    sconcat (b:|bs) = concat (b:bs)
+    {-# INLINE stimes #-}
+    stimes  = _cycleN
 
 instance Monoid (Vector a) where
     {-# INLINE mempty #-}
@@ -459,6 +465,10 @@ compareBytes (PrimVector (PrimArray baA#) (I# sA#) lA)
 instance Prim a => Semigroup (PrimVector a) where
     {-# INLINE (<>) #-}
     (<>)    = append
+    {-# INLINE sconcat #-}
+    sconcat (b:|bs) = concat (b:bs)
+    {-# INLINE stimes #-}
+    stimes  = _cycleN
 
 instance Prim a => Monoid (PrimVector a) where
     {-# INLINE mempty #-}
@@ -1211,11 +1221,16 @@ replicate n x | n <= 0    = empty
 -- | /O(n*m)/ 'cycleN' a vector n times.
 cycleN :: forall v a. Vec v a => Int -> v a -> v a
 {-# INLINE cycleN #-}
-cycleN n (Vec arr s l)
+cycleN = _cycleN
+
+-- | /O(n*m)/ 'cycleN''s polymorphic type version
+_cycleN :: forall v a x. (Vec v a, Integral x) => x -> v a -> v a
+{-# INLINE _cycleN #-}
+_cycleN n (Vec arr s l)
     | l == 0    = empty
     | otherwise = create end (go 0)
   where
-    !end = n*l
+    !end = fromIntegral n * l
     go :: Int -> MArr (IArray v) s a -> ST s ()
     go !i !marr | i >= end  = return ()
                 | otherwise = copyArr marr i arr s l >> go (i+l) marr
@@ -1397,3 +1412,4 @@ foreign import ccall unsafe "hs_memchr" c_memchr ::
 -- HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n);
 foreign import ccall unsafe "hs_memrchr" c_memrchr ::
     ByteArray# -> Int -> Word8 -> Int -> Int
+

@@ -44,3 +44,4 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
 
 void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length);
 HsInt hs_base64_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length);
+void hs_intersperse(unsigned char *q, unsigned char *p, HsInt p_offset, HsInt n, unsigned char c);
