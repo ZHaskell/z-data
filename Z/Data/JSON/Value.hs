@@ -34,25 +34,30 @@ module Z.Data.JSON.Value
   , array
   , string
   , skipSpaces
+    -- * Convert to Scientific
+  , floatToScientific
+  , doubleToScientific
   ) where
 
 import           Control.DeepSeq
-import           Data.Bits                ((.&.))
+import           Data.Bits                  ((.&.))
 import           Data.Functor
-import           Data.Scientific          (Scientific, scientific)
+import           Data.Scientific            (Scientific, scientific)
 import           Data.Typeable
+import           Data.Int
 import           Data.Word
 import           GHC.Generics
-import qualified Z.Data.Parser          as P
-import qualified Z.Data.Text.Base       as T
-import           Z.Data.Text.Print     (Print(..))
-import           Z.Data.Vector.Base     as V
-import           Z.Data.Vector.Extra    as V
-import           Z.Data.Vector.Search   as V
+import qualified Z.Data.Parser              as P
+import qualified Z.Data.Builder.Numeric     as B
+import qualified Z.Data.Text.Base           as T
+import           Z.Data.Text.Print          (Print(..))
+import           Z.Data.Vector.Base         as V
+import           Z.Data.Vector.Extra        as V
+import           Z.Data.Vector.Search       as V
 import           Z.Foreign
-import           System.IO.Unsafe         (unsafeDupablePerformIO)
-import           Test.QuickCheck.Arbitrary (Arbitrary(..))
-import           Test.QuickCheck.Gen (Gen(..), listOf)
+import           System.IO.Unsafe           (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary  (Arbitrary(..))
+import           Test.QuickCheck.Gen        (Gen(..), listOf)
 
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
@@ -282,3 +287,28 @@ string_ = do
 
 foreign import ccall unsafe find_json_string_end :: MBA# Word32 -> BA# Word8 -> Int -> Int -> IO Int
 foreign import ccall unsafe decode_json_string :: MBA# Word8 -> BA# Word8 -> Int -> Int -> IO Int
+
+--------------------------------------------------------------------------------
+
+-- | Convert IEEE float to scientific notition.
+floatToScientific :: Float -> Scientific
+{-# INLINE floatToScientific #-}
+floatToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3_sp (-rf)))
+                     | rf == 0   = 0
+                     | otherwise = fromFloatingDigits (B.grisu3_sp rf)
+
+-- | Convert IEEE double to scientific notition.
+doubleToScientific :: Double -> Scientific
+{-# INLINE doubleToScientific #-}
+doubleToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3 (-rf)))
+                      | rf == 0   = 0
+                      | otherwise = fromFloatingDigits (B.grisu3 rf)
+
+fromFloatingDigits :: ([Int], Int) -> Scientific
+{-# INLINE fromFloatingDigits #-}
+fromFloatingDigits (digits, e) = go digits 0 0
+  where
+    -- There's no way a float or double has more digits a 'Int64' can't handle
+    go :: [Int] -> Int64 -> Int -> Scientific
+    go []     !c !n = scientific (fromIntegral c) (e - n)
+    go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)

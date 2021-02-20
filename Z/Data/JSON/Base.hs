@@ -77,9 +77,8 @@ import           Z.Data.JSON.Converter
 import           Z.Data.JSON.Value              (Value (..))
 import qualified Z.Data.JSON.Value              as JV
 import qualified Z.Data.Parser                  as P
-import qualified Z.Data.Parser.Numeric          as P
-import qualified Z.Data.Text.Base               as T
 import qualified Z.Data.Text                    as T
+import qualified Z.Data.Text.Base               as T
 import qualified Z.Data.Text.Print              as T
 import qualified Z.Data.Vector.Base             as V
 import qualified Z.Data.Vector.Base64           as Base64
@@ -1101,11 +1100,11 @@ instance JSON Char where
 
 instance JSON Double where
     {-# INLINE fromValue #-}; fromValue = withRealFloat "Double" pure;
-    {-# INLINE toValue #-}; toValue = Number . P.doubleToScientific;
+    {-# INLINE toValue #-}; toValue = Number . JV.doubleToScientific;
     {-# INLINE encodeJSON #-}; encodeJSON = B.double;
 instance JSON Float  where
     {-# INLINE fromValue #-}; fromValue = withRealFloat "Float" pure;
-    {-# INLINE toValue #-}; toValue = Number . P.floatToScientific;
+    {-# INLINE toValue #-}; toValue = Number . JV.floatToScientific;
     {-# INLINE encodeJSON #-}; encodeJSON = B.float;
 
 #define INT_JSON_INSTANCE(typ) \
