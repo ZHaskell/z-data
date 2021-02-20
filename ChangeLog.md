@@ -9,6 +9,7 @@
 * Add `modifyIndex/insertIndex/deleteIndex` to array and vector, rewrite `FlatMap/FlatSet/FlatInMap/FlatIntSet' to use them.
 * Remove `linearSearch` from `Z.Data.Vector.FlatMap/FlatInMap`, use `find/findR` from `Z.Data.Vector.Search` instead.
 * Add `displayWidth` to `Z.Data.Text`.
+* Move `floatToScientific/doubleToScientific` to `Z.Data.JSON.Value`.
 
 ## 0.6.0.0  -- 2020-02-04
 

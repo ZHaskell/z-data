@@ -14,7 +14,6 @@ import qualified Z.Data.Builder.Numeric    as B
 import qualified Z.Data.Builder.Base    as B
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector.Base as V
-import qualified Data.Scientific as Sci
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
@@ -93,9 +92,3 @@ spec = do
             P.parse' P.float (B.build (B.float i)) === Right (i :: Float)
         prop "double roundtrip" $ \ i ->
             P.parse' P.double (B.build (B.double i)) === Right (i :: Double)
-
-    describe "floatToScientific, doubleToScientific === fromFloatDigits"  $ do
-        prop "floatToScientific == fromFloatDigits" $ \ i ->
-            P.floatToScientific i === Sci.fromFloatDigits i
-        prop "floatToScientific === fromFloatDigits" $ \ i ->
-            P.doubleToScientific i === Sci.fromFloatDigits i
