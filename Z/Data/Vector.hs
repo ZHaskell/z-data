@@ -63,6 +63,9 @@ module Z.Data.Vector (
     Vec(IArray, toArr)
   , arrVec
   , indexMaybe, index, indexM
+  , modifyIndex, modifyIndexMaybe
+  , insertIndex, insertIndexMaybe
+  , deleteIndex, deleteIndexMaybe
   -- * Boxed and unboxed vector type
   , Vector
   , PrimVector

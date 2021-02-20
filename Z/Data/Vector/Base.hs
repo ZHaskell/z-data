@@ -178,7 +178,7 @@ pattern Vec :: Vec v a => IArray v a -> Int -> Int -> v a
 pattern Vec arr s l <- (toArr -> (arr,s,l)) where
         Vec arr s l = fromArr arr s l
 
--- | /O(1)/ Index array element.
+-- | /O(1)/ Index vector's element.
 --
 -- Return 'Nothing' if index is out of bounds.
 --

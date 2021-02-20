@@ -26,6 +26,8 @@ Some mnemonics:
 module Z.Data.Array (
   -- * Arr typeclass
     Arr(..)
+  , singletonArr, doubletonArr
+  , modifyIndexArr, insertIndexArr, deleteIndexArr
   , RealWorld
   -- * Boxed array type
   , Array(..)
@@ -37,7 +39,7 @@ module Z.Data.Array (
   , PrimArray(..)
   , MutablePrimArray(..)
   , Prim(..)
-  -- * Array operations
+  -- * Primitive Array operations
   , newPinnedPrimArray, newAlignedPinnedPrimArray
   , copyPrimArrayToPtr, copyMutablePrimArrayToPtr, copyPtrToMutablePrimArray
   , primArrayContents, mutablePrimArrayContents, withPrimArrayContents, withMutablePrimArrayContents
@@ -57,7 +59,9 @@ module Z.Data.Array (
   ) where
 
 import           Control.Exception            (ArrayException (..), throw)
+import           Control.Monad
 import           Control.Monad.Primitive
+import           Control.Monad.ST
 import           Data.Primitive.Array
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
@@ -588,3 +592,63 @@ castArray = unsafeCoerce#
 -- | Cast between mutable arrays
 castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#
+
+--------------------------------------------------------------------------------
+
+singletonArr :: Arr arr a => a -> arr a
+{-# INLINE singletonArr #-}
+singletonArr x = runST $ do
+    marr <- newArrWith 1 x
+    unsafeFreezeArr marr
+
+doubletonArr :: Arr arr a => a -> a -> arr a
+{-# INLINE doubletonArr #-}
+doubletonArr x y = runST $ do
+    marr <- newArrWith 2 x
+    writeArr marr 1 y
+    unsafeFreezeArr marr
+
+-- | Modify(strictly) an immutable array's element at given index to produce a new array.
+modifyIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ index in new array
+               -> (a -> a)   -- ^ modify function
+               -> arr a
+{-# INLINE modifyIndexArr #-}
+modifyIndexArr arr off len ix f = runST $ do
+    marr <- unsafeThawArr (cloneArr arr off len)
+    !v <- f <$> readArr marr ix
+    writeArr marr ix v
+    unsafeFreezeArr marr
+
+-- | Insert an immutable array's element at given index to produce a new array.
+insertIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ insert index in new array
+               -> a          -- ^ element to be inserted
+               -> arr a
+{-# INLINE insertIndexArr #-}
+insertIndexArr arr s l i x = runST $ do
+    marr <- newArrWith (l+1) x
+    when (i>0) $ copyArr marr 0 arr s i
+    when (i<l) $ copyArr marr (i+1) arr (i+s) (l-i)
+    unsafeFreezeArr marr
+
+-- | Delete an immutable array's element at given index to produce a new array.
+deleteIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ drop index in new array
+               -> arr a
+{-# INLINE deleteIndexArr #-}
+deleteIndexArr arr s l i = runST $ do
+    marr <- newArr (l-1)
+    when (i>0) $ copyArr marr 0 arr s i
+    let i' = i+1
+    when (i'<l) $ copyArr marr i arr (i'+s) (l-i')
+    unsafeFreezeArr marr

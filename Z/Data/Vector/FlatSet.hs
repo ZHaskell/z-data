@@ -34,6 +34,7 @@ import qualified Data.Primitive.SmallArray  as A
 import qualified Data.Semigroup             as Semigroup
 import qualified Data.Monoid                as Monoid
 import qualified Z.Data.Vector.Base         as V
+import qualified Z.Data.Vector.Extra        as V
 import qualified Z.Data.Vector.Sort         as V
 import qualified Z.Data.Text.Print          as T
 import           Data.Bits                   (unsafeShiftR)
@@ -142,32 +143,25 @@ elem :: Ord v => v -> FlatSet v -> Bool
 {-# INLINE elem #-}
 elem v (FlatSet vec) = case binarySearch vec v of Left _ -> False
                                                   _      -> True
-
 -- | /O(N)/ Insert new value into set.
 insert :: Ord v => v -> FlatSet v -> FlatSet v
 {-# INLINE insert #-}
-insert v m@(FlatSet vec@(V.Vector arr s l)) =
+insert v m@(FlatSet vec) =
     case binarySearch vec v of
-        Left i -> FlatSet (V.create (l+1) (\ marr -> do
-            when (i>0) $ A.copySmallArray marr 0 arr s i
-            A.writeSmallArray marr i v
-            when (i<l) $ A.copySmallArray marr (i+1) arr (i+s) (l-i)))
+        Left i -> FlatSet (V.unsafeInsertIndex vec i v)
         Right _ -> m
 
 -- | /O(N)/ Delete a value from set.
 delete :: Ord v => v -> FlatSet v -> FlatSet v
 {-# INLINE delete #-}
-delete v m@(FlatSet vec@(V.Vector arr s l)) =
+delete v m@(FlatSet vec) =
     case binarySearch vec v of
         Left _ -> m
-        Right i -> FlatSet $ V.create (l-1) (\ marr -> do
-            when (i>0) $ A.copySmallArray marr 0 arr s i
-            let i' = i+1
-            when (i'<l) $ A.copySmallArray marr i arr (i'+s) (l-i'))
+        Right i -> FlatSet (V.unsafeDeleteIndex vec i)
 
 -- | /O(n+m)/ Merge two 'FlatSet', prefer right value on value duplication.
 merge :: forall v . Ord v => FlatSet v -> FlatSet v -> FlatSet v
-{-# INLINE merge #-}
+{-# INLINABLE merge #-}
 merge fmL@(FlatSet (V.Vector arrL sL lL)) fmR@(FlatSet (V.Vector arrR sR lR))
     | null fmL = fmR
     | null fmR = fmL

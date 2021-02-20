@@ -49,11 +49,14 @@ module Z.Data.Vector.Extra (
   , init
   , last
   , index, indexM
+  , modifyIndex, modifyIndexMaybe
+  , insertIndex, insertIndexMaybe
+  , deleteIndex, deleteIndexMaybe
   , unsafeHead
   , unsafeTail
   , unsafeInit
   , unsafeLast
-  , unsafeIndex, unsafeIndexM
+  , unsafeIndex, unsafeIndexM, unsafeModifyIndex, unsafeInsertIndex, unsafeDeleteIndex
   , unsafeTake
   , unsafeDrop
   ) where
@@ -799,6 +802,61 @@ indexM :: (Vec v a, Monad m, HasCallStack) => v a -> Int -> m a
 indexM (Vec arr s l) i | i < 0 || i >= l = errorOutRange i
                        | otherwise       = arr `indexArrM` (s + i)
 
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+modifyIndex :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE modifyIndex #-}
+modifyIndex v@(Vec _ _ l) i f | i < 0 || i >= l = errorOutRange i
+                         | otherwise       = unsafeModifyIndex v i f
+
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+modifyIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE modifyIndexMaybe #-}
+modifyIndexMaybe v@(Vec _ _ l) i f | i < 0 || i >= l = v
+                                   | otherwise       = unsafeModifyIndex v i f
+
+-- | /O(n)/ insert element to vector under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+insertIndex :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE insertIndex #-}
+insertIndex v@(Vec _ _ l) i x | i < 0 || i > l = errorOutRange i
+                              | otherwise      = unsafeInsertIndex v i x
+
+-- | /O(n)/ insert element to vector under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+insertIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE insertIndexMaybe #-}
+insertIndexMaybe v@(Vec _ _ l) i x | i < 0 || i > l = v
+                                   | otherwise      = unsafeInsertIndex v i x
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+deleteIndex :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE deleteIndex #-}
+deleteIndex v@(Vec _ _ l) i | i < 0 || i >= l = errorOutRange i
+                            | otherwise       = unsafeDeleteIndex v i
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+deleteIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE deleteIndexMaybe #-}
+deleteIndexMaybe v@(Vec _ _ l) i | i < 0 || i >= l = v
+                                 | otherwise       = unsafeDeleteIndex v i
+
+
 -- | /O(1)/ Extract the first element of a vector.
 --
 -- Make sure vector is non-empty, otherwise segmentation fault await!
@@ -840,6 +898,27 @@ unsafeIndex (Vec arr s _) i = indexArr arr (s + i)
 unsafeIndexM :: (Vec v a, Monad m) => v a -> Int -> m a
 {-# INLINE unsafeIndexM #-}
 unsafeIndexM (Vec arr s _) i = indexArrM arr (s + i)
+
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeModifyIndex :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE unsafeModifyIndex #-}
+unsafeModifyIndex (Vec arr s l) i f = Vec (modifyIndexArr arr s l i f) 0 l
+
+-- | /O(n)/ Insert element to vector under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeInsertIndex :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE unsafeInsertIndex #-}
+unsafeInsertIndex (Vec arr s l) i x = Vec (insertIndexArr arr s l i x) 0 (l+1)
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeDeleteIndex :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE unsafeDeleteIndex #-}
+unsafeDeleteIndex (Vec arr s l) i = Vec (deleteIndexArr arr s l i) 0 (l-1)
 
 -- | /O(1)/ 'take' @n@, applied to a vector @xs@, returns the prefix
 -- of @xs@ of length @n@.

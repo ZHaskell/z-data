@@ -2,8 +2,13 @@
 
 ## 0.6.1.0  -- 2020-02-04
 
-* Add `get` and `at` to `Z.Data.JSON.Value` for getting value more easily.
+* Add `key` and `nth` lens to `Z.Data.JSON.Value` for manipulating nested value more easily.
 * Port patch from bytestring #301 #310 #315, Improve `stime`, `sconcat`, `intersperse`.
+* Add JSON pretty printer `prettyJSON/prettyValue` to `Z.Data.JSON`.
+* Move many instances from `Z.Data.JSON.Base` to `Z.Data.JSON` to reduce the chance of heap overflow when compile.
+* Add `modifyIndex/insertIndex/deleteIndex` to array and vector, rewrite `FlatMap/FlatSet/FlatInMap/FlatIntSet' to use them.
+* Remove `linearSearch` from `Z.Data.Vector.FlatMap/FlatInMap`, use `find/findR` from `Z.Data.Vector.Search` instead.
+* Add `displayWidth` to `Z.Data.Text`.
 
 ## 0.6.0.0  -- 2020-02-04
 

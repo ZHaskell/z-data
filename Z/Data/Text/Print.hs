@@ -165,10 +165,11 @@ instance (GToText f) => GFieldToText (S1 (MetaSel Nothing u ss ds) f) where
     {-# INLINE gFieldToUTF8BuilderP #-}
     gFieldToUTF8BuilderP _ p (M1 x) = gToUTF8BuilderP p x
 
-instance (GToText f, Selector (MetaSel (Just l) u ss ds)) => GFieldToText (S1 (MetaSel (Just l) u ss ds) f) where
-    {-# INLINE gFieldToUTF8BuilderP #-}
-    gFieldToUTF8BuilderP _ _ m1@(M1 x) =
-        B.stringModifiedUTF8 (selName m1) >> " = " >> gToUTF8BuilderP 0 x
+instance (GToText f, Selector (MetaSel (Just l) u ss ds)) =>
+    GFieldToText (S1 (MetaSel (Just l) u ss ds) f) where
+        {-# INLINE gFieldToUTF8BuilderP #-}
+        gFieldToUTF8BuilderP _ _ m1@(M1 x) =
+            B.stringModifiedUTF8 (selName m1) >> " = " >> gToUTF8BuilderP 0 x
 
 instance GToText V1 where
     {-# INLINE gToUTF8BuilderP #-}

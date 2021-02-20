@@ -46,7 +46,8 @@ module Z.Data.Builder.Base
   , encodePrimLE
   , encodePrimBE
   -- * More builders
-  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, word7, string8, char8, word8, text
+  , stringModifiedUTF8, charModifiedUTF8, stringUTF8
+  , charUTF8, string7, char7, word7, string8, char8, word8, word8N, text
   -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
   ) where
@@ -467,6 +468,15 @@ char8 chr = writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr))
 word8 :: Word8 -> Builder ()
 {-# INLINE word8 #-}
 word8 = encodePrim
+
+-- | Faster version of @replicateM x . word8@ by using @memset@.
+--
+-- Note, this encoding is NOT compatible with UTF8 encoding, i.e. bytes written
+-- by this builder may not be legal UTF8 encoding bytes.
+word8N :: Int -> Word8 -> Builder ()
+{-# INLINE word8N #-}
+word8N x w8 = do
+    writeN x (\ mpa i -> setPrimArray mpa i x w8)
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --

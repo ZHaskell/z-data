@@ -690,11 +690,11 @@ doFmt format decs (is, e) = case format of
                     encodeDigit d
                     (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
   where
-    encodeDigit = encodePrim . i2wDec
+    encodeDigit = word8 . i2wDec
 
     encodeDigits = mapM_ encodeDigit
 
-    encodeZeros n = replicateM_ n (encodePrim DIGIT_0)
+    encodeZeros n = word8N n DIGIT_0
 
     mk0 [] = encodePrim DIGIT_0
     mk0 ls = encodeDigits ls

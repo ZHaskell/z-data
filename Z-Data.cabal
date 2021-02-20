@@ -24,6 +24,7 @@ extra-source-files:         ChangeLog.md
                             cbits/bytes.c
                             cbits/dtoa.c
                             cbits/text.c
+                            cbits/text_width.c
 
                             -- utf8rewind C sources
                             third_party/utf8rewind/include/utf8rewind/utf8rewind.h
@@ -172,12 +173,12 @@ library
 
                             Z.Data.JSON
                             Z.Data.JSON.Base
-                            Z.Data.JSON.Converter
                             Z.Data.JSON.Builder
+                            Z.Data.JSON.Converter
                             Z.Data.JSON.Value
 
-
                             Z.Foreign
+
 
     build-depends:          base                    >= 4.12 && < 5.0
                           , bytestring              >= 0.10.4 && < 0.12
@@ -231,6 +232,7 @@ library
     c-sources:              cbits/bytes.c
                             cbits/dtoa.c
                             cbits/text.c
+                            cbits/text_width.c
 
                             third_party/utf8rewind/source/unicodedatabase.c
                             third_party/utf8rewind/source/internal/casemapping.c

@@ -32,4 +32,5 @@ instance (KnownNat (PSize a + PSize b), ProductSize a, ProductSize b) => Product
     type PSize (a :*: b) = PSize a + PSize b
 
 productSize :: forall f. KnownNat (PSize f) => Proxy# f -> Int
+{-# INLINE productSize #-}
 productSize _ = fromIntegral (natVal' (proxy# :: Proxy# (PSize f)))
