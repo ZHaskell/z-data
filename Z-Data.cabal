@@ -98,11 +98,6 @@ extra-source-files:
   third_party/utf8rewind/source/unicodedatabase.h
   third_party/utf8rewind/source/utf8rewind.c
 
--- utf8rewind C sources
--- simd utf8 code
--- Turbo-Base64
--- re2
-
 custom-setup
   setup-depends:
     , base   >=4.5 && <5
@@ -118,7 +113,7 @@ flag integer-simple
     instead of [integer-gmp](http://hackage.haskell.org/package/integer-gmp)
 
   default:     False
-  manual:      False
+  manual:      True
 
 library
   exposed-modules:
@@ -270,14 +265,13 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
   cc-options:         -march=native -Wno-sign-compare
-  cxx-options:        -std=c++11
 
   -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
   -- we work around this issue using Setup.hs
+  cxx-options:        -std=c++11
   ghc-options:
     -Wall -Wno-unticked-promoted-constructors -Wno-incomplete-patterns
 
-  -- ploymorphic pattern synonym messed exhaustiveness checker
   default-extensions:
     BangPatterns
     BinaryLiterals
