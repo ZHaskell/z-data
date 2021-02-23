@@ -1,376 +1,265 @@
-cabal-version:              2.4
-name:                       Z-Data
-version:                    0.6.1.0
-synopsis:                   Array, vector and text
-description:                This package provides array, slice and text operations
-license:                    BSD-3-Clause
-license-file:               LICENSE
-author:                     Z.Haskell Contributors
-maintainer:                 winterland1989@gmail.com
-copyright:                  (c) Z.Haskell Contributors
-category:                   Data
-build-type:                 Custom
-homepage:                   https://github.com/haskell-Z/z-data
-bug-reports:                https://github.com/haskell-Z/z-data/issues
-
-extra-source-files:         ChangeLog.md
-                            README.md
-                            LICENSE
-                            AUTHORS
-
-                            include/bytes.h
-                            include/dtoa.h
-                            include/text.h
-                            cbits/bytes.c
-                            cbits/dtoa.c
-                            cbits/text.c
-                            cbits/text_width.c
-
-                            -- utf8rewind C sources
-                            third_party/utf8rewind/include/utf8rewind/utf8rewind.h
-                            third_party/utf8rewind/source/unicodedatabase.c
-                            third_party/utf8rewind/source/unicodedatabase.h
-                            third_party/utf8rewind/source/internal/base.h
-                            third_party/utf8rewind/source/internal/casemapping.c
-                            third_party/utf8rewind/source/internal/casemapping.h
-                            third_party/utf8rewind/source/internal/codepoint.c
-                            third_party/utf8rewind/source/internal/codepoint.h
-                            third_party/utf8rewind/source/internal/composition.c
-                            third_party/utf8rewind/source/internal/composition.h
-                            third_party/utf8rewind/source/internal/database.c
-                            third_party/utf8rewind/source/internal/database.h
-                            third_party/utf8rewind/source/internal/decomposition.c
-                            third_party/utf8rewind/source/internal/decomposition.h
-                            third_party/utf8rewind/source/internal/seeking.c
-                            third_party/utf8rewind/source/internal/seeking.h
-                            third_party/utf8rewind/source/internal/streaming.c
-                            third_party/utf8rewind/source/internal/streaming.h
-                            third_party/utf8rewind/source/utf8rewind.c
-
-                            -- simd utf8 code
-                            third_party/fastvalidate-utf-8/include/simdasciicheck.h
-                            third_party/fastvalidate-utf-8/include/simdutf8check.h
-
-                            -- Turbo-Base64
-                            third_party/Turbo-Base64/conf.h
-                            third_party/Turbo-Base64/turbob64.h
-                            third_party/Turbo-Base64/turbob64_.h
-                            third_party/Turbo-Base64/turbob64avx2.c
-                            third_party/Turbo-Base64/turbob64c.c
-                            third_party/Turbo-Base64/turbob64d.c
-                            third_party/Turbo-Base64/turbob64sse.c
-
-                            -- re2
-
-                            third_party/re2/util/flags.h
-                            third_party/re2/util/logging.h
-                            third_party/re2/util/malloc_counter.h
-                            third_party/re2/util/mix.h
-                            third_party/re2/util/mutex.h
-                            third_party/re2/util/strutil.h
-                            third_party/re2/util/utf.h
-                            third_party/re2/util/util.h
-                            third_party/re2/re2/bitmap256.h
-                            third_party/re2/re2/filtered_re2.h
-                            third_party/re2/re2/pod_array.h
-                            third_party/re2/re2/prefilter.h
-                            third_party/re2/re2/prefilter_tree.h
-                            third_party/re2/re2/prog.h
-                            third_party/re2/re2/re2.h
-                            third_party/re2/re2/regexp.h
-                            third_party/re2/re2/set.h
-                            third_party/re2/re2/sparse_array.h
-                            third_party/re2/re2/sparse_set.h
-                            third_party/re2/re2/stringpiece.h
-                            third_party/re2/re2/unicode_casefold.h
-                            third_party/re2/re2/unicode_groups.h
-                            third_party/re2/re2/walker-inl.h
-
-                            third_party/re2/util/rune.cc
-                            third_party/re2/util/strutil.cc
-                            third_party/re2/re2/bitstate.cc
-                            third_party/re2/re2/compile.cc
-                            third_party/re2/re2/dfa.cc
-                            third_party/re2/re2/filtered_re2.cc
-                            third_party/re2/re2/mimics_pcre.cc
-                            third_party/re2/re2/nfa.cc
-                            third_party/re2/re2/onepass.cc
-                            third_party/re2/re2/parse.cc
-                            third_party/re2/re2/perl_groups.cc
-                            third_party/re2/re2/prefilter.cc
-                            third_party/re2/re2/prefilter_tree.cc
-                            third_party/re2/re2/prog.cc
-                            third_party/re2/re2/re2.cc
-                            third_party/re2/re2/regexp.cc
-                            third_party/re2/re2/set.cc
-                            third_party/re2/re2/simplify.cc
-                            third_party/re2/re2/stringpiece.cc
-                            third_party/re2/re2/tostring.cc
-                            third_party/re2/re2/unicode_casefold.cc
-                            third_party/re2/re2/unicode_groups.cc
+cabal-version:      2.4
+name:               Z-Data
+version:            0.6.1.0
+synopsis:           Array, vector and text
+description:        This package provides array, slice and text operations
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Z.Haskell Contributors
+maintainer:         winterland1989@gmail.com
+copyright:          (c) Z.Haskell Contributors
+category:           Data
+build-type:         Custom
+homepage:           https://github.com/haskell-Z/z-data
+bug-reports:        https://github.com/haskell-Z/z-data/issues
+extra-source-files:
+  AUTHORS
+  ChangeLog.md
+  include/*.h
+  LICENSE
+  README.md
+  third_party/fastvalidate-utf-8/include/*.h
+  third_party/Turbo-Base64/*.h
+  third_party/utf8rewind/include/utf8rewind/utf8rewind.h
+  third_party/utf8rewind/source/internal/*.h
+  third_party/utf8rewind/source/unicodedatabase.h
 
 custom-setup
-   setup-depends: base >= 4.5 && < 5, Cabal >= 2.4 && < 4
+  setup-depends:
+    , base   >=4.5 && <5
+    , Cabal  >=2.4 && <4
 
 source-repository head
-    type:     git
-    location: git://github.com/haskell-Z/z-data.git
+  type:     git
+  location: git://github.com/haskell-Z/z-data.git
 
 flag integer-simple
-    description:
-        Use the [simple integer library](http://hackage.haskell.org/package/integer-simple)
-        instead of [integer-gmp](http://hackage.haskell.org/package/integer-gmp)
-    default: False
-    manual: False
+  description:
+    Use the [simple integer library](http://hackage.haskell.org/package/integer-simple)
+    instead of [integer-gmp](http://hackage.haskell.org/package/integer-gmp)
+
+  default:     False
+  manual:      True
 
 library
-    exposed-modules:        Z.Data.Array
-                            Z.Data.Array.Cast
-                            Z.Data.Array.Checked
-                            Z.Data.Array.QQ
-                            Z.Data.Array.Unaligned
-                            Z.Data.Array.UnliftedArray
-                            Z.Data.ASCII
-                            Z.Data.CBytes
-                            Z.Data.Vector
-                            Z.Data.Vector.Base
-                            Z.Data.Vector.Extra
-                            Z.Data.Vector.Search
-                            Z.Data.Vector.Sort
-                            Z.Data.Vector.QQ
-                            Z.Data.Vector.FlatIntMap
-                            Z.Data.Vector.FlatIntSet
-                            Z.Data.Vector.FlatMap
-                            Z.Data.Vector.FlatSet
-                            Z.Data.Vector.Hex
-                            Z.Data.Vector.Base64
+  exposed-modules:
+    Z.Data.Array
+    Z.Data.Array.Cast
+    Z.Data.Array.Checked
+    Z.Data.Array.QQ
+    Z.Data.Array.Unaligned
+    Z.Data.Array.UnliftedArray
+    Z.Data.ASCII
+    Z.Data.Builder
+    Z.Data.Builder.Base
+    Z.Data.Builder.Numeric
+    Z.Data.Builder.Numeric.DigitTable
+    Z.Data.Builder.Time
+    Z.Data.CBytes
+    Z.Data.Generics.Utils
+    Z.Data.JSON
+    Z.Data.JSON.Base
+    Z.Data.JSON.Builder
+    Z.Data.JSON.Converter
+    Z.Data.JSON.Value
+    Z.Data.Parser
+    Z.Data.Parser.Base
+    Z.Data.Parser.Numeric
+    Z.Data.Parser.Time
+    Z.Data.PrimRef
+    Z.Data.PrimRef.PrimIORef
+    Z.Data.PrimRef.PrimSTRef
+    Z.Data.Text
+    Z.Data.Text.Base
+    Z.Data.Text.Extra
+    Z.Data.Text.Print
+    Z.Data.Text.Regex
+    Z.Data.Text.Search
+    Z.Data.Text.UTF8Codec
+    Z.Data.Text.UTF8Rewind
+    Z.Data.Vector
+    Z.Data.Vector.Base
+    Z.Data.Vector.Base64
+    Z.Data.Vector.Extra
+    Z.Data.Vector.FlatIntMap
+    Z.Data.Vector.FlatIntSet
+    Z.Data.Vector.FlatMap
+    Z.Data.Vector.FlatSet
+    Z.Data.Vector.Hex
+    Z.Data.Vector.QQ
+    Z.Data.Vector.Search
+    Z.Data.Vector.Sort
+    Z.Foreign
 
-                            Z.Data.Text
-                            Z.Data.Text.Base
-                            Z.Data.Text.Extra
-                            Z.Data.Text.Regex
-                            Z.Data.Text.Search
-                            Z.Data.Text.Print
-                            Z.Data.Text.UTF8Codec
-                            Z.Data.Text.UTF8Rewind
+  build-depends:
+    , base                  >=4.12   && <5.0
+    , bytestring            >=0.10.4 && <0.12
+    , case-insensitive      ^>=1.2
+    , containers            ^>=0.6
+    , deepseq               ^>=1.4
+    , ghc-prim              >=0.5.3  && <0.6.2
+    , hashable              ^>=1.3
+    , primitive             >=0.7.1  && <0.7.2
+    , QuickCheck            >=2.10
+    , scientific            ^>=0.3
+    , tagged                ^>=0.8
+    , template-haskell      >=2.14.0
+    , time                  >=1.9    && <2.0
+    , unordered-containers  ^>=0.2
 
-                            Z.Data.Builder
-                            Z.Data.Builder.Base
-                            Z.Data.Builder.Numeric
-                            Z.Data.Builder.Numeric.DigitTable
-                            Z.Data.Builder.Time
+  if os(windows)
+    extra-libraries: stdc++
+    cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
 
-                            Z.Data.Generics.Utils
+  else
+    extra-libraries:
+      stdc++
+      pthread
 
-                            Z.Data.Parser
-                            Z.Data.Parser.Base
-                            Z.Data.Parser.Numeric
-                            Z.Data.Parser.Time
+  if flag(integer-simple)
+    cpp-options:   -DINTEGER_SIMPLE
+    build-depends: integer-simple >=0.1 && <0.5
 
-                            Z.Data.PrimRef
-                            Z.Data.PrimRef.PrimSTRef
-                            Z.Data.PrimRef.PrimIORef
+  else
+    cpp-options:   -DINTEGER_GMP
+    build-depends: integer-gmp >=0.2 && <1.1
 
-                            Z.Data.JSON
-                            Z.Data.JSON.Base
-                            Z.Data.JSON.Builder
-                            Z.Data.JSON.Converter
-                            Z.Data.JSON.Value
+  include-dirs:
+    include third_party/utf8rewind/include/utf8rewind
+    third_party/utf8rewind/source/internal
+    third_party/utf8rewind/source
+    third_party/fastvalidate-utf-8/include third_party/Turbo-Base64
 
-                            Z.Foreign
+  includes:
+    bytes.h
+    dtoa.h
+    simdasciicheck.h
+    simdutf8check.h
+    text.h
+    turbob64.h
+    utf8rewind.h
+
+  install-includes:
+    bytes.h
+    dtoa.h
+    text.h
+
+  c-sources:
+    cbits/bytes.c
+    cbits/dtoa.c
+    cbits/text.c
+    cbits/text_width.c
+    third_party/Turbo-Base64/turbob64c.c
+    third_party/Turbo-Base64/turbob64d.c
+    third_party/Turbo-Base64/turbob64sse.c
+    third_party/utf8rewind/source/internal/casemapping.c
+    third_party/utf8rewind/source/internal/codepoint.c
+    third_party/utf8rewind/source/internal/composition.c
+    third_party/utf8rewind/source/internal/database.c
+    third_party/utf8rewind/source/internal/decomposition.c
+    third_party/utf8rewind/source/internal/seeking.c
+    third_party/utf8rewind/source/internal/streaming.c
+    third_party/utf8rewind/source/unicodedatabase.c
+    third_party/utf8rewind/source/utf8rewind.c
 
 
-    build-depends:          base                    >= 4.12 && < 5.0
-                          , bytestring              >= 0.10.4 && < 0.12
-                          , ghc-prim                >= 0.5.3 && < 0.6.2
-                          , primitive               >= 0.7.1 && < 0.7.2
-                          , scientific              == 0.3.*
-                          , hashable                == 1.3.*
-                          , case-insensitive        == 1.2.*
-                          , deepseq                 >= 1.4 && < 1.5
-                          , QuickCheck              >= 2.10
-                          , tagged                  == 0.8.*
-                          , template-haskell        >= 2.14.0
-                          , time                    >= 1.9 && < 2.0
-                          , unordered-containers    == 0.2.*
-                          , containers              == 0.6.*
+  default-language:   Haskell2010
+  build-tool-depends: hsc2hs:hsc2hs -any
+  cc-options:         -march=native -Wno-sign-compare
 
-    if os(windows)
-        extra-libraries:    stdc++
-        cc-options:         -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
-    else
-        extra-libraries:    stdc++ pthread
+  ghc-options:
+    -Wall -Wno-unticked-promoted-constructors -Wno-incomplete-patterns
 
-    if flag(integer-simple)
-        cpp-options:        -DINTEGER_SIMPLE
-        build-depends:      integer-simple >= 0.1 && < 0.5
-    else
-        cpp-options:        -DINTEGER_GMP
-        build-depends:      integer-gmp >= 0.2 && < 1.1
-
-
-    include-dirs:           include
-                            third_party/utf8rewind/include/utf8rewind
-                            third_party/utf8rewind/source/internal
-                            third_party/utf8rewind/source
-                            third_party/fastvalidate-utf-8/include
-                            third_party/Turbo-Base64
-                            third_party/re2
-
-    includes:               bytes.h
-                            dtoa.h
-                            text.h
-                            utf8rewind.h
-                            simdasciicheck.h
-                            simdutf8check.h
-                            turbob64.h
-
-    install-includes:       bytes.h
-                            dtoa.h
-                            text.h
-
-    c-sources:              cbits/bytes.c
-                            cbits/dtoa.c
-                            cbits/text.c
-                            cbits/text_width.c
-
-                            third_party/utf8rewind/source/unicodedatabase.c
-                            third_party/utf8rewind/source/internal/casemapping.c
-                            third_party/utf8rewind/source/internal/codepoint.c
-                            third_party/utf8rewind/source/internal/composition.c
-                            third_party/utf8rewind/source/internal/database.c
-                            third_party/utf8rewind/source/internal/decomposition.c
-                            third_party/utf8rewind/source/internal/seeking.c
-                            third_party/utf8rewind/source/internal/streaming.c
-                            third_party/utf8rewind/source/utf8rewind.c
-
-                            third_party/Turbo-Base64/turbob64c.c
-                            third_party/Turbo-Base64/turbob64d.c
-                            third_party/Turbo-Base64/turbob64sse.c
-
-    cxx-sources:            cbits/regex.cc
-
-                            third_party/re2/util/rune.cc
-                            third_party/re2/util/strutil.cc
-                            third_party/re2/re2/bitstate.cc
-                            third_party/re2/re2/compile.cc
-                            third_party/re2/re2/dfa.cc
-                            third_party/re2/re2/filtered_re2.cc
-                            third_party/re2/re2/mimics_pcre.cc
-                            third_party/re2/re2/nfa.cc
-                            third_party/re2/re2/onepass.cc
-                            third_party/re2/re2/parse.cc
-                            third_party/re2/re2/perl_groups.cc
-                            third_party/re2/re2/prefilter.cc
-                            third_party/re2/re2/prefilter_tree.cc
-                            third_party/re2/re2/prog.cc
-                            third_party/re2/re2/re2.cc
-                            third_party/re2/re2/regexp.cc
-                            third_party/re2/re2/set.cc
-                            third_party/re2/re2/simplify.cc
-                            third_party/re2/re2/stringpiece.cc
-                            third_party/re2/re2/tostring.cc
-                            third_party/re2/re2/unicode_casefold.cc
-                            third_party/re2/re2/unicode_groups.cc
-
-    default-language:       Haskell2010
-    build-tool-depends:     hsc2hs:hsc2hs
-    cc-options:             -march=native -Wno-sign-compare 
-    cxx-options:            -std=c++11
-                            -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
-                            -- we work around this issue using Setup.hs
-    ghc-options:            -Wall 
-                            -Wno-unticked-promoted-constructors
-                            -Wno-incomplete-patterns
-                            -- ploymorphic pattern synonym messed exhaustiveness checker
-    default-extensions:     BangPatterns
-                            BinaryLiterals
-                            CApiFFI
-                            ConstraintKinds
-                            CPP 
-                            DerivingStrategies
-                            DeriveGeneric
-                            DeriveAnyClass
-                            DefaultSignatures
-                            DataKinds
-                            ExistentialQuantification
-                            FlexibleContexts
-                            FlexibleInstances
-                            GeneralizedNewtypeDeriving 
-                            KindSignatures
-                            MagicHash
-                            MultiParamTypeClasses
-                            MultiWayIf
-                            PartialTypeSignatures
-                            PatternSynonyms 
-                            PolyKinds
-                            QuantifiedConstraints
-                            QuasiQuotes
-                            OverloadedStrings
-                            RankNTypes
-                            RecordWildCards
-                            ScopedTypeVariables 
-                            StandaloneDeriving
-                            TemplateHaskell
-                            TypeApplications
-                            TypeFamilyDependencies
-                            TypeFamilies
-                            TypeOperators
-                            TupleSections
-                            UnboxedTuples 
-                            UnliftedFFITypes 
-                            ViewPatterns
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    CApiFFI
+    CPP
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    KindSignatures
+    MagicHash
+    MultiParamTypeClasses
+    MultiWayIf
+    OverloadedStrings
+    PartialTypeSignatures
+    PatternSynonyms
+    PolyKinds
+    QuantifiedConstraints
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
+    TypeOperators
+    UnboxedTuples
+    UnliftedFFITypes
+    ViewPatterns
 
 test-suite Z-Data-Test
-    type:                   exitcode-stdio-1.0
-    hs-source-dirs:         test/
-    main-is:                Spec.hs
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test/
+  main-is:            Spec.hs
+  ghc-options:        -threaded
+  default-language:   Haskell2010
+  build-tool-depends: hsc2hs:hsc2hs -any, hspec-discover:hspec-discover -any
+  other-modules:
+    Z.Data.Array.UnalignedSpec
+    Z.Data.Builder.NumericSpec
+    Z.Data.Builder.TimeSpec
+    Z.Data.CBytesSpec
+    Z.Data.JSON.BaseSpec
+    Z.Data.JSON.ValueSpec
+    Z.Data.Parser.BaseSpec
+    Z.Data.Parser.NumericSpec
+    Z.Data.Parser.TimeSpec
+    Z.Data.Text.BaseSpec
+    Z.Data.Text.ExtraSpec
+    Z.Data.Text.PrintSpec
+    Z.Data.Text.SearchSpec
+    Z.Data.Vector.Base64Spec
+    Z.Data.Vector.BaseSpec
+    Z.Data.Vector.ExtraSpec
+    Z.Data.Vector.FlatMapSpec
+    Z.Data.Vector.FlatSetSpec
+    Z.Data.Vector.HexSpec
+    Z.Data.Vector.SearchSpec
+    Z.Data.Vector.SortSpec
+    Z.ForeignSpec
 
-    ghc-options:            -threaded
-    default-language:       Haskell2010
-    build-tool-depends:     hsc2hs:hsc2hs, hspec-discover:hspec-discover
-    other-modules:          Z.Data.CBytesSpec
-                            Z.Data.Builder.NumericSpec
-                            Z.Data.Builder.TimeSpec
-                            Z.Data.JSON.BaseSpec
-                            Z.Data.JSON.ValueSpec
-                            Z.Data.Parser.BaseSpec
-                            Z.Data.Parser.NumericSpec
-                            Z.Data.Parser.TimeSpec
-                            Z.Data.Array.UnalignedSpec
-                            Z.Data.Text.BaseSpec
-                            Z.Data.Text.ExtraSpec
-                            Z.Data.Text.SearchSpec
-                            Z.Data.Text.PrintSpec
-                            Z.Data.Vector.BaseSpec
-                            Z.Data.Vector.ExtraSpec
-                            Z.Data.Vector.SearchSpec
-                            Z.Data.Vector.SortSpec
-                            Z.Data.Vector.FlatMapSpec
-                            Z.Data.Vector.FlatSetSpec
-                            Z.Data.Vector.HexSpec
-                            Z.Data.Vector.Base64Spec
-                            Z.ForeignSpec
+  build-depends:
+    , base
+    , containers
+    , hashable
+    , hspec                 >=2.5.4
+    , HUnit
+    , primitive
+    , QuickCheck            >=2.10
+    , quickcheck-instances
+    , scientific
+    , time
+    , unordered-containers
+    , Z-Data
 
-    build-depends:          Z-Data
-                          , base
-                          , hspec                   >= 2.5.4
-                          , hashable
-                          , HUnit
-                          , QuickCheck              >= 2.10
-                          , quickcheck-instances
-                          , scientific
-                          , primitive
-                          , containers             
-                          , unordered-containers              
-                          , time
+  c-sources:          test/cbits/ffi.c
 
-    c-sources:              test/cbits/ffi.c
+  if flag(integer-simple)
+    cpp-options:   -DINTEGER_SIMPLE
+    build-depends: integer-simple >=0.1 && <0.5
 
-    if flag(integer-simple)
-        cpp-options:        -DINTEGER_SIMPLE
-        build-depends:      integer-simple          >= 0.1 && < 0.5
-    else
-        cpp-options:        -DINTEGER_GMP
-        build-depends:      integer-gmp             >= 0.2 && < 1.1
-
+  else
+    cpp-options:   -DINTEGER_GMP
+    build-depends: integer-gmp >=0.2 && <1.1
