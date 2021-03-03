@@ -109,6 +109,7 @@ import           Prelude                        hiding (concat, concatMap,
                                                 maximum, minimum, product, sum,
                                                 all, any, replicate, traverse)
 import           Test.QuickCheck.Arbitrary      (Arbitrary(..), CoArbitrary(..))
+import           Test.QuickCheck.Gen            (chooseInt)
 import           Text.Read                      (Read(..))
 import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
@@ -311,7 +312,12 @@ instance T.Traversable Vector where
     traverse = traverseVec
 
 instance Arbitrary a => Arbitrary (Vector a) where
-    arbitrary = pack <$> arbitrary
+    arbitrary = do
+        vs <- arbitrary
+        let l = List.length vs
+        s <- chooseInt (0, l)
+        l' <- chooseInt (0, l - s)
+        pure $ fromArr (pack vs) s l'
     shrink v = pack <$> shrink (unpack v)
 
 instance CoArbitrary a => CoArbitrary (Vector a) where
@@ -489,7 +495,12 @@ instance (Prim a, Read a) => Read (PrimVector a) where
     readPrec = pack <$> readPrec
 
 instance (Prim a, Arbitrary a) => Arbitrary (PrimVector a) where
-    arbitrary = pack <$> arbitrary
+    arbitrary = do
+        vs <- arbitrary
+        let l = List.length vs
+        s <- chooseInt (0, l)
+        l' <- chooseInt (0, l - s)
+        pure $ fromArr (pack vs) s l'
     shrink v = pack <$> shrink (unpack v)
 
 instance (Prim a, CoArbitrary a) => CoArbitrary (PrimVector a) where
@@ -714,7 +725,6 @@ copy (Vec ba s l) = create l (\ marr -> copyArr marr 0 ba s l)
 pack :: Vec v a => [a] -> v a
 {-# INLINE pack #-}
 pack = packN defaultInitSize
-
 
 -- | /O(n)/ Convert a list into a vector with an approximate size.
 --

@@ -1109,17 +1109,17 @@ instance JSON Float  where
 
 #define INT_JSON_INSTANCE(typ) \
     instance JSON typ where \
-        {-# INLINE fromValue #-}; fromValue = withBoundedIntegral "/**/typ/**/" pure; \
+        {-# INLINE fromValue #-}; fromValue = withBoundedIntegral " typ " pure; \
         {-# INLINE toValue #-}; toValue = Number . fromIntegral; \
         {-# INLINE encodeJSON #-}; encodeJSON = B.int;
 
-INT_JSON_INSTANCE(Int   )
-INT_JSON_INSTANCE(Int8  )
-INT_JSON_INSTANCE(Int16 )
-INT_JSON_INSTANCE(Int32 )
-INT_JSON_INSTANCE(Int64 )
-INT_JSON_INSTANCE(Word  )
-INT_JSON_INSTANCE(Word8 )
+INT_JSON_INSTANCE(Int)
+INT_JSON_INSTANCE(Int8)
+INT_JSON_INSTANCE(Int16)
+INT_JSON_INSTANCE(Int32)
+INT_JSON_INSTANCE(Int64)
+INT_JSON_INSTANCE(Word)
+INT_JSON_INSTANCE(Word8)
 INT_JSON_INSTANCE(Word16)
 INT_JSON_INSTANCE(Word32)
 INT_JSON_INSTANCE(Word64)

@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.7.0.0  -- 2020-03-03
+
+* Add more patterns to `Z.Data.ASCII`.
+* Fix a bug in `Z.Data.Vector.Search` where needle is a singleton.
+* Optimize `mergeDupAdjacent` family funtions in `Z.Data.Vector.Sort` to not copy vector in case of no duplication.
+
 ## 0.6.1.0  -- 2020-02-04
 
 * Add `key` and `nth` lens to `Z.Data.JSON.Value` for manipulating nested value more easily.

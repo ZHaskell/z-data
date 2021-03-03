@@ -73,6 +73,30 @@ isHexDigit w = w - DIGIT_0 <= 9 || w - LETTER_A <= 5 || w - LETTER_a <= 5
 -- | @\\NUL@
 pattern NUL :: Word8
 pattern NUL          = 0x00
+-- | Start of Heading
+pattern SOH :: Word8
+pattern SOH          = 0x01
+-- | Start of Text
+pattern STX :: Word8
+pattern STX          = 0x02
+-- | End of Text
+pattern ETX :: Word8
+pattern ETX          = 0x03
+-- | End of Transmission
+pattern EOT :: Word8
+pattern EOT          = 0x04
+-- | Enquiry
+pattern ENQ :: Word8
+pattern ENQ          = 0x05
+-- | Acknowledgment
+pattern ACK :: Word8
+pattern ACK          = 0x06
+-- | Bell
+pattern BEL :: Word8
+pattern BEL          = 0x07
+-- | Back Space
+pattern BS :: Word8
+pattern BS          = 0x08
 -- | @\\t@
 pattern TAB :: Word8
 pattern TAB          = 0x09
@@ -88,7 +112,60 @@ pattern FORM_FEED    = 0x0c
 -- | @\\r@
 pattern CARRIAGE_RETURN :: Word8
 pattern CARRIAGE_RETURN = 0x0d
-
+-- |  Shift Out / X-On
+pattern SO :: Word8
+pattern SO = 0x0e
+-- |  Shift In / X-Off
+pattern SI :: Word8
+pattern SI = 0x0f
+-- | Data Line Escape
+pattern DLE :: Word8
+pattern DLE = 0x10
+-- | Device Control 1 (oft. XON)
+pattern DC1 :: Word8
+pattern DC1 = 0x11
+-- | Device Control 2
+pattern DC2 :: Word8
+pattern DC2 = 0x12
+-- | Device Control 3 (oft. XOFF)
+pattern DC3 :: Word8
+pattern DC3 = 0x13
+-- | Device Control 4
+pattern DC4 :: Word8
+pattern DC4 = 0x14
+-- | Negative Acknowledgement
+pattern NAK :: Word8
+pattern NAK = 0x15
+-- | Synchronous Idle
+pattern SYN :: Word8
+pattern SYN = 0x16
+-- | End of Transmit Block
+pattern ETB :: Word8
+pattern ETB = 0x17
+-- | Cancel
+pattern CAN :: Word8
+pattern CAN = 0x18
+-- |  End of Medium
+pattern EM :: Word8
+pattern EM = 0x19
+-- | Substitute
+pattern SUB :: Word8
+pattern SUB = 0x1a
+-- | Escape
+pattern ESC :: Word8
+pattern ESC = 0x1b
+-- |  File Separator
+pattern FS :: Word8
+pattern FS = 0x1c
+-- |  Group Separator
+pattern GS :: Word8
+pattern GS = 0x1d
+-- |  Record Separator
+pattern RS :: Word8
+pattern RS = 0x1e
+-- |  Unit Separator
+pattern US :: Word8
+pattern US = 0x1f
 -- | @\' \'@
 pattern SPACE :: Word8
 pattern SPACE        = 0x20
