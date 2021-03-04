@@ -6,6 +6,7 @@
 * Fix a bug in `Z.Data.Vector.Search` where needle is a singleton.
 * Optimize `mergeDupAdjacent` family funtions in `Z.Data.Vector.Sort` to not copy vector in case of no duplication.
 * Add `scientific'` to `Z.Data.Builder`, Add more `Print` instances.
+* Bump deps to support GHC 9.0.
 
 ## 0.6.1.0  -- 2020-02-04
 
