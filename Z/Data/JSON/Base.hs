@@ -57,6 +57,7 @@ import qualified Data.Sequence                  as Seq
 import qualified Data.Set                       as Set
 import qualified Data.Tree                      as Tree
 import           Data.Int
+import           Data.Kind                      (Type)
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.NonEmpty             as NonEmpty
 import qualified Data.Primitive.ByteArray       as A
@@ -577,7 +578,7 @@ instance JSON a => GEncodeJSON (K1 i a) where
     {-# INLINE gEncodeJSON #-}
     gEncodeJSON _ (K1 x) = encodeJSON x
 
-class GAddPunctuation (f :: * -> *) where
+class GAddPunctuation (f :: Type -> Type) where
     gAddPunctuation :: Proxy# f -> B.Builder () -> B.Builder ()
 
 instance GAddPunctuation a => GAddPunctuation (a :*: b) where
@@ -815,7 +816,7 @@ instance JSON T.Text   where
 instance JSON Scientific where
     {-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;
     {-# INLINE toValue #-}; toValue = Number;
-    {-# INLINE encodeJSON #-}; encodeJSON = JB.scientific;
+    {-# INLINE encodeJSON #-}; encodeJSON = B.scientific';
 
 -- | default instance prefer later key
 instance JSON a => JSON (FM.FlatMap T.Text a) where
@@ -1217,4 +1218,4 @@ instance HasResolution a => JSON (Fixed a) where
     {-# INLINE toValue #-}
     toValue = Number . realToFrac
     {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
+    encodeJSON = B.scientific' . realToFrac

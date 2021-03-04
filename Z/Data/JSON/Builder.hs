@@ -18,7 +18,6 @@ module Z.Data.JSON.Builder
   , array
   , array'
   , string
-  , scientific
   , prettyValue
   , prettyValue'
     -- * Builder helpers
@@ -27,14 +26,12 @@ module Z.Data.JSON.Builder
   , Value(..)
   ) where
 
-import           Control.Monad
 import           Z.Data.ASCII
 import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text                    as T
 import qualified Z.Data.Text.Print              as T
 import           Z.Data.Vector.Base             as V
 import           Z.Data.JSON.Value              (Value(..))
-import           Data.Scientific                (Scientific, base10Exponent, coefficient)
 
 -- | Use @:@ as separator to connect a label(no escape, only add quotes) with field builders.
 --
@@ -54,7 +51,7 @@ value :: Value -> B.Builder ()
 value (Object kvs) = object kvs
 value (Array vs) = array vs
 value (String t) = string t
-value (Number n) = scientific n
+value (Number n) = B.scientific' n
 value (Bool True) = "true"
 value (Bool False) = "false"
 value _ = "null"
@@ -92,19 +89,6 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 string :: T.Text -> B.Builder ()
 {-# INLINE string #-}
 string = T.escapeTextJSON
-
--- | This builder try to render integer when (0 <= e < 16), and scientific notation otherwise.
-scientific :: Scientific -> B.Builder ()
-{-# INLINE scientific #-}
-scientific s
-    | e < 0 || e >= 16 = B.scientific s
-    | e == 0 = B.integer c
-    | otherwise = do
-        B.integer c
-        when (c /= 0) (replicateM_ e (B.encodePrim DIGIT_0))
-  where
-    e = base10Exponent s
-    c = coefficient s
 
 --------------------------------------------------------------------------------
 
@@ -159,7 +143,7 @@ prettyValue' :: Int  -- ^ indentation per level
 prettyValue' c !ind (Object kvs) = objectPretty c ind kvs
 prettyValue' c !ind (Array vs)   = arrayPretty c ind vs
 prettyValue' _ !ind (String t)   = B.word8N ind SPACE >> string t
-prettyValue' _ !ind (Number n)   = B.word8N ind SPACE >> scientific n
+prettyValue' _ !ind (Number n)   = B.word8N ind SPACE >> B.scientific' n
 prettyValue' _ !ind (Bool True)  = B.word8N ind SPACE >> "true"
 prettyValue' _ !ind (Bool False) = B.word8N ind SPACE >> "false"
 prettyValue' _ !ind _            = B.word8N ind SPACE >> "null"

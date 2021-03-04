@@ -5,8 +5,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        ghc: ['8.10']
-        cabal: ['3.2']
+        ghc: ['8.10', '9.0']
+        cabal: ['3.4']
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"

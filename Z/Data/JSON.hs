@@ -70,7 +70,6 @@ import           Foreign.C.Types
 import           System.Exit                    (ExitCode(..))
 import qualified Z.Data.Builder                 as B
 import           Z.Data.JSON.Base
-import qualified Z.Data.JSON.Builder            as JB
 import qualified Z.Data.Parser                  as P
 import qualified Z.Data.Text                    as T
 
@@ -321,7 +320,7 @@ instance JSON NominalDiffTime where
     {-# INLINE toValue #-}
     toValue = Number . realToFrac
     {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
+    encodeJSON = B.scientific' . realToFrac
 
 -- | This instance includes a bounds check to prevent maliciously
 -- large inputs to fill up the memory of the target system. You can
@@ -333,7 +332,7 @@ instance JSON DiffTime where
     {-# INLINE toValue #-}
     toValue = Number . realToFrac
     {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
+    encodeJSON = B.scientific' . realToFrac
 
 -- | @{"seconds": SSS, "nanoseconds": NNN}@.
 instance JSON SystemTime where

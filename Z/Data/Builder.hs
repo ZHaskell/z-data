@@ -53,6 +53,7 @@ module Z.Data.Builder
   , float
   , floatWith
   , scientific
+  , scientific'
   , scientificWith
     -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList

@@ -29,6 +29,7 @@ module Z.Data.Builder.Numeric (
   , float
   , floatWith
   , scientific
+  , scientific'
   , scientificWith
   -- * Misc
   , grisu3
@@ -768,6 +769,20 @@ grisu3_sp d = unsafePerformIO $ do
 scientific :: Sci.Scientific -> Builder ()
 {-# INLINE scientific #-}
 scientific = scientificWith Generic Nothing
+
+-- | This builder try to avoid scientific notation when 0 <= exponent < 16.
+--
+scientific' :: Sci.Scientific -> Builder ()
+{-# INLINE scientific' #-}
+scientific' s
+    | e < 0 || e >= 16 = scientific s
+    | e == 0 = integer c
+    | otherwise = do
+        integer c
+        when (c /= 0) (replicateM_ e (encodePrim DIGIT_0))
+  where
+    e = Sci.base10Exponent s
+    c = Sci.coefficient s
 
 -- | Like 'scientific' but provides rendering options.
 scientificWith :: FFormat

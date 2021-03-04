@@ -5,14 +5,8 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ghc: ['8.6', '8.8', '8.10']
-        cabal: ['2.4', '3.2']
-        exclude:
-          # GHC 8.8+ only works with cabal v3+
-          - ghc: 8.8
-            cabal: 2.4
-          - ghc: 8.10
-            cabal: 2.4
+        ghc: ['8.8', '8.10', '9.0']
+        cabal: [ '3.2', '3.4']
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
@@ -40,10 +34,6 @@ jobs:
 
       - run: cabal v2-configure $CONFIG
       - run: cabal v2-build $CONFIG
-
-      - if: matrix.cabal == '2.4.1.0'
-        run: cabal v2-test
-      - if: matrix.cabal == '3.4.0.0'
-        run: cabal v2-test --test-show-details=direct
+      - run: cabal v2-test --test-show-details=direct
       - run: cabal v2-haddock
       - run: cabal v2-sdist
