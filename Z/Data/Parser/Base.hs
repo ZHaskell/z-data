@@ -28,7 +28,8 @@ module Z.Data.Parser.Base
   , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , anyWord8, word8, anyChar8, anyCharUTF8, char8, charUTF8
+  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Misc
@@ -46,9 +47,11 @@ import           GHC.Types
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
-import qualified Z.Data.Text.Base                 as T
-import qualified Z.Data.Vector.Base               as V
-import qualified Z.Data.Vector.Extra              as V
+import qualified Z.Data.Text.Base                   as T
+import qualified Z.Data.Text.Extra                  as T
+import qualified Z.Data.Text.UTF8Codec              as T
+import qualified Z.Data.Vector.Base                 as V
+import qualified Z.Data.Vector.Extra                as V
 
 -- | Simple parsing result, that represent respectively:
 --
@@ -479,6 +482,12 @@ char8 :: Char -> Parser ()
 {-# INLINE char8 #-}
 char8 = word8 . c2w
 
+-- | Match a specific UTF8 char.
+--
+charUTF8 :: Char -> Parser ()
+{-# INLINE charUTF8 #-}
+charUTF8 = text . T.singleton
+
 -- | Take a byte and return as a 8bit char.
 --
 anyChar8 :: Parser Char
@@ -486,6 +495,30 @@ anyChar8 :: Parser Char
 anyChar8 = do
     w <- anyWord8
     return $! w2c w
+
+-- | Decode next few bytes as an UTF8 char.
+--
+-- Don't use this method as UTF8 decoder, it's slower than 'T.validate'.
+anyCharUTF8 :: Parser Char
+{-# INLINABLE anyCharUTF8 #-}
+anyCharUTF8 = do
+    r <- Parser $ \ kf k inp -> do
+        let (V.PrimVector arr s l) = inp
+        if l > 0
+        then
+            let l' = T.decodeCharLen arr s
+            in if l' > l
+            then k (Left l') inp
+            else do
+                case T.validateMaybe (V.unsafeTake l' inp) of
+                    Just t -> k (Right $! T.head t) $! V.unsafeDrop l' inp
+                    _ -> kf ["Z.Data.Parser.Base.anyCharUTF8: invalid UTF8 bytes"] inp
+        else k (Left 1) inp
+    case r of
+        Left d -> do
+            ensureN d ["Z.Data.Parser.Base.anyCharUTF8: not enough bytes"]
+            anyCharUTF8
+        Right c -> return c
 
 -- | Match either a single newline byte @\'\\n\'@, or a carriage
 -- return followed by a newline byte @\"\\r\\n\"@.
