@@ -88,6 +88,7 @@ import           Control.Monad.ST
 import           Data.Bits
 import           Data.Char                      (ord)
 import qualified Data.Foldable                  as F
+import           Data.Kind                      (Type)
 import           Data.Hashable                  (Hashable(..))
 import           Data.Hashable.Lifted           (Hashable1(..), hashWithSalt1)
 import qualified Data.List                      as List
@@ -127,7 +128,7 @@ import           Z.Data.Array
 -- 'toArr' will always return offset 0 and whole array length, and 'fromArr' is O(n) 'copyArr'.
 class (Arr (IArray v) a) => Vec v a where
     -- | Vector's immutable array type
-    type IArray v :: * -> *
+    type IArray v :: Type -> Type
     -- | Get underline array and slice range(offset and length).
     toArr :: v a -> (IArray v a, Int, Int)
     -- | Create a vector by slicing an array(with offset and length).
@@ -547,15 +548,14 @@ instance Prim a => IsList (PrimVector a) where
     {-# INLINE fromListN #-}
     fromListN = packN
 
+-- | This instance assume ASCII encoded bytes
 instance CI.FoldCase Bytes where
     {-# INLINE foldCase #-}
     foldCase = map toLower8
       where
         toLower8 :: Word8 -> Word8
         toLower8 w
-          |  65 <= w && w <=  90 ||
-            192 <= w && w <= 214 ||
-            216 <= w && w <= 222 = w + 32
+          |  65 <= w && w <=  90 = w + 32
           | otherwise            = w
 
 -- | /O(n)/, pack an ASCII 'String', multi-bytes char WILL BE CHOPPED!
@@ -750,7 +750,7 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
         if i < n
         then do writeArr marr i x
                 return (IPair (i+1) marr)
-        else do let !n' = n `shiftL` 1
+        else do let !n' = n `unsafeShiftL` 1
                 !marr' <- resizeMutableArr marr n'
                 writeArr marr' i x
                 return (IPair (i+1) marr')
@@ -804,7 +804,7 @@ packRN n0 = \ ws0 -> runST (do let n = max 4 n0
         if i >= 0
         then do writeArr marr i x
                 return (IPair (i-1) marr)
-        else do let !n' = n `shiftL` 1  -- double the buffer
+        else do let !n' = n `unsafeShiftL` 1  -- double the buffer
                 !marr' <- newArr n'
                 copyMutableArr marr' n marr 0 n
                 writeArr marr' (n-1) x

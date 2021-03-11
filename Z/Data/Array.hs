@@ -14,8 +14,8 @@ It exports the exact same APIs ,so it requires no extra effort to switch between
 
 Some mnemonics:
 
-  * 'newArr' and 'newArrWith' return mutable array. 
-    'readArr' and 'writeArr' perform read and write actions on mutable arrays. 
+  * 'newArr' and 'newArrWith' return mutable array.
+    'readArr' and 'writeArr' perform read and write actions on mutable arrays.
     'setArr' fills the elements with offset and length.
 
   * 'indexArr' can only work on immutable Array.
@@ -60,14 +60,15 @@ module Z.Data.Array (
   , sizeOf
   ) where
 
-import           Control.Exception            (ArrayException (..), throw)
+import           Control.Exception              (ArrayException (..), throw)
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.ST
+import           Data.Kind                      (Type)
 import           Data.Primitive.Array
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
-import           Data.Primitive.Ptr           (copyPtrToMutablePrimArray)
+import           Data.Primitive.Ptr             (copyPtrToMutablePrimArray)
 import           Data.Primitive.SmallArray
 import           Data.Primitive.Types
 import           GHC.Exts
@@ -93,12 +94,12 @@ uninitialized = throw (UndefinedElement "Data.Array.uninitialized")
 -- It's reasonable to trust GHC to specialize & inline these polymorphic functions.
 -- They are used across this package and perform identically to their monomorphic counterpart.
 --
-class Arr (arr :: * -> * ) a where
+class Arr (arr :: Type -> Type) a where
 
 
     -- | The mutable version of this array type.
     --
-    type MArr arr = (mar :: * -> * -> *) | mar -> arr
+    type MArr arr = (mar :: Type -> Type -> Type) | mar -> arr
 
 
     -- | Make a new array with a given size.
@@ -129,9 +130,9 @@ class Arr (arr :: * -> * ) a where
     indexArr :: arr a -> Int -> a
 
 
-    -- | Read from the specified index of an immutable array. The result is packaged into an unboxed unary tuple; the result itself is not yet evaluated. 
-    -- Pattern matching on the tuple forces the indexing of the array to happen but does not evaluate the element itself. 
-    -- Evaluating the thunk prevents additional thunks from building up on the heap. 
+    -- | Read from the specified index of an immutable array. The result is packaged into an unboxed unary tuple; the result itself is not yet evaluated.
+    -- Pattern matching on the tuple forces the indexing of the array to happen but does not evaluate the element itself.
+    -- Evaluating the thunk prevents additional thunks from building up on the heap.
     -- Avoiding these thunks, in turn, reduces references to the argument array, allowing it to be garbage collected more promptly.
     indexArr' :: arr a -> Int -> (# a #)
 
@@ -173,7 +174,7 @@ class Arr (arr :: * -> * ) a where
     thawArr :: (PrimMonad m, PrimState m ~ s) => arr a -> Int -> Int -> m (MArr arr s a)
 
 
-    -- | Convert a mutable array to an immutable one without copying. 
+    -- | Convert a mutable array to an immutable one without copying.
     -- The array should not be modified after the conversion.
     unsafeFreezeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> m (arr a)
 
@@ -636,7 +637,7 @@ doubletonArr x y = runST $ do
     writeArr marr 1 y
     unsafeFreezeArr marr
 
--- | Modify(strictly) an immutable some elements of an array with specified subrange. 
+-- | Modify(strictly) an immutable some elements of an array with specified subrange.
 -- This function will produce a new array.
 modifyIndexArr :: Arr arr a
                => arr a

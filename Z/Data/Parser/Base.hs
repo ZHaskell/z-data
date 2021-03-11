@@ -28,7 +28,7 @@ module Z.Data.Parser.Base
   , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , anyWord8, word8, anyChar8, anyCharUTF8, char8, charUTF8
+  , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
   , skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
@@ -43,6 +43,7 @@ import qualified Data.CaseInsensitive               as CI
 import qualified Data.Primitive.PrimArray           as A
 import           Data.Int
 import           Data.Word
+import           Data.Bits                          ((.&.))
 import           GHC.Types
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
@@ -482,6 +483,12 @@ char8 :: Char -> Parser ()
 {-# INLINE char8 #-}
 char8 = word8 . c2w
 
+-- | Match a specific 7bit char.
+--
+char7 :: Char -> Parser ()
+{-# INLINE char7 #-}
+char7 chr = word8 (c2w chr .&. 0x7F)
+
 -- | Match a specific UTF8 char.
 --
 charUTF8 :: Char -> Parser ()
@@ -495,6 +502,16 @@ anyChar8 :: Parser Char
 anyChar8 = do
     w <- anyWord8
     return $! w2c w
+
+-- | Take a byte and return as a 7bit char, fail if exceeds @0x7F@.
+--
+anyChar7 :: Parser Char
+{-# INLINE anyChar7 #-}
+anyChar7 = do
+    w <- anyWord8
+    if w > 0x7f
+    then fail' "Z.Data.Parser.anyChar7: byte exceeds 0x7F"
+    else return $! w2c w
 
 -- | Decode next few bytes as an UTF8 char.
 --

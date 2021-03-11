@@ -39,7 +39,7 @@ module Z.Data.Parser
   , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , anyWord8, word8, anyChar8, anyCharUTF8, char8, charUTF8
+  , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
   , skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
