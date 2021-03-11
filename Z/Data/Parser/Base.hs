@@ -38,6 +38,7 @@ module Z.Data.Parser.Base
 
 import           Control.Applicative
 import           Control.Monad
+import           Control.Monad.Primitive
 import qualified Control.Monad.Fail                 as Fail
 import qualified Data.CaseInsensitive               as CI
 import qualified Data.Primitive.PrimArray           as A
@@ -45,6 +46,7 @@ import           Data.Int
 import           Data.Word
 import           Data.Bits                          ((.&.))
 import           GHC.Types
+import           GHC.Exts                           (State#, runRW#)
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
@@ -83,7 +85,6 @@ instance Show a => Show (Result a) where
     show (Partial _)      = "Partial _"
     show (Failure errs _) = "Failure: " ++ show errs
 
-
 -- | Simple CPSed parser
 --
 -- A parser takes a failure continuation, and a success one, while the success continuation is
@@ -93,39 +94,48 @@ instance Show a => Show (Result a) where
 --  @
 --    xxParser = do
 --      ensureN errMsg ...            -- make sure we have some bytes
---      Parser $ \ kf k inp ->        -- fail continuation, success continuation and input
+--      Parser $ \ kf k s inp ->      -- fail continuation, success continuation, state token and input
 --        ...
 --        ... kf errMsg (if input not OK)
---        ... k ... (if we get something useful for next parser)
+--        ... k s ... (if we get something useful for next parser)
 --  @
 newtype Parser a = Parser {
-        runParser :: forall r . (ParseError -> ParseStep r) -> (a -> ParseStep r) -> ParseStep r
+        runParser :: forall r . (ParseError -> ParseStep r)
+                  -> (State# RealWorld -> a -> ParseStep r)
+                  -> State# RealWorld -> ParseStep r
     }
 
 -- It seems eta-expand all params to ensure parsers are saturated is helpful
 instance Functor Parser where
-    fmap f (Parser pa) = Parser (\ kf k inp -> pa kf (k . f) inp)
+    fmap f (Parser pa) = Parser (\ kf k s inp -> pa kf (\ s' -> k s' . f) s inp)
     {-# INLINE fmap #-}
-    a <$ Parser pb = Parser (\ kf k inp -> pb kf (\ _ -> k a) inp)
+    a <$ Parser pb = Parser (\ kf k s inp -> pb kf (\ s' _ -> k s' a) s inp)
     {-# INLINE (<$) #-}
 
 instance Applicative Parser where
-    pure x = Parser (\ _ k inp -> k x inp)
+    pure x = Parser (\ _ k s inp -> k s x inp)
     {-# INLINE pure #-}
-    Parser pf <*> Parser pa = Parser (\ kf k inp -> pf kf (\ f -> pa kf (k . f)) inp)
+    Parser pf <*> Parser pa = Parser (\ kf k s inp -> pf kf (\ s' f -> pa kf (\ s'' -> k s'' . f) s') s inp)
     {-# INLINE (<*>) #-}
-    Parser pa *> Parser pb = Parser (\ kf k inp -> pa kf (\ _ inp' -> pb kf k inp') inp)
+    Parser pa *> Parser pb = Parser (\ kf k s inp -> pa kf (\ s' _ -> pb kf k s') s inp)
     {-# INLINE (*>) #-}
-    Parser pa <* Parser pb = Parser (\ kf k inp -> pa kf (\ x inp' -> pb kf (\ _ -> k x) inp') inp)
+    Parser pa <* Parser pb = Parser (\ kf k s inp -> pa kf (\ s' x -> pb kf (\ s'' _ -> k s'' x) s') s inp)
     {-# INLINE (<*) #-}
 
 instance Monad Parser where
     return = pure
     {-# INLINE return #-}
-    Parser pa >>= f = Parser (\ kf k inp -> pa kf (\ a -> runParser (f a) kf k) inp)
+    Parser pa >>= f = Parser (\ kf k s inp -> pa kf (\ s' a -> runParser (f a) kf k s') s inp)
     {-# INLINE (>>=) #-}
     (>>) = (*>)
     {-# INLINE (>>) #-}
+
+instance PrimMonad Parser where
+    type PrimState Parser = RealWorld
+    {-# INLINE primitive #-}
+    primitive = \ io -> Parser $ \ _ k st inp ->
+        let !(# st', r #) = io st
+        in k st' r inp
 
 instance Fail.MonadFail Parser where
     fail = fail' . T.pack
@@ -143,31 +153,31 @@ instance Alternative Parser where
     f <|> g = do
         (r, bss) <- runAndKeepTrack f
         case r of
-            Success x inp   -> Parser (\ _ k _ -> k x inp)
+            Success x inp   -> Parser (\ _ k s _ -> k s x inp)
             Failure _ _     -> let !bs = V.concat (reverse bss)
-                               in Parser (\ kf k _ -> runParser g kf k bs)
+                               in Parser (\ kf k s _ -> runParser g kf k s bs)
             _               -> error "Z.Data.Parser.Base: impossible"
     {-# INLINE (<|>) #-}
 
 -- | 'T.Text' version of 'fail'.
 fail' :: T.Text -> Parser a
 {-# INLINE fail' #-}
-fail' msg = Parser (\ kf _ inp -> kf [msg] inp)
+fail' msg = Parser (\ kf _ _ inp -> kf [msg] inp)
 
 -- | Parse the complete input, without resupplying
 parse' :: Parser a -> V.Bytes -> Either ParseError a
 {-# INLINE parse' #-}
-parse' (Parser p) inp = snd $ finishParsing (p Failure Success inp)
+parse' (Parser p) inp = snd $ finishParsing (runRW# (\ s ->  p Failure (\ _ r -> Success r) s inp))
 
 -- | Parse the complete input, without resupplying, return the rest bytes
 parse :: Parser a -> V.Bytes -> (V.Bytes, Either ParseError a)
 {-# INLINE parse #-}
-parse (Parser p) inp = finishParsing (p Failure Success inp)
+parse (Parser p) inp = finishParsing (runRW# ( \ s -> p Failure (\ _ r -> Success r) s inp))
 
 -- | Parse an input chunk
 parseChunk :: Parser a -> V.Bytes -> Result a
 {-# INLINE parseChunk #-}
-parseChunk (Parser p) = p Failure Success
+parseChunk (Parser p) = runRW# (\ s -> p Failure (\ _ r -> Success r) s)
 
 -- | Finish parsing and fetch result, feed empty bytes if it's 'Partial' result.
 finishParsing :: Result a -> (V.Bytes, Either ParseError a)
@@ -187,7 +197,7 @@ type ParseChunks m chunk err x = m chunk -> chunk -> m (chunk, Either err x)
 -- more bytes (take it as 'endOfInput').
 parseChunks :: Monad m => Parser a -> ParseChunks m V.Bytes ParseError a
 {-# INLINABLE parseChunks #-}
-parseChunks (Parser p) m0 inp = go m0 (p Failure Success inp)
+parseChunks (Parser p) m0 inp = go m0 (runRW# (\ s -> p Failure (\ _ r -> Success r) s inp))
   where
     go m r = case r of
         Partial f -> do
@@ -200,7 +210,7 @@ parseChunks (Parser p) m0 inp = go m0 (p Failure Success inp)
 
 (<?>) :: T.Text -> Parser a -> Parser a
 {-# INLINE (<?>) #-}
-msg <?> (Parser p) = Parser (\ kf k inp -> p (kf . (msg:)) k inp)
+msg <?> (Parser p) = Parser (\ kf k s inp -> p (kf . (msg:)) k s inp)
 infixr 0 <?>
 
 -- | Run a parser and keep track of all the input chunks it consumes.
@@ -209,13 +219,13 @@ infixr 0 <?>
 --
 runAndKeepTrack :: Parser a -> Parser (Result a, [V.Bytes])
 {-# INLINE runAndKeepTrack #-}
-runAndKeepTrack (Parser pa) = Parser $ \ _ k0 inp ->
-    let go !acc r k = case r of
-            Partial k'      -> Partial (\ inp' -> go (inp':acc) (k' inp') k)
-            Success _ inp' -> k (r, reverse acc) inp'
-            Failure _ inp' -> k (r, reverse acc) inp'
-        r0 = pa Failure Success inp
-    in go [inp] r0 k0
+runAndKeepTrack (Parser pa) = Parser $ \ _ k0 st0 inp ->
+    let go !acc r k (st :: State# RealWorld) = case r of
+            Partial k'      -> Partial (\ inp' -> go (inp':acc) (k' inp') k st)
+            Success _ inp' -> k st (r, reverse acc) inp'
+            Failure _ inp' -> k st (r, reverse acc) inp'
+        r0 = runRW# (\ s -> pa Failure (\ _ r -> Success r) s inp)
+    in go [inp] r0 k0 st0
 
 -- | Return both the result of a parse and the portion of the input
 -- that was consumed while it was being parsed.
@@ -223,10 +233,10 @@ match :: Parser a -> Parser (V.Bytes, a)
 {-# INLINE match #-}
 match p = do
     (r, bss) <- runAndKeepTrack p
-    Parser (\ _ k _ ->
+    Parser (\ _ k s _ ->
         case r of
             Success r' inp'  -> let !consumed = V.dropR (V.length inp') (V.concat (reverse bss))
-                                in k (consumed , r') inp'
+                                in k s (consumed , r') inp'
             Failure err inp' -> Failure err inp'
             Partial _        -> error "Z.Data.Parser.Base.match: impossible")
 
@@ -237,37 +247,39 @@ match p = do
 -- to attach custom error info.
 ensureN :: Int -> ParseError -> Parser ()
 {-# INLINE ensureN #-}
-ensureN n0 err = Parser $ \ kf k inp -> do
+ensureN n0 err = Parser $ \ kf k s inp -> do
     let l = V.length inp
     if l >= n0
-    then k () inp
-    else Partial (ensureNPartial l inp kf k)
+    then k s () inp
+    else Partial (ensureNPartial l inp kf k s)
   where
     {-# INLINABLE ensureNPartial #-}
-    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep r) -> (() -> ParseStep r) -> ParseStep r
-    ensureNPartial l0 inp0 kf k =
-        let go acc !l = \ inp -> do
+    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep r)
+                   -> (State# RealWorld -> () -> ParseStep r)
+                   -> State# RealWorld -> ParseStep r
+    ensureNPartial l0 inp0 kf k s0 =
+        let go acc !l s = \ inp -> do
                 let l' = V.length inp
                 if l' == 0
                 then kf err (V.concat (reverse (inp:acc)))
                 else do
                     let l'' = l + l'
                     if l'' < n0
-                    then Partial (go (inp:acc) l'')
+                    then Partial (go (inp:acc) l'' s)
                     else
                         let !inp' = V.concat (reverse (inp:acc))
-                        in k () inp'
-        in go [inp0] l0
+                        in k s () inp'
+        in go [inp0] l0 s0
 
 -- | Test whether all input has been consumed, i.e. there are no remaining
 -- undecoded bytes. Fail if not 'atEnd'.
 endOfInput :: Parser ()
 {-# INLINE endOfInput #-}
-endOfInput = Parser $ \ kf k inp ->
+endOfInput = Parser $ \ kf k s inp ->
     if V.null inp
     then Partial (\ inp' ->
         if (V.null inp')
-        then k () inp'
+        then k s () inp'
         else kf ["Z.Data.Parser.Base.endOfInput: end not reached yet"] inp)
     else kf ["Z.Data.Parser.Base.endOfInput: end not reached yet"] inp
 
@@ -275,10 +287,10 @@ endOfInput = Parser $ \ kf k inp ->
 -- undecoded bytes.
 atEnd :: Parser Bool
 {-# INLINE atEnd #-}
-atEnd = Parser $ \ _ k inp ->
+atEnd = Parser $ \ _ k s inp ->
     if V.null inp
-    then Partial (\ inp' -> k (V.null inp') inp')
-    else k False inp
+    then Partial (\ inp' -> k s (V.null inp') inp')
+    else k s False inp
 
 -- | Decode a primitive type in host byte order.
 decodePrim :: forall a. (Unaligned a) => Parser a
@@ -297,9 +309,9 @@ decodePrim :: forall a. (Unaligned a) => Parser a
 {-# SPECIALIZE INLINE decodePrim :: Parser Float #-}
 decodePrim = do
     ensureN n ["Z.Data.Parser.Base.decodePrim: not enough bytes"]
-    Parser (\ _ k (V.PrimVector ba i len) ->
+    Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
-        in k r (V.PrimVector ba (i+n) (len-n)))
+        in k s r (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @a)
 
@@ -318,9 +330,9 @@ decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Float #-}
 decodePrimLE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimLE: not enough bytes"]
-    Parser (\ _ k (V.PrimVector ba i len) ->
+    Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
-        in k (getLE r) (V.PrimVector ba (i+n) (len-n)))
+        in k s (getLE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @(LE a))
 
@@ -339,9 +351,9 @@ decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Float #-}
 decodePrimBE = do
     ensureN n ["Z.Data.Parser.Base.decodePrimBE: not enough bytes"]
-    Parser (\ _ k (V.PrimVector ba i len) ->
+    Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
-        in k (getBE r) (V.PrimVector ba (i+n) (len-n)))
+        in k s (getBE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @(BE a))
 
@@ -379,25 +391,26 @@ scan s0 f = scanChunks s0 f'
 --
 scanChunks :: forall s. s -> (s -> V.Bytes -> Either s (V.Bytes, V.Bytes, s)) -> Parser (V.Bytes, s)
 {-# INLINE scanChunks #-}
-scanChunks s0 consume = Parser (\ _ k inp ->
+scanChunks s0 consume = Parser (\ _ k st inp ->
     case consume s0 inp of
-        Right (want, rest, s') -> k (want, s') rest
-        Left s' -> Partial (scanChunksPartial s' k inp))
+        Right (want, rest, s') -> k st (want, s') rest
+        Left s' -> Partial (scanChunksPartial s' k st inp))
   where
     -- we want to inline consume if possible
     {-# INLINABLE scanChunksPartial #-}
-    scanChunksPartial :: forall r. s -> ((V.PrimVector Word8, s) -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
-    scanChunksPartial s0' k inp0 =
-        let go s acc = \ inp ->
+    scanChunksPartial :: forall r. s -> (State# RealWorld -> (V.PrimVector Word8, s) -> ParseStep r)
+                      -> State# RealWorld -> V.PrimVector Word8 -> ParseStep r
+    scanChunksPartial s0' k st0 inp0 =
+        let go s acc st = \ inp ->
                 if V.null inp
-                then k (V.concat (reverse acc), s) inp
+                then k st (V.concat (reverse acc), s) inp
                 else case consume s inp of
                         Left s' -> do
                             let acc' = inp : acc
-                            Partial (go s' acc')
+                            Partial (go s' acc' st)
                         Right (want,rest,s') ->
-                            let !r = V.concat (reverse (want:acc)) in k (r, s') rest
-        in go s0' [inp0]
+                            let !r = V.concat (reverse (want:acc)) in k st (r, s') rest
+        in go s0' [inp0] st0
 
 --------------------------------------------------------------------------------
 
@@ -407,12 +420,12 @@ scanChunks s0 consume = Parser (\ _ k inp ->
 peekMaybe :: Parser (Maybe Word8)
 {-# INLINE peekMaybe #-}
 peekMaybe =
-    Parser $ \ _ k inp ->
+    Parser $ \ _ k s inp ->
         if V.null inp
-        then Partial (\ inp' -> k (if V.null inp'
+        then Partial (\ inp' -> k s (if V.null inp'
             then Nothing
             else Just (V.unsafeHead inp)) inp')
-        else k (Just (V.unsafeHead inp)) inp
+        else k s (Just (V.unsafeHead inp)) inp
 
 -- | Match any byte, to perform lookahead.  Does not consume any
 -- input, but will fail if end of input has been reached.
@@ -420,13 +433,13 @@ peekMaybe =
 peek :: Parser Word8
 {-# INLINE peek #-}
 peek =
-    Parser $ \ kf k inp ->
+    Parser $ \ kf k s inp ->
         if V.null inp
         then Partial (\ inp' ->
             if V.null inp'
             then kf ["Z.Data.Parser.Base.peek: not enough bytes"] inp'
-            else k (V.unsafeHead inp') inp')
-        else k (V.unsafeHead inp) inp
+            else k s (V.unsafeHead inp') inp')
+        else k s (V.unsafeHead inp) inp
 
 -- | The parser @satisfy p@ succeeds for any byte for which the
 -- predicate @p@ returns 'True'. Returns the byte that is actually
@@ -439,10 +452,10 @@ satisfy :: (Word8 -> Bool) -> Parser Word8
 {-# INLINE satisfy #-}
 satisfy p = do
     ensureN 1 ["Z.Data.Parser.Base.satisfy: not enough bytes"]
-    Parser $ \ kf k inp ->
+    Parser $ \ kf k s inp ->
         let w = V.unsafeHead inp
         in if p w
-            then k w (V.unsafeTail inp)
+            then k s w (V.unsafeTail inp)
             else kf ["Z.Data.Parser.Base.satisfy: unsatisfied byte"] (V.unsafeTail inp)
 
 -- | The parser @satisfyWith f p@ transforms a byte, and succeeds if
@@ -453,10 +466,10 @@ satisfyWith :: (Word8 -> a) -> (a -> Bool) -> Parser a
 {-# INLINE satisfyWith #-}
 satisfyWith f p = do
     ensureN 1 ["Z.Data.Parser.Base.satisfyWith: not enough bytes"]
-    Parser $ \ kf k inp ->
+    Parser $ \ kf k s inp ->
         let a = f (V.unsafeHead inp)
         in if p a
-            then k a (V.unsafeTail inp)
+            then k s a (V.unsafeTail inp)
             else kf ["Z.Data.Parser.Base.satisfyWith: unsatisfied byte"] (V.unsafeTail inp)
 
 -- | Match a specific byte.
@@ -465,10 +478,10 @@ word8 :: Word8 -> Parser ()
 {-# INLINE word8 #-}
 word8 w' = do
     ensureN 1 ["Z.Data.Parser.Base.word8: not enough bytes"]
-    Parser (\ kf k inp ->
+    Parser (\ kf k s inp ->
         let w = V.unsafeHead inp
         in if w == w'
-            then k () (V.unsafeTail inp)
+            then k s () (V.unsafeTail inp)
             else kf ["Z.Data.Parser.Base.word8: mismatch byte"] inp)
 
 -- | Return a byte, this is an alias to @decodePrim @Word8@.
@@ -519,18 +532,17 @@ anyChar7 = do
 anyCharUTF8 :: Parser Char
 {-# INLINABLE anyCharUTF8 #-}
 anyCharUTF8 = do
-    r <- Parser $ \ kf k inp -> do
-        let (V.PrimVector arr s l) = inp
+    r <- Parser $ \ kf k st inp@(V.PrimVector arr s l) -> do
         if l > 0
         then
             let l' = T.decodeCharLen arr s
             in if l' > l
-            then k (Left l') inp
+            then k st (Left l') inp
             else do
                 case T.validateMaybe (V.unsafeTake l' inp) of
-                    Just t -> k (Right $! T.head t) $! V.unsafeDrop l' inp
+                    Just t -> k st (Right $! T.head t) $! V.unsafeDrop l' inp
                     _ -> kf ["Z.Data.Parser.Base.anyCharUTF8: invalid UTF8 bytes"] inp
-        else k (Left 1) inp
+        else k st (Left 1) inp
     case r of
         Left d -> do
             ensureN d ["Z.Data.Parser.Base.anyCharUTF8: not enough bytes"]
@@ -555,60 +567,61 @@ endOfLine = do
 skip :: Int -> Parser ()
 {-# INLINE skip #-}
 skip n =
-    Parser (\ kf k inp ->
+    Parser (\ kf k s inp ->
         let l = V.length inp
             !n' = max n 0
         in if l >= n'
-            then k () $! V.unsafeDrop n' inp
-            else Partial (skipPartial (n'-l) kf k))
+            then k s () $! V.unsafeDrop n' inp
+            else Partial (skipPartial (n'-l) kf k s))
 
-skipPartial :: Int -> (ParseError -> ParseStep r) -> (() -> ParseStep r) -> ParseStep r
+skipPartial :: Int -> (ParseError -> ParseStep r) -> (State# RealWorld -> () -> ParseStep r)
+            -> State# RealWorld -> ParseStep r
 {-# INLINABLE skipPartial #-}
-skipPartial n kf k =
-    let go !n' = \ inp ->
+skipPartial n kf k s0 =
+    let go !n' s = \ inp ->
             let l = V.length inp
             in if l >= n'
-                then k () $! V.unsafeDrop n' inp
+                then k s () $! V.unsafeDrop n' inp
                 else if l == 0
                     then kf ["Z.Data.Parser.Base.skip: not enough bytes"] inp
-                    else Partial (go (n'-l))
-    in go n
+                    else Partial (go (n'-l) s)
+    in go n s0
 
 -- | Skip a byte.
 --
 skipWord8 :: Parser ()
 {-# INLINE skipWord8 #-}
 skipWord8 =
-    Parser $ \ kf k inp ->
+    Parser $ \ kf k s inp ->
         if V.null inp
         then Partial (\ inp' ->
             if V.null inp'
             then kf ["Z.Data.Parser.Base.skipWord8: not enough bytes"] inp'
-            else k () (V.unsafeTail inp'))
-        else k () (V.unsafeTail inp)
+            else k s () (V.unsafeTail inp'))
+        else k s () (V.unsafeTail inp)
 
 -- | Skip past input for as long as the predicate returns 'True'.
 --
 skipWhile :: (Word8 -> Bool) -> Parser ()
 {-# INLINE skipWhile #-}
 skipWhile p =
-    Parser (\ _ k inp ->
+    Parser (\ _ k s inp ->
         let rest = V.dropWhile p inp
         in if V.null rest
-            then Partial (skipWhilePartial k)
-            else k () rest)
+            then Partial (skipWhilePartial k s)
+            else k s () rest)
   where
     -- we want to inline p if possible
     {-# INLINABLE skipWhilePartial #-}
-    skipWhilePartial :: forall r. (() -> ParseStep r) -> ParseStep r
-    skipWhilePartial k =
-        let go = \ inp ->
+    skipWhilePartial :: forall r. (State# RealWorld -> () -> ParseStep r) -> State# RealWorld -> ParseStep r
+    skipWhilePartial k s0 =
+        let go s = \ inp ->
                 if V.null inp
-                then k () inp
+                then k s () inp
                 else
                     let !rest = V.dropWhile p inp
-                    in if V.null rest then Partial go else k () rest
-        in go
+                    in if V.null rest then Partial (go s) else k s () rest
+        in go s0
 
 -- | Skip over white space using 'isSpace'.
 --
@@ -621,10 +634,10 @@ take :: Int -> Parser V.Bytes
 take n = do
     -- we use unsafe slice, guard negative n here
     ensureN n' ["Z.Data.Parser.Base.take: not enough bytes"]
-    Parser (\ _ k inp ->
+    Parser (\ _ k s inp ->
         let !r = V.unsafeTake n' inp
             !inp' = V.unsafeDrop n' inp
-        in k r inp')
+        in k s r inp')
   where !n' = max 0 n
 
 -- | Consume input as long as the predicate returns 'False' or reach the end of input,
@@ -632,51 +645,53 @@ take n = do
 --
 takeTill :: (Word8 -> Bool) -> Parser V.Bytes
 {-# INLINE takeTill #-}
-takeTill p = Parser (\ _ k inp ->
+takeTill p = Parser (\ _ k s inp ->
     let (want, rest) = V.break p inp
     in if V.null rest
-        then Partial (takeTillPartial k want)
-        else k want rest)
+        then Partial (takeTillPartial k s want)
+        else k s want rest)
   where
     {-# INLINABLE takeTillPartial #-}
-    takeTillPartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
-    takeTillPartial k want =
-        let go acc = \ inp ->
+    takeTillPartial :: forall r. (State# RealWorld -> V.PrimVector Word8 -> ParseStep r)
+                    -> State# RealWorld -> V.PrimVector Word8 -> ParseStep r
+    takeTillPartial k s0 want =
+        let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k r inp
+                then let !r = V.concat (reverse acc) in k s r inp
                 else
                     let (want', rest) = V.break p inp
                         acc' = want' : acc
                     in if V.null rest
-                        then Partial (go acc')
-                        else let !r = V.concat (reverse acc') in k r rest
-        in go [want]
+                        then Partial (go acc' s)
+                        else let !r = V.concat (reverse acc') in k s r rest
+        in go [want] s0
 
 -- | Consume input as long as the predicate returns 'True' or reach the end of input,
 -- and return the consumed input.
 --
 takeWhile :: (Word8 -> Bool) -> Parser V.Bytes
 {-# INLINE takeWhile #-}
-takeWhile p = Parser (\ _ k inp ->
+takeWhile p = Parser (\ _ k s inp ->
     let (want, rest) = V.span p inp
     in if V.null rest
-        then Partial (takeWhilePartial k want)
-        else k want rest)
+        then Partial (takeWhilePartial k s want)
+        else k s want rest)
   where
     -- we want to inline p if possible
     {-# INLINABLE takeWhilePartial #-}
-    takeWhilePartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
-    takeWhilePartial k want =
-        let go acc = \ inp ->
+    takeWhilePartial :: forall r. (State# RealWorld -> V.PrimVector Word8 -> ParseStep r)
+                     -> State# RealWorld -> V.PrimVector Word8 -> ParseStep r
+    takeWhilePartial k s0 want =
+        let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k r inp
+                then let !r = V.concat (reverse acc) in k s r inp
                 else
                     let (want', rest) = V.span p inp
                         acc' = want' : acc
                     in if V.null rest
-                        then Partial (go acc')
-                        else let !r = V.concat (reverse acc') in k r rest
-        in go [want]
+                        then Partial (go acc' s)
+                        else let !r = V.concat (reverse acc') in k s r rest
+        in go [want] s0
 
 -- | Similar to 'takeWhile', but requires the predicate to succeed on at least one byte
 -- of input: it will fail if the predicate never returns 'True' or reach the end of input
@@ -692,16 +707,17 @@ takeWhile1 p = do
 -- | Take all the remaining input chunks and return as 'V.Bytes'.
 takeRemaining :: Parser V.Bytes
 {-# INLINE takeRemaining #-}
-takeRemaining = Parser (\ _ k inp -> Partial (takeRemainingPartial k inp))
+takeRemaining = Parser (\ _ k s inp -> Partial (takeRemainingPartial k s inp))
   where
     {-# INLINABLE takeRemainingPartial #-}
-    takeRemainingPartial :: forall r. (V.PrimVector Word8 -> ParseStep r) -> V.PrimVector Word8 -> ParseStep r
-    takeRemainingPartial k want =
-        let go acc = \ inp ->
+    takeRemainingPartial :: forall r. (State# RealWorld -> V.PrimVector Word8 -> ParseStep r)
+                         -> State# RealWorld -> V.PrimVector Word8 -> ParseStep r
+    takeRemainingPartial k s0 want =
+        let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k r inp
-                else let acc' = inp : acc in Partial (go acc')
-        in go [want]
+                then let !r = V.concat (reverse acc) in k s r inp
+                else let acc' = inp : acc in Partial (go acc' s)
+        in go [want] s0
 
 -- | Similar to 'take', but requires the predicate to succeed on next N bytes
 -- of input, and take N bytes(no matter if N+1 byte satisfy predicate or not).
@@ -725,9 +741,9 @@ bytes :: V.Bytes -> Parser ()
 bytes bs = do
     let n = V.length bs
     ensureN n ["Z.Data.Parser.Base.bytes: not enough bytes"]
-    Parser (\ kf k inp ->
+    Parser (\ kf k s inp ->
         if bs == V.unsafeTake n inp
-        then k () $! V.unsafeDrop n inp
+        then k s () $! V.unsafeDrop n inp
         else kf ["Z.Data.Parser.Base.bytes: mismatch bytes"] inp)
 
 
@@ -738,9 +754,9 @@ bytesCI bs = do
     let n = V.length bs
     -- casefold an ASCII string should not change it's length
     ensureN n ["Z.Data.Parser.Base.bytesCI: not enough bytes"]
-    Parser (\ kf k inp ->
+    Parser (\ kf k s inp ->
         if bs' == CI.foldCase (V.unsafeTake n inp)
-        then k () $! V.unsafeDrop n inp
+        then k s () $! V.unsafeDrop n inp
         else kf ["Z.Data.Parser.Base.bytesCI: mismatch bytes"] inp)
   where
     bs' = CI.foldCase bs
