@@ -28,6 +28,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <HsFFI.h>
 #include <cstddef>
 #include <cstdlib>
+#include <new>
 #include <re2/re2.h>
 #include <re2/set.h>
 
@@ -37,7 +38,7 @@ int64_t hs_re2_kDefaultMaxMem(){
     return re2::RE2::Options::kDefaultMaxMem;
 }
 
-re2::RE2 *hs_re2_compile_pattern(const char *input, HsInt off, HsInt input_len
+re2::RE2* hs_re2_compile_pattern(re2::RE2** re, const char *input, HsInt off, HsInt input_len
      , bool    posix_syntax                  
      , bool    longest_match                 
      , int64_t max_mem                       
@@ -48,7 +49,7 @@ re2::RE2 *hs_re2_compile_pattern(const char *input, HsInt off, HsInt input_len
      , bool    case_sensitive                
      , bool    perl_classes                  
      , bool    word_boundary                 
-     , bool    one_line ){   
+     , bool    one_line ){
     re2::RE2::Options opts;
     opts.set_posix_syntax  ( posix_syntax  ); 
     opts.set_longest_match ( longest_match );
@@ -61,11 +62,14 @@ re2::RE2 *hs_re2_compile_pattern(const char *input, HsInt off, HsInt input_len
     opts.set_perl_classes  ( perl_classes  );
     opts.set_word_boundary ( word_boundary );
     opts.set_one_line      ( one_line      );
-	return new re2::RE2(re2::StringPiece(input+off, input_len), opts);
+
+    *re = new (std::nothrow) re2::RE2(re2::StringPiece(input+off, input_len), opts);
+	return *re;
 }
 
-re2::RE2 *hs_re2_compile_pattern_default(const char *input, HsInt off, HsInt input_len) {
-	return new re2::RE2(re2::StringPiece(input+off, input_len));
+re2::RE2* hs_re2_compile_pattern_default(re2::RE2** re, const char *input, HsInt off, HsInt input_len) {
+	*re = new (std::nothrow) re2::RE2(re2::StringPiece(input+off, input_len));
+    return *re;
 }
 
 void hs_re2_delete_pattern(re2::RE2 *regex) {

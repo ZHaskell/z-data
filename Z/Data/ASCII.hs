@@ -43,6 +43,38 @@ isLower :: Word8 -> Bool
 {-# INLINE isLower #-}
 isLower w =  w - LETTER_a <= 25
 
+-- | @A ~ Z@ => @a ~ z@
+toLower :: Word8 -> Word8
+{-# INLINE toLower #-}
+toLower w
+  | 65 <= w && w <=  90 = w + 32
+  | otherwise           = w
+
+-- | @a ~ z@ => @A ~ Z@
+toUpper :: Word8 -> Word8
+{-# INLINE toUpper #-}
+toUpper w
+  | 97 <= w && w <= 122 = w - 32
+  | otherwise           = w
+
+-- | @A ~ Z@ => @a ~ z@, @À ~ Ö@ => @à ~ ö@, @Ø ~ Þ@ => @ø ~ þ@
+toLowerLatin :: Word8 -> Word8
+{-# INLINE toLowerLatin #-}
+toLowerLatin w
+  |  65 <= w && w <=  90 ||
+    192 <= w && w <= 214 ||
+    216 <= w && w <= 222 = w + 32
+  | otherwise            = w
+
+-- | @a ~ z@ => @A ~ Z@, @à ~ ö@ => @À ~ Ö@, @ø ~ þ@ => @Ø ~ Þ@
+toUpperLatin :: Word8 -> Word8
+{-# INLINE toUpperLatin #-}
+toUpperLatin w
+  | 97  <= w && w <= 122 ||
+    224 <= w && w <= 246 ||
+    248 <= w && w <= 254 = w - 32
+  | otherwise            = w
+
 -- | @ISO-8859-1@ control letter.
 isControl :: Word8 -> Bool
 {-# INLINE isControl #-}

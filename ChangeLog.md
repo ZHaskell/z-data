@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.7.1.0  -- 2020-03-03
+
+* Add `CPtr` type, a more lightweight foreign pointer.
+* Add `toLower/toUpper/toLowerLatin/toUpperLatin` to `Z.Data.ASCII`.
+
 ## 0.7.0.0  -- 2020-03-03
 
 * Add more patterns to `Z.Data.ASCII`.

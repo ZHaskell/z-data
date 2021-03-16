@@ -115,6 +115,7 @@ import           Text.Read                      (Read(..))
 import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 import           Z.Data.Array
+import           Z.Data.ASCII                   (toLower)
 
 -- | Typeclass for box and unboxed vectors, which are created by slicing arrays.
 --
@@ -551,12 +552,7 @@ instance Prim a => IsList (PrimVector a) where
 -- | This instance assume ASCII encoded bytes
 instance CI.FoldCase Bytes where
     {-# INLINE foldCase #-}
-    foldCase = map toLower8
-      where
-        toLower8 :: Word8 -> Word8
-        toLower8 w
-          |  65 <= w && w <=  90 = w + 32
-          | otherwise            = w
+    foldCase = map toLower
 
 -- | /O(n)/, pack an ASCII 'String', multi-bytes char WILL BE CHOPPED!
 packASCII :: String -> Bytes

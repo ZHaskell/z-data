@@ -55,6 +55,7 @@ module Z.Data.Builder.Base
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Data.Bits                          (unsafeShiftL, unsafeShiftR, (.&.))
+import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
 import           Data.Word
 import           Data.Int
 import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
@@ -67,7 +68,6 @@ import qualified Z.Data.Text.Base                 as T
 import qualified Z.Data.Text.UTF8Codec            as T
 import qualified Z.Data.Vector.Base               as V
 import qualified Z.Data.Array                     as A
-import           Z.Foreign
 import           System.IO.Unsafe
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
