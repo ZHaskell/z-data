@@ -731,7 +731,7 @@ bytes bs = do
         else kf ["Z.Data.Parser.Base.bytes: mismatch bytes"] inp)
 
 
--- | Same as 'bytes' but ignoring case.
+-- | Same as 'bytes' but ignoring ASCII case.
 bytesCI :: V.Bytes -> Parser ()
 {-# INLINE bytesCI #-}
 bytesCI bs = do

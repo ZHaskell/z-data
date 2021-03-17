@@ -8,8 +8,7 @@ import           Data.Word
 import           Data.Int
 import           GHC.Float
 import           Text.Printf                 (printf)
-import           Data.Char                   (toLower)
-import           Z.Data.ASCII                (w2c, c2w)
+import           Z.Data.ASCII                (w2c, c2w, toLower)
 import qualified Z.Data.Parser.Base    as P
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector.Base as V
@@ -99,7 +98,7 @@ spec = describe "parsers" . modifyMaxSuccess (*10) . modifyMaxSize (*10)  $ do
             parse'' (P.bytesCI . V.pack $ t) (t ++ s) === Just (V.pack s, ())
 
         prop "bytesCI" $ \ s t ->
-            parse'' (P.bytesCI . V.pack $ t) (L.map (c2w . toLower . w2c) t ++ s) === Just (V.pack s, ())
+            parse'' (P.bytesCI . V.pack $ t) (L.map toLower t ++ s) === Just (V.pack s, ())
 
         prop "atEnd" $ \ s ->
             parse' P.atEnd s ===

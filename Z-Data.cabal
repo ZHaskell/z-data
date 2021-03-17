@@ -365,4 +365,4 @@ test-suite Z-Data-Test
 
   else
     cpp-options:   -DINTEGER_GMP
-    build-depends: integer-gmp >=0.2 && <1.1
+    build-depends: integer-gmp >=0.2 && <1.2
