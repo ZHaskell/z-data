@@ -1,11 +1,11 @@
 # Revision history for Z-Data
 
-## 0.7.1.0  -- 2020-03-03
+## 0.7.1.0  -- 2021-03-03
 
 * Add `CPtr` type, a more lightweight foreign pointer.
 * Add `toLower/toUpper/toLowerLatin/toUpperLatin` to `Z.Data.ASCII`.
 
-## 0.7.0.0  -- 2020-03-03
+## 0.7.0.0  -- 2021-03-03
 
 * Add more patterns to `Z.Data.ASCII`.
 * Fix a bug in `Z.Data.Vector.Search` where needle is a singleton.
@@ -13,7 +13,7 @@
 * Add `scientific'` to `Z.Data.Builder`, Add more `Print` instances.
 * Bump deps to support GHC 9.0.
 
-## 0.6.1.0  -- 2020-02-04
+## 0.6.1.0  -- 2021-02-04
 
 * Add `key` and `nth` lens to `Z.Data.JSON.Value` for manipulating nested value more easily.
 * Port patch from bytestring #301 #310 #315, Improve `stime`, `sconcat`, `intersperse`.
@@ -24,20 +24,20 @@
 * Add `displayWidth` to `Z.Data.Text`.
 * Move `floatToScientific/doubleToScientific` to `Z.Data.JSON.Value`.
 
-## 0.6.0.0  -- 2020-02-04
+## 0.6.0.0  -- 2021-02-04
 
 * Add `primArrayFromBE/primArrayFromBE` to `Z.Data.Array.Unaligned`.
 * Change `[Char]` 's JSON instance to use JSON text, Add `Bytes` 's JSON instance to use base64 encoding.
 * Add `escapeCBytes`, `toEscapedText` to `Z.Data.CBytes`, change `CBytes` 's JSON instance to use base64 encoding.
 
-## 0.5.0.0  -- 2020-01-15
+## 0.5.0.0  -- 2021-01-15
 
 * Add `ParseChunks` type alias, remove `parseChunks'` from `Z.Data.JSON`.
 * Change JSON instance of `Data.Version` to use JSON Array.
 * Add `fromByteString` and `toByteString` to `Z.Foreign`.
 * Change license's copyright to test --test-show-details=direct
 
-## 0.4.0.0  -- 2020-01-11
+## 0.4.0.0  -- 2021-01-11
 
 * Merge `FromValue`, `ToValue`, `EncodeJSON` to `JSON` class, add instances for containers.
 * A new `Z.Data.JSON.Converter` module to be reused in other protocol decoding.
