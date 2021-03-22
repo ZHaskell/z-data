@@ -15,7 +15,7 @@ short byte sequences, such as file path, environment variables, etc.
 module Z.Data.CBytes
   (  -- * The CBytes type
     CBytes(CB)
-  , rawPrimArray, fromPrimArray
+  , rawPrimArray, fromPrimArray, fromMutablePrimArray
   , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
   , pack
   , unpack
@@ -29,47 +29,47 @@ module Z.Data.CBytes
   , CString
   ) where
 
+import           Control.Applicative       ((<|>))
 import           Control.DeepSeq
-import           Control.Monad
-import           Control.Applicative        ((<|>))
 import           Control.Exception
+import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.ST
 import           Data.Bits
-import           Data.Foldable              (foldlM)
-import           Data.Hashable              (Hashable(..))
-import qualified Data.List                  as List
+import           Data.Foldable             (foldlM)
+import           Data.Hashable             (Hashable (..))
+import qualified Data.List                 as List
 import           Data.Primitive.PrimArray
 import           Data.Word
 import           Foreign.C.String
-import           GHC.Exts
 import           GHC.CString
+import           GHC.Exts
 import           GHC.Ptr
 import           GHC.Stack
-import           Prelude                    hiding (all, any, appendFile, break,
-                                                concat, concatMap, drop, dropWhile,
-                                                elem, filter, foldl, foldl1, foldr,
-                                                foldr1, getContents, getLine, head,
-                                                init, interact, last, length, lines,
-                                                map, maximum, minimum, notElem, null,
-                                                putStr, putStrLn, readFile, replicate,
-                                                reverse, scanl, scanl1, scanr, scanr1,
-                                                span, splitAt, tail, take, takeWhile,
-                                                unlines, unzip, writeFile, zip,
-                                                zipWith)
+import           Prelude                   hiding (all, any, appendFile, break,
+                                            concat, concatMap, drop, dropWhile,
+                                            elem, filter, foldl, foldl1, foldr,
+                                            foldr1, getContents, getLine, head,
+                                            init, interact, last, length, lines,
+                                            map, maximum, minimum, notElem,
+                                            null, putStr, putStrLn, readFile,
+                                            replicate, reverse, scanl, scanl1,
+                                            scanr, scanr1, span, splitAt, tail,
+                                            take, takeWhile, unlines, unzip,
+                                            writeFile, zip, zipWith)
+import           System.IO.Unsafe          (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
+import           Text.Read                 (Read (..))
 import           Z.Data.Array
-import qualified Z.Data.Builder             as B
-import qualified Z.Data.Text                as T
-import qualified Z.Data.Text.Print          as T
-import qualified Z.Data.Text.UTF8Codec      as T
-import qualified Z.Data.JSON.Base           as JSON
-import           Z.Data.JSON.Base           ((.=), (.!), (.:))
-import           Z.Data.Text.UTF8Codec      (encodeCharModifiedUTF8, decodeChar)
-import qualified Z.Data.Vector.Base         as V
-import           Z.Foreign                  hiding (fromStdString)
-import           System.IO.Unsafe           (unsafeDupablePerformIO)
-import           Test.QuickCheck.Arbitrary  (Arbitrary(..), CoArbitrary(..))
-import           Text.Read                 (Read(..))
+import qualified Z.Data.Builder            as B
+import           Z.Data.JSON.Base          ((.!), (.:), (.=))
+import qualified Z.Data.JSON.Base          as JSON
+import qualified Z.Data.Text               as T
+import qualified Z.Data.Text.Print         as T
+import           Z.Data.Text.UTF8Codec     (decodeChar, encodeCharModifiedUTF8)
+import qualified Z.Data.Text.UTF8Codec     as T
+import qualified Z.Data.Vector.Base        as V
+import           Z.Foreign                 hiding (fromStdString)
 
 -- | A efficient wrapper for short immutable null-terminated byte sequences which can be
 -- automatically freed by ghc garbage collector.
@@ -100,13 +100,13 @@ newtype CBytes = CBytes
         rawPrimArray :: PrimArray Word8
     }
 
--- | Constuctor a 'CBytes' from arbitrary array, result will be trimmed down to first @\\NUL@ byte if there's any.
+-- | Construct a 'CBytes' from arbitrary array, result will be trimmed down to first @\\NUL@ byte if there's any.
 fromPrimArray :: PrimArray Word8 -> CBytes
 {-# INLINE fromPrimArray #-}
 fromPrimArray arr = runST (do
     let l = case V.elemIndex 0 arr of
             Just i -> i
-            _ -> sizeofPrimArray arr
+            _      -> sizeofPrimArray arr
     if l+1 == sizeofPrimArray arr
     then return (CBytes arr)
     else do
@@ -116,6 +116,31 @@ fromPrimArray arr = runST (do
         writePrimArray mpa l 0
         pa <- unsafeFreezePrimArray mpa
         return (CBytes pa))
+
+-- | Construct a 'CBytes' from a 'MutablePrimArray'.
+--
+-- Result will be shrinked to first @\\NUL@ byte without copy. If there is no
+-- @\\NUL@ found in the array, We will resize the origin MutablePrimArray, so,
+-- to avoid undefined behaviour, the original MutablePrimArray shall not be
+-- accessed anymore. Moreover, no reference to the old one should be kept in
+-- order to allow garbage collection of the original MutablePrimArray in case
+-- a new MutablePrimArray had to be allocated.
+fromMutablePrimArray
+    :: PrimMonad m
+    => MutablePrimArray (PrimState m) Word8
+    -> m CBytes
+{-# INLINE fromMutablePrimArray #-}
+fromMutablePrimArray marr = do
+    let l = sizeofMutablePrimArray marr
+    arr <- unsafeFreezePrimArray marr
+    marr' <- case V.elemIndex 0 arr of
+        Just i -> shrinkMutablePrimArray marr (i + 1) >> return marr
+        _ -> do
+            marr' <- resizeMutablePrimArray marr (l + 1)
+            writePrimArray marr' l 0
+            return marr'
+    !pa <- unsafeFreezePrimArray marr'
+    return $ CBytes pa
 
 -- | Use this pattern to match or construct 'CBytes', result will be trimmed down to first @\\NUL@ byte if there's any.
 pattern CB :: V.Bytes -> CBytes
@@ -222,11 +247,11 @@ instance JSON.JSON CBytes where
                 <|> JSON.withFlatMapR "Z.Data.CBytes" (\ o -> fromBytes <$> o .: "base64") v
     {-# INLINE toValue #-}
     toValue cbytes = case toTextMaybe cbytes of
-        Just t -> JSON.toValue t
+        Just t  -> JSON.toValue t
         Nothing -> JSON.object $ [ "base64" .= toBytes cbytes ]
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
-        Just t -> JSON.encodeJSON t
+        Just t  -> JSON.encodeJSON t
         Nothing -> JSON.object' $ "base64" .! toBytes cbytes
 
 -- | Concatenate two 'CBytes'.
@@ -449,7 +474,7 @@ fromBytes v@(V.PrimVector arr s l)
     | otherwise = runST (do
         let l' = case V.elemIndex 0 v of
                 Just i -> i
-                _ -> l
+                _      -> l
         mpa <- newPrimArray (l'+1)
         copyPrimArray mpa 0 arr s l'
         writePrimArray mpa l' 0      -- the \\NUL terminator
