@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.7.2.0  -- 2021-03-22
+
+* Add `fromMutablePrimArray` for constructing CBytes
+
 ## 0.7.1.0  -- 2021-03-03
 
 * Add `CPtr` type, a more lightweight foreign pointer.
@@ -100,7 +104,7 @@
 * Remove `Str` newtype.
 * Make `CBytes` a newtype.
 * Add JSON instances for `ExitCode`, Add Unaligned instances for `Ptr a`.
-* Use type alias instead of newtypes for `Locale`, `Category` in `Z.Data.Text`. 
+* Use type alias instead of newtypes for `Locale`, `Category` in `Z.Data.Text`.
 
 ## 0.1.6.0  -- 2020-10-09
 
