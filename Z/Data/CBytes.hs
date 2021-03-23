@@ -16,7 +16,8 @@ module Z.Data.CBytes
   (  -- * The CBytes type
     CBytes(CB)
   , rawPrimArray, fromPrimArray, fromMutablePrimArray
-  , toBytes, fromBytes, toText, toTextMaybe, fromText, toBuilder, buildCBytes
+  , toBytes, toBytes', fromBytes, toText, toTextMaybe, fromText
+  , toBuilder, toBuilder', buildCBytes
   , pack
   , unpack
   , null, length
@@ -451,7 +452,7 @@ null :: CBytes -> Bool
 {-# INLINE null #-}
 null (CBytes pa) = indexPrimArray pa 0 == 0
 
--- | /O(1)/, Return the BTYE length of 'CBytes'.
+-- | /O(1)/, Return the BTYE length of 'CBytes' without NULL terminator.
 --
 length :: CBytes -> Int
 {-# INLINE length #-}
@@ -461,6 +462,11 @@ length (CBytes pa) = sizeofPrimArray pa - 1
 toBytes :: CBytes -> V.Bytes
 {-# INLINABLE toBytes #-}
 toBytes (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr - 1)
+
+-- | /O(1)/, convert to 'V.Bytes' with its NULL terminator.
+toBytes' :: CBytes -> V.Bytes
+{-# INLINABLE toBytes' #-}
+toBytes' (CBytes arr) = V.PrimVector arr 0 (sizeofPrimArray arr)
 
 -- | /O(n)/, convert from 'V.Bytes'
 --
@@ -507,11 +513,20 @@ fromText = fromBytes . T.getUTF8Bytes
 -- This function is different from 'T.Print' instance in that it directly write byte sequence without
 -- checking if it's UTF8 encoded.
 toBuilder :: CBytes -> B.Builder ()
+{-# INLINABLE toBuilder #-}
 toBuilder = B.bytes . toBytes
 
--- | Build a 'CBytes' with builder, result will be trimmed down to first @\\NUL@ byte if there's any.
+-- | Write 'CBytes' \'s byte sequence to buffer, with its NULL terminator.
+--
+toBuilder' :: CBytes -> B.Builder ()
+{-# INLINABLE toBuilder' #-}
+toBuilder' = B.bytes . toBytes'
+
+-- | Build a 'CBytes' with builder, will automatically be trimmed down to first @\\NUL@ byte if there's any,
+-- or append with one if there's none.
 buildCBytes :: B.Builder a -> CBytes
-buildCBytes = fromBytes . B.build
+{-# INLINABLE buildCBytes #-}
+buildCBytes b = fromBytes (B.build (b >> B.word8 0))
 
 --------------------------------------------------------------------------------
 

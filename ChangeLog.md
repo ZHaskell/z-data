@@ -2,7 +2,8 @@
 
 ## 0.7.2.0  -- 2021-03-22
 
-* Add `fromMutablePrimArray` for constructing CBytes
+* Add `fromMutablePrimArray` for constructing CBytes.
+* Add `toBytes'/toBuilder'`(convert with the \NUL terminator) to `Z.Data.CBytes`.
 
 ## 0.7.1.0  -- 2021-03-03
 
