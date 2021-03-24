@@ -501,6 +501,6 @@ fromByteString :: ByteString -> Bytes
 fromByteString bs = case toShort bs of
     (SBS ba#) -> PrimVector (PrimArray ba#) 0 (B.length bs)
 
--- | O(n), Convert tp 'ByteString'.
+-- | O(n), Convert to 'ByteString'.
 toByteString :: Bytes -> ByteString
 toByteString (PrimVector (PrimArray ba#) s l) = B.unsafeTake l . B.unsafeDrop s . fromShort $ SBS ba#
