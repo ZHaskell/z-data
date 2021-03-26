@@ -205,8 +205,8 @@ pattern SPACE        = 0x20
 pattern EXCLAM :: Word8
 pattern EXCLAM       = 0x21
 -- | @\"@
-pattern QUOTE_DOUBLE :: Word8
-pattern QUOTE_DOUBLE = 0x22
+pattern DOUBLE_QUOTE :: Word8
+pattern DOUBLE_QUOTE = 0x22
 -- | @\#@
 pattern HASH :: Word8
 pattern HASH         = 0x23
@@ -226,8 +226,8 @@ pattern AMPERSAND    = 0x26
 pattern AND :: Word8
 pattern AND          = 0x26
 -- | @\'@
-pattern QUOTE_SINGLE :: Word8
-pattern QUOTE_SINGLE = 0x27
+pattern SINGLE_QUOTE :: Word8
+pattern SINGLE_QUOTE = 0x27
 -- | @(@
 pattern PAREN_LEFT :: Word8
 pattern PAREN_LEFT   = 0x28

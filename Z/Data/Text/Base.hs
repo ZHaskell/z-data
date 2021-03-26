@@ -114,8 +114,6 @@ module Z.Data.Text.Base (
   , c_ascii_validate_addr
  ) where
 
-#define DOUBLE_QUOTE 34
-
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.ST
@@ -136,7 +134,7 @@ import           GHC.Types
 import           GHC.Stack
 import           GHC.CString               (unpackCString#, unpackCStringUtf8#)
 import           Z.Data.Array
-import           Z.Data.ASCII              (c2w)
+import           Z.Data.ASCII              (c2w, pattern DOUBLE_QUOTE)
 import           Z.Data.Text.UTF8Codec
 import           Z.Data.Text.UTF8Rewind
 import           Z.Data.Vector.Base        (Bytes, PrimVector(..), c_strlen)

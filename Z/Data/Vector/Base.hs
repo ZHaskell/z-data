@@ -536,9 +536,13 @@ hashWithSaltBytes salt (PrimVector (PrimArray ba#) s l) =
 type Bytes = PrimVector Word8
 
 -- | This instance use 'packASCII', which may silently chop bytes, use it with ASCII literals only.
-instance (a ~ Word8) => IsString (PrimVector a) where
+instance IsString Bytes where
     {-# INLINE fromString #-}
     fromString = packASCII
+
+-- | This is an INCOHERENT instance, show binary data with ASCII(<=0x7f) or decimal values.
+instance {-# INCOHERENT #-} Show Bytes where
+    show = show . List.map (toEnum @Char . fromIntegral) . unpack
 
 instance Prim a => IsList (PrimVector a) where
     type Item (PrimVector a) = a

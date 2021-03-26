@@ -47,6 +47,7 @@ import           Data.Typeable
 import           Data.Int
 import           Data.Word
 import           GHC.Generics
+import           Z.Data.ASCII
 import qualified Z.Data.Parser              as P
 import qualified Z.Data.Builder.Numeric     as B
 import qualified Z.Data.Text.Base           as T
@@ -58,24 +59,6 @@ import           Z.Foreign
 import           System.IO.Unsafe           (unsafeDupablePerformIO)
 import           Test.QuickCheck.Arbitrary  (Arbitrary(..))
 import           Test.QuickCheck.Gen        (Gen(..), listOf)
-
-#define BACKSLASH 92
-#define CLOSE_CURLY 125
-#define CLOSE_SQUARE 93
-#define COMMA 44
-#define COLON 58
-#define DOUBLE_QUOTE 34
-#define OPEN_CURLY 123
-#define OPEN_SQUARE 91
-#define C_0 48
-#define C_9 57
-#define C_A 65
-#define C_F 70
-#define C_a 97
-#define C_f 102
-#define C_n 110
-#define C_t 116
-#define MINUS    45
 
 --------------------------------------------------------------------------------
 -- | A JSON value represented as a Haskell value.
@@ -188,26 +171,26 @@ value = do
     w <- P.peek
     case w of
         DOUBLE_QUOTE    -> P.skipWord8 *> (String <$> string_)
-        OPEN_CURLY      -> P.skipWord8 *> (Object <$> object_)
-        OPEN_SQUARE     -> P.skipWord8 *> (Array <$> array_)
-        C_f             -> P.bytes "false" $> (Bool False)
-        C_t             -> P.bytes "true" $> (Bool True)
-        C_n             -> P.bytes "null" $> Null
+        CURLY_LEFT      -> P.skipWord8 *> (Object <$> object_)
+        SQUARE_LEFT     -> P.skipWord8 *> (Array <$> array_)
+        LETTER_f        -> P.bytes "false" $> (Bool False)
+        LETTER_t        -> P.bytes "true" $> (Bool True)
+        LETTER_n        -> P.bytes "null" $> Null
         _   | w >= 48 && w <= 57 || w == MINUS -> Number <$> P.scientific'
             | otherwise -> P.fail' "Z.Data.JSON.Value.value: not a valid json value"
 
--- | parse json array with leading OPEN_SQUARE.
+-- | parse json array with leading SQUARE_LEFT.
 array :: P.Parser (V.Vector Value)
 {-# INLINE array #-}
-array = P.word8 OPEN_SQUARE *> array_
+array = P.word8 SQUARE_LEFT *> array_
 
--- | parse json array without leading OPEN_SQUARE.
+-- | parse json array without leading SQUARE_LEFT.
 array_ :: P.Parser (V.Vector Value)
 {-# INLINABLE array_ #-}
 array_ = do
     skipSpaces
     w <- P.peek
-    if w == CLOSE_SQUARE
+    if w == SQUARE_RIGHT
     then P.skipWord8 $> V.empty
     else loop [] 1
   where
@@ -216,23 +199,23 @@ array_ = do
         !v <- value
         skipSpaces
         let acc' = v:acc
-        ch <- P.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
+        ch <- P.satisfy $ \w -> w == COMMA || w == SQUARE_RIGHT
         if ch == COMMA
         then skipSpaces *> loop acc' (n+1)
         else pure $! V.packRN n acc'  -- n start from 1, so no need to +1 here
 
--- | parse json array with leading OPEN_CURLY.
+-- | parse json array with leading 'CURLY_LEFT'.
 object :: P.Parser (V.Vector (T.Text, Value))
 {-# INLINE object #-}
-object = P.word8 OPEN_CURLY *> object_
+object = P.word8 CURLY_LEFT *> object_
 
--- | parse json object without leading OPEN_CURLY.
+-- | parse json object without leading 'CURLY_LEFT'.
 object_ :: P.Parser (V.Vector (T.Text, Value))
 {-# INLINABLE object_ #-}
 object_ = do
     skipSpaces
     w <- P.peek
-    if w == CLOSE_CURLY
+    if w == CURLY_RIGHT
     then P.skipWord8 $> V.empty
     else loop [] 1
  where
@@ -244,7 +227,7 @@ object_ = do
         !v <- value
         skipSpaces
         let acc' = (k, v) : acc
-        ch <- P.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
+        ch <- P.satisfy $ \w -> w == COMMA || w == CURLY_RIGHT
         if ch == COMMA
         then skipSpaces *> loop acc' (n+1)
         else pure $! V.packRN n acc'  -- n start from 1, so no need to +1 here

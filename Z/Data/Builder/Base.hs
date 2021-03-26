@@ -513,12 +513,12 @@ angle b = encodePrim ANGLE_LEFT >> b >> encodePrim ANGLE_RIGHT
 -- | add @/".../"@ to original builder.
 quotes :: Builder () -> Builder ()
 {-# INLINE quotes #-}
-quotes b = encodePrim QUOTE_DOUBLE >> b >> encodePrim QUOTE_DOUBLE
+quotes b = encodePrim DOUBLE_QUOTE >> b >> encodePrim DOUBLE_QUOTE
 
 -- | add @/'.../'@ to original builder.
 squotes :: Builder () -> Builder ()
 {-# INLINE squotes #-}
-squotes b = encodePrim QUOTE_SINGLE >> b >> encodePrim QUOTE_SINGLE
+squotes b = encodePrim SINGLE_QUOTE >> b >> encodePrim SINGLE_QUOTE
 
 -- | write an ASCII @:@
 colon :: Builder ()
