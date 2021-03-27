@@ -49,6 +49,7 @@ module Z.Data.Vector.Sort (
   , mergeDupAdjacentBy
   ) where
 
+import           Control.Monad
 import           Control.Monad.ST
 import           Data.Bits
 import           Data.Int
@@ -484,22 +485,40 @@ mergeDupAdjacentBy :: forall v a. Vec v a
 mergeDupAdjacentBy eq merger v@(Vec arr s l)
     | l == 0 = empty
     | l == 1 = v
-    | otherwise = createN l $ \ marr -> do
-        x0 <- indexArrM arr 0
-        writeArr marr 0 x0
-        go arr marr s 1 x0
+    | otherwise =
+        let i = findFirstDup (s+1) (indexArr arr s)
+        in if i == end
+            then v
+            else createN l $ \ marr -> do
+                let noDupLen = i - s
+                when (noDupLen > 0) (copyArr marr 0 arr s noDupLen)
+                x0 <- indexArrM arr i
+                x1 <- indexArrM arr (i+1)
+                let !x' = merger x0 x1
+                writeArr marr noDupLen x'
+                go marr (i+2) (noDupLen+1) x'
   where
     !end = s + l
-    go :: forall s. IArray v a -> MArr (IArray v) s a -> Int -> Int -> a -> ST s Int
-    go !arr' !marr !i !j !x
+
+    findFirstDup :: Int -> a -> Int
+    findFirstDup !i !x
+        | i >= end = i
+        | otherwise =
+            let !x' = indexArr arr i
+            in if x' `eq` x
+                then (i-1)
+                else findFirstDup (i+1) x'
+
+    go :: forall s. MArr (IArray v) s a -> Int -> Int -> a -> ST s Int
+    go !marr !i !j !x
         | i >= end  = return j
         | otherwise = do
-            x' <- indexArrM arr' i
+            x' <- indexArrM arr i
             if x `eq` x'
             then do
                 let !x'' = merger x x'
                 writeArr marr (j-1) x''
-                go arr' marr (i+1) j x''
+                go marr (i+1) j x''
             else do
                 writeArr marr j x'
-                go arr' marr (i+1) (j+1) x'
+                go marr (i+1) (j+1) x'

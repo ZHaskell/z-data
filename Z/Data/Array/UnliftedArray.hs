@@ -43,6 +43,7 @@ import Data.Primitive.ByteArray (ByteArray(..),MutableByteArray(..))
 import GHC.MVar (MVar(..))
 import GHC.IORef (IORef(..))
 import GHC.STRef (STRef(..))
+import GHC.Conc (TVar(..))
 import GHC.Exts
 import GHC.IO.Unsafe
 
@@ -98,9 +99,6 @@ instance PrimUnlifted (MutablePrimArray s a) where
         (# s1, x #) -> (# s1, MutablePrimArray (unsafeCoerce# x) #)
     indexUnliftedArray# a i = MutablePrimArray (unsafeCoerce# (indexByteArrayArray# a i))
 
--- This uses unsafeCoerce# in the implementation of all of its
--- methods. See the note for the PrimUnlifted instance of
--- Data.Primitive.MVar.MVar.
 instance PrimUnlifted (MVar a) where
     {-# inline writeUnliftedArray# #-}
     {-# inline readUnliftedArray# #-}
@@ -111,9 +109,16 @@ instance PrimUnlifted (MVar a) where
         (# s1, x #) -> (# s1, MVar (unsafeCoerce# x) #)
     indexUnliftedArray# a i = MVar (unsafeCoerce# (indexArrayArrayArray# a i))
 
--- This uses unsafeCoerce# in the implementation of all of its
--- methods. This does not lead to corruption FFI codegen since ArrayArray#
--- and MutVar# have the same FFI offset applied by add_shim.
+instance PrimUnlifted (TVar a) where
+    {-# inline writeUnliftedArray# #-}
+    {-# inline readUnliftedArray# #-}
+    {-# inline indexUnliftedArray# #-}
+    writeUnliftedArray# a i (TVar x) =
+        writeArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, TVar (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = TVar (unsafeCoerce# (indexArrayArrayArray# a i))
+
 instance PrimUnlifted (STRef s a) where
     {-# inline writeUnliftedArray# #-}
     {-# inline readUnliftedArray# #-}

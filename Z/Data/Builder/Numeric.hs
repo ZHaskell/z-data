@@ -29,6 +29,7 @@ module Z.Data.Builder.Numeric (
   , float
   , floatWith
   , scientific
+  , scientific'
   , scientificWith
   -- * Misc
   , grisu3
@@ -100,13 +101,12 @@ int = intWith defaultIFormat
 --
 -- @
 -- import Z.Data.Builder as B
--- import Z.Data.Text    as T
 --
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat  (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat  (12345 :: Int)
 -- "12345"
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=RightSpacePadding} (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat{width=10, padding=RightSpacePadding} (12345 :: Int)
 -- "12345     "
--- > T.validate . B.buildBytes $ B.intWith defaultIFormat{width=10, padding=ZeroPadding} (12345 :: Int)
+-- > B.buildText $ B.intWith defaultIFormat{width=10, padding=ZeroPadding} (12345 :: Int)
 -- "0000012345"
 -- @
 --
@@ -691,11 +691,11 @@ doFmt format decs (is, e) = case format of
                     encodeDigit d
                     (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
   where
-    encodeDigit = encodePrim . i2wDec
+    encodeDigit = word8 . i2wDec
 
     encodeDigits = mapM_ encodeDigit
 
-    encodeZeros n = replicateM_ n (encodePrim DIGIT_0)
+    encodeZeros n = word8N n DIGIT_0
 
     mk0 [] = encodePrim DIGIT_0
     mk0 ls = encodeDigits ls
@@ -704,7 +704,8 @@ doFmt format decs (is, e) = case format of
     insertDot n     [] = encodePrim DIGIT_0 >> insertDot (n-1) []
     insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
 
- ------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
 ------------------------------------------------------------------------
 
@@ -768,6 +769,20 @@ grisu3_sp d = unsafePerformIO $ do
 scientific :: Sci.Scientific -> Builder ()
 {-# INLINE scientific #-}
 scientific = scientificWith Generic Nothing
+
+-- | This builder try to avoid scientific notation when 0 <= exponent < 16.
+--
+scientific' :: Sci.Scientific -> Builder ()
+{-# INLINE scientific' #-}
+scientific' s
+    | e < 0 || e >= 16 = scientific s
+    | e == 0 = integer c
+    | otherwise = do
+        integer c
+        when (c /= 0) (replicateM_ e (encodePrim DIGIT_0))
+  where
+    e = Sci.base10Exponent s
+    c = Sci.coefficient s
 
 -- | Like 'scientific' but provides rendering options.
 scientificWith :: FFormat

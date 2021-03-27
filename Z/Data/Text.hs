@@ -42,6 +42,8 @@ module Z.Data.Text (
   , concat, concatMap
     -- ** Special folds
   , count, all, any
+    -- ** Text display width
+  , displayWidth
   -- * Slice manipulation
   , cons, snoc
   , uncons, unsnoc

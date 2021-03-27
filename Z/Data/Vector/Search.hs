@@ -218,7 +218,7 @@ indicesOverlapping needle@(Vec narr noff nlen) = search
     next = kmpNextTable needle
     search haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = case indexArr' narr 0 of
+        | nlen == 1 = case indexArr' narr noff of
                        (# x #) -> elemIndices x haystack
         | otherwise = kmp 0 0
       where
@@ -260,7 +260,7 @@ indicesOverlappingBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = sear
     bloom = sundayBloom needle
     search haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = case indexArr' narr 0 of
+        | nlen == 1 = case indexArr' narr noff of
                        (# x #) -> elemIndices x haystack
         | otherwise = kmp 0 0
       where
@@ -278,7 +278,7 @@ indicesOverlappingBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = sear
                                     j' -> kmp i j'
     search' haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = elemIndices (indexArr narr 0) haystack
+        | nlen == 1 = elemIndices (indexArr narr noff) haystack
         | otherwise = sunday 0 0
       where
         kmp !i !j | i >= hlen = if reportPartial && j /= 0 then [-j] else []
@@ -328,7 +328,7 @@ indices needle@(Vec narr noff nlen) = search
     next = kmpNextTable needle
     search haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = case indexArr' narr 0 of
+        | nlen == 1 = case indexArr' narr noff of
                        (# x #) -> elemIndices x haystack
         | otherwise = kmp 0 0
       where
@@ -357,7 +357,7 @@ indicesBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = search
     bloom = sundayBloom needle
     search haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = case indexArr' narr 0 of
+        | nlen == 1 = case indexArr' narr noff of
                        (# x #) -> elemIndices x haystack
         | otherwise = kmp 0 0
       where
@@ -372,7 +372,7 @@ indicesBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = search
                                     j' -> kmp i j'
     search' haystack@(Vec harr hoff hlen) reportPartial
         | nlen <= 0 = [0..hlen-1]
-        | nlen == 1 = elemIndices (indexArr narr 0) haystack
+        | nlen == 1 = elemIndices (indexArr narr noff) haystack
         | otherwise = sunday 0 0
       where
         kmp !i !j | i >= hlen = if reportPartial && j /= 0 then [-j] else []

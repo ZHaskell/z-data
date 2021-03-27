@@ -30,10 +30,12 @@ module Z.Data.Builder
   , writeN
    -- * Pritimive builders
   , encodePrim
+  , BE(..), LE(..)
   , encodePrimLE
   , encodePrimBE
   -- * More builders
-  , stringModifiedUTF8, charModifiedUTF8, stringUTF8, charUTF8, string7, char7, word7, string8, char8, word8, text
+  , stringModifiedUTF8, charModifiedUTF8, stringUTF8
+  , charUTF8, string7, char7, word7, string8, char8, word8, word8N, text
   -- * Numeric builders
   -- ** Integral type formatting
   , IFormat(..)
@@ -51,6 +53,7 @@ module Z.Data.Builder
   , float
   , floatWith
   , scientific
+  , scientific'
   , scientificWith
     -- * Builder helpers
   , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList

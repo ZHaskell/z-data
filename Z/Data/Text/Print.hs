@@ -47,6 +47,7 @@ module Z.Data.Text.Print
   , B.float
   , B.floatWith
   , B.scientific
+  , B.scientific'
   , B.scientificWith
   -- * Helpers
   , B.paren, B.curly, B.square, B.angle, B.quotes, B.squotes
@@ -55,7 +56,8 @@ module Z.Data.Text.Print
   ) where
 
 import           Control.Monad
-import qualified Data.Scientific                as Sci
+import           Control.Exception              (SomeException)
+import           Z.Data.ASCII
 import           Data.Fixed
 import           Data.Primitive.PrimArray
 import           Data.Functor.Compose
@@ -69,7 +71,12 @@ import qualified Data.Monoid                    as Monoid
 import           Data.Proxy                     (Proxy(..))
 import           Data.Ratio                     (Ratio, numerator, denominator)
 import           Data.Tagged                    (Tagged (..))
+import qualified Data.Scientific                as Sci
 import qualified Data.Semigroup                 as Semigroup
+import           Data.Time                      (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import           Data.Time.Calendar             (CalendarDiffDays (..), DayOfWeek (..))
+import           Data.Time.LocalTime            (CalendarDiffTime (..))
+import           Data.Time.Clock.System         (SystemTime (..))
 import           Data.Typeable
 import           Foreign.C.Types
 import           GHC.Exts
@@ -81,8 +88,7 @@ import           GHC.Word
 import           Data.Version
 import           System.Exit
 import           Data.Primitive.Types
-import qualified Z.Data.Builder.Base            as B
-import qualified Z.Data.Builder.Numeric         as B
+import qualified Z.Data.Builder                 as B
 import qualified Z.Data.Text.Base               as T
 import           Z.Data.Text.Base               (Text(..))
 import qualified Z.Data.Array                   as A
@@ -165,10 +171,11 @@ instance (GToText f) => GFieldToText (S1 (MetaSel Nothing u ss ds) f) where
     {-# INLINE gFieldToUTF8BuilderP #-}
     gFieldToUTF8BuilderP _ p (M1 x) = gToUTF8BuilderP p x
 
-instance (GToText f, Selector (MetaSel (Just l) u ss ds)) => GFieldToText (S1 (MetaSel (Just l) u ss ds) f) where
-    {-# INLINE gFieldToUTF8BuilderP #-}
-    gFieldToUTF8BuilderP _ _ m1@(M1 x) =
-        B.stringModifiedUTF8 (selName m1) >> " = " >> gToUTF8BuilderP 0 x
+instance (GToText f, Selector (MetaSel (Just l) u ss ds)) =>
+    GFieldToText (S1 (MetaSel (Just l) u ss ds) f) where
+        {-# INLINE gFieldToUTF8BuilderP #-}
+        gFieldToUTF8BuilderP _ _ m1@(M1 x) =
+            B.stringModifiedUTF8 (selName m1) >> " = " >> gToUTF8BuilderP 0 x
 
 instance GToText V1 where
     {-# INLINE gToUTF8BuilderP #-}
@@ -459,3 +466,81 @@ deriving anyclass instance Print b => Print (Tagged a b)
 deriving anyclass instance Print (f (g a)) => Print (Compose f g a)
 deriving anyclass instance (Print (f a), Print (g a)) => Print (Product f g a)
 deriving anyclass instance (Print (f a), Print (g a), Print a) => Print (Sum f g a)
+
+--------------------------------------------------------------------------------
+
+-- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance Print UTCTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.utcTime
+
+-- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance Print ZonedTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.zonedTime
+
+-- | @YYYY-MM-DD@
+instance Print Day where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.day
+
+-- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
+instance Print LocalTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.localTime
+
+-- | @HH:MM:SS.SSS@
+instance Print TimeOfDay where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.timeOfDay
+
+instance Print NominalDiffTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.scientific' . realToFrac
+
+instance Print DiffTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ = B.scientific' . realToFrac
+
+instance Print SystemTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (MkSystemTime s ns) = parenWhen (p > 10) $ do
+        "MkSystemTime {systemSeconds = "
+        B.int s
+        ", systemNanoseconds = "
+        B.int ns
+        "}"
+
+instance Print CalendarDiffTime where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (CalendarDiffTime m nt) = parenWhen (p > 10) $ do
+        B.encodePrim LETTER_P
+        B.integer m
+        B.encodePrim (LETTER_M, LETTER_T)
+        B.scientific' (realToFrac nt)
+        B.encodePrim LETTER_S
+
+instance Print CalendarDiffDays where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p (CalendarDiffDays m d) = parenWhen (p > 10) $ do
+        B.encodePrim LETTER_P
+        B.integer m
+        B.encodePrim LETTER_M
+        B.integer d
+        B.encodePrim LETTER_D
+
+instance Print DayOfWeek where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP _ Monday    = "Monday"
+    toUTF8BuilderP _ Tuesday   = "Tuesday"
+    toUTF8BuilderP _ Wednesday = "Wednesday"
+    toUTF8BuilderP _ Thursday  = "Thursday"
+    toUTF8BuilderP _ Friday    = "Friday"
+    toUTF8BuilderP _ Saturday  = "Saturday"
+    toUTF8BuilderP _ Sunday    = "Sunday"
+
+--------------------------------------------------------------------------------
+
+instance Print SomeException where
+    {-# INLINE toUTF8BuilderP #-}
+    toUTF8BuilderP p x = B.stringUTF8 $ showsPrec p x ""

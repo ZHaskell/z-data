@@ -9,15 +9,17 @@ Portability : non-portable
 
 Unified unboxed and boxed array operations using type family.
 
-All operations are NOT bound checked, if you need checked operations please use "Z.Data.Array.Checked".
-It exports exactly same APIs so that you can switch between without pain.
+NONE of the operations are bound checked, if you need checked operations please use "Z.Data.Array.Checked" instead.
+It exports the exact same APIs ,so it requires no extra effort to switch between them.
 
 Some mnemonics:
 
-  * 'newArr', 'newArrWith' return mutable array, 'readArr', 'writeArr' works on them, 'setArr' fill elements
-     with offset and length.
+  * 'newArr' and 'newArrWith' return mutable array.
+    'readArr' and 'writeArr' perform read and write actions on mutable arrays.
+    'setArr' fills the elements with offset and length.
 
-  * 'indexArr' works on immutable one, use 'indexArr'' to avoid indexing thunk.
+  * 'indexArr' can only work on immutable Array.
+     Use 'indexArr'' to avoid thunks building up in the heap.
 
   * The order of arguements of 'copyArr', 'copyMutableArr' and 'moveArr' are always target and its offset
     come first, and source and source offset follow, copying length comes last.
@@ -26,6 +28,8 @@ Some mnemonics:
 module Z.Data.Array (
   -- * Arr typeclass
     Arr(..)
+  , singletonArr, doubletonArr
+  , modifyIndexArr, insertIndexArr, deleteIndexArr
   , RealWorld
   -- * Boxed array type
   , Array(..)
@@ -37,7 +41,7 @@ module Z.Data.Array (
   , PrimArray(..)
   , MutablePrimArray(..)
   , Prim(..)
-  -- * Array operations
+  -- * Primitive array operations
   , newPinnedPrimArray, newAlignedPinnedPrimArray
   , copyPrimArrayToPtr, copyMutablePrimArrayToPtr, copyPtrToMutablePrimArray
   , primArrayContents, mutablePrimArrayContents, withPrimArrayContents, withMutablePrimArrayContents
@@ -56,12 +60,15 @@ module Z.Data.Array (
   , sizeOf
   ) where
 
-import           Control.Exception            (ArrayException (..), throw)
+import           Control.Exception              (ArrayException (..), throw)
+import           Control.Monad
 import           Control.Monad.Primitive
+import           Control.Monad.ST
+import           Data.Kind                      (Type)
 import           Data.Primitive.Array
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
-import           Data.Primitive.Ptr           (copyPtrToMutablePrimArray)
+import           Data.Primitive.Ptr             (copyPtrToMutablePrimArray)
 import           Data.Primitive.SmallArray
 import           Data.Primitive.Types
 import           GHC.Exts
@@ -70,35 +77,35 @@ import           Z.Data.Array.UnliftedArray
 
 
 -- | Bottom value (@throw ('UndefinedElement' 'Data.Array.uninitialized')@)
--- for initialize new boxed array('Array', 'SmallArray'..).
+-- for new boxed array('Array', 'SmallArray'..) initialization.
 --
 uninitialized :: a
 uninitialized = throw (UndefinedElement "Data.Array.uninitialized")
 
 
--- | A typeclass to unify box & unboxed, mutable & immutable array operations.
+-- | The typeclass that unifies box & unboxed and mutable & immutable array operations.
 --
--- Most of these functions simply wrap their primitive counterpart, if there's no primitive ones,
--- we polyfilled using other operations to get the same semantics.
+-- Most of these functions simply wrap their primitive counterpart.
+-- When there are no primitive ones, we fulfilled the semantic with other operations.
 --
--- One exception is that 'shrinkMutableArr' only perform closure resizing on 'PrimArray' because
--- current RTS support only that, 'shrinkMutableArr' will do nothing on other array type.
+-- One exception is 'shrinkMutableArr' which only performs closure resizing on 'PrimArray', because
+-- currently, RTS only supports that. 'shrinkMutableArr' won't do anything on other array types.
 --
--- It's reasonable to trust GHC with specializing & inlining these polymorphric functions.
--- They are used across this package and perform identical to their monomophric counterpart.
+-- It's reasonable to trust GHC to specialize & inline these polymorphic functions.
+-- They are used across this package and perform identically to their monomorphic counterpart.
 --
-class Arr (arr :: * -> * ) a where
+class Arr (arr :: Type -> Type) a where
 
 
-    -- | Mutable version of this array type.
+    -- | The mutable version of this array type.
     --
-    type MArr arr = (mar :: * -> * -> *) | mar -> arr
+    type MArr arr = (mar :: Type -> Type -> Type) | mar -> arr
 
 
-    -- | Make a new array with given size.
+    -- | Make a new array with a given size.
     --
-    -- For boxed array, all elements are 'uninitialized' which shall not be accessed.
-    -- For primitive array, elements are just random garbage.
+    -- For boxed arrays, all elements are 'uninitialized' , which shall not be accessed.
+    -- For primitive arrays, elements are just random garbage.
     newArr :: (PrimMonad m, PrimState m ~ s) => Int -> m (MArr arr s a)
 
 
@@ -106,97 +113,123 @@ class Arr (arr :: * -> * ) a where
     newArrWith :: (PrimMonad m, PrimState m ~ s) => Int -> a -> m (MArr arr s a)
 
 
-    -- | Index mutable array in a primitive monad.
+    -- | Read from specified index of mutable array in a primitive monad.
     readArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m a
 
 
-    -- | Write mutable array in a primitive monad.
+    -- | Write to specified index of mutable array in a primitive monad.
     writeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> a -> m ()
 
 
-    -- | Fill mutable array with a given value.
+    -- | Fill the mutable array with a given value.
     setArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> a -> m ()
 
 
-    -- | Index immutable array, which is a pure operation. This operation often
-    -- result in an indexing thunk for lifted arrays, use 'indexArr\'' or 'indexArrM'
-    -- if that's not desired.
+    -- | Read from the specified index of an immutable array. It's pure and often
+    -- results in an indexing thunk for lifted arrays, use 'indexArr\'' or 'indexArrM' to avoid this.
     indexArr :: arr a -> Int -> a
 
 
-    -- | Index immutable array, pattern match on the unboxed unit tuple to force
-    -- indexing (without forcing the element).
+    -- | Read from the specified index of an immutable array. The result is packaged into an unboxed unary tuple; the result itself is not yet evaluated.
+    -- Pattern matching on the tuple forces the indexing of the array to happen but does not evaluate the element itself.
+    -- Evaluating the thunk prevents additional thunks from building up on the heap.
+    -- Avoiding these thunks, in turn, reduces references to the argument array, allowing it to be garbage collected more promptly.
     indexArr' :: arr a -> Int -> (# a #)
 
 
-    -- | Index immutable array in a primitive monad, this helps in situations that
-    -- you want your indexing result is not a thunk referencing whole array.
+    -- | Monadically read a value from the immutable array at the given index.
+    -- This allows us to be strict in the array while remaining lazy in the read
+    -- element which is very useful for collective operations. Suppose we want to
+    -- copy an array. We could do something like this:
+    --
+    -- > copy marr arr ... = do ...
+    -- >                        writeArray marr i (indexArray arr i) ...
+    -- >                        ...
+    --
+    -- But since primitive arrays are lazy, the calls to 'indexArray' will not be
+    -- evaluated. Rather, @marr@ will be filled with thunks each of which would
+    -- retain a reference to @arr@. This is definitely not what we want!
+    --
+    -- With 'indexArrayM', we can instead write
+    --
+    -- > copy marr arr ... = do ...
+    -- >                        x <- indexArrayM arr i
+    -- >                        writeArray marr i x
+    -- >                        ...
+    --
+    -- Now, indexing is executed immediately although the returned element is
+    -- still not evaluated.
+    --
+    -- /Note:/ this function does not do bounds checking.
     indexArrM :: (Monad m) => arr a -> Int -> m a
 
 
-    -- | Safely freeze mutable array by make a immutable copy of its slice.
+    -- | Create an immutable copy of a slice of an array.
+    -- This operation makes a copy of the specified section, so it is safe to continue using the mutable array afterward.
     freezeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> m (arr a)
 
 
-    -- | Safely thaw immutable array by make a mutable copy of its slice.
+    -- | Create a mutable array from a slice of an immutable array.
+    -- This operation makes a copy of the specified slice, so it is safe to use the immutable array afterward.
     thawArr :: (PrimMonad m, PrimState m ~ s) => arr a -> Int -> Int -> m (MArr arr s a)
 
 
-    -- | In place freeze a mutable array, the original mutable array can not be used
-    -- anymore.
+    -- | Convert a mutable array to an immutable one without copying.
+    -- The array should not be modified after the conversion.
     unsafeFreezeArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> m (arr a)
 
 
-    -- | In place thaw a immutable array, the original immutable array can not be used
-    -- anymore.
+
+    -- | Convert a mutable array to an immutable one without copying. The
+    -- array should not be modified after the conversion.
     unsafeThawArr :: (PrimMonad m, PrimState m ~ s) => arr a -> m (MArr arr s a)
 
 
-    -- | Copy a slice of immutable array to mutable array at given offset.
+    -- | Copy a slice of an immutable array to a mutable array at given offset.
     copyArr ::  (PrimMonad m, PrimState m ~ s)
             => MArr arr s a -- ^ target
-            -> Int          -- ^ target offset
+            -> Int          -- ^ offset into target array
             -> arr a        -- ^ source
-            -> Int          -- ^ source offset
-            -> Int          -- ^ source length
+            -> Int          -- ^ offset into source array
+            -> Int          -- ^ number of elements to copy
             -> m ()
 
 
-    -- | Copy a slice of mutable array to mutable array at given offset.
-    -- The two mutable arrays shall no be the same one.
+    -- | Copy a slice of a mutable array to another mutable array at given offset.
+    -- The two mutable arrays must not be the same.
     copyMutableArr :: (PrimMonad m, PrimState m ~ s)
                    => MArr arr s a  -- ^ target
-                   -> Int           -- ^ target offset
+                   -> Int           -- ^ offset into target array
                    -> MArr arr s a  -- ^ source
-                   -> Int           -- ^ source offset
-                   -> Int           -- ^ source length
+                   -> Int           -- ^ offset into source array
+                   -> Int           -- ^ number of elements to copy
                    -> m ()
 
 
-    -- | Copy a slice of mutable array to mutable array at given offset.
-    -- The two mutable arrays may be the same one.
+    -- | Copy a slice of a mutable array to a mutable array at given offset.
+    -- The two mutable arrays can be the same.
     moveArr :: (PrimMonad m, PrimState m ~ s)
             => MArr arr s a  -- ^ target
-            -> Int           -- ^ target offset
+            -> Int           -- ^ offset into target array
             -> MArr arr s a  -- ^ source
-            -> Int           -- ^ source offset
-            -> Int           -- ^ source length
+            -> Int           -- ^ offset into source array
+            -> Int           -- ^ number of elements to copy
             -> m ()
 
 
-    -- | Create immutable copy.
+    -- | Create an immutable copy with the given subrange of the original array.
     cloneArr :: arr a -> Int -> Int -> arr a
 
 
-    -- | Create mutable copy.
+    -- | Create a mutable copy the given subrange of the original array.
     cloneMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> Int -> m (MArr arr s a)
 
 
-    -- | Resize mutable array to given size.
+    -- | Resize a mutable array to the given size.
     resizeMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m (MArr arr s a)
 
 
-    -- | Shrink mutable array to given size. This operation only works on primitive arrays.
+    -- | Shrink a mutable array to the given size. This operation only works on primitive arrays.
     -- For some array types, this is a no-op, e.g. 'sizeOfMutableArr' will not change.
     shrinkMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m ()
 
@@ -205,21 +238,21 @@ class Arr (arr :: * -> * ) a where
     sameMutableArr :: MArr arr s a -> MArr arr s a -> Bool
 
 
-    -- | Size of immutable array.
+    -- | Size of the immutable array.
     sizeofArr :: arr a -> Int
 
 
-    -- | Size of mutable array.
+    -- | Size of the mutable array.
     sizeofMutableArr :: (PrimMonad m, PrimState m ~ s) => MArr arr s a -> m Int
 
 
-    -- | Is two immutable array are referencing the same one.
+    -- | Check whether the two immutable arrays refer to the same memory block
     --
-    -- Note that 'sameArr' 's result may change depending on compiler's optimizations, for example
+    -- Note that the result of 'sameArr' may change depending on compiler's optimizations, for example,
     -- @let arr = runST ... in arr `sameArr` arr@ may return false if compiler decides to
     -- inline it.
     --
-    -- See https://ghc.haskell.org/trac/ghc/ticket/13908 for more background.
+    -- See https://ghc.haskell.org/trac/ghc/ticket/13908 for more context.
     --
     sameArr :: arr a -> arr a -> Bool
 
@@ -549,10 +582,10 @@ instance PrimUnlifted a => Arr UnliftedArray a where
 
 --------------------------------------------------------------------------------
 
--- | Yield a pointer to the array's data and do computation with it.
+-- | Obtain the pointer to the content of an array, and the pointer should only be used during the IO action.
 --
--- This operation is only safe on /pinned/ primitive arrays allocated by 'newPinnedPrimArray' or
--- 'newAlignedPinnedPrimArray'.
+-- This operation is only safe on /pinned/ primitive arrays (Arrays allocated by 'newPinnedPrimArray' or
+-- 'newAlignedPinnedPrimArray').
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withPrimArrayContents :: PrimArray a -> (Ptr a -> IO b) -> IO b
@@ -564,10 +597,10 @@ withPrimArrayContents (PrimArray ba#) f = do
     primitive_ (touch# ba#)
     return b
 
--- | Yield a pointer to the array's data and do computation with it.
+-- | Obtain the pointer to the content of an mutable array, and the pointer should only be used during the IO action.
 --
--- This operation is only safe on /pinned/ primitive arrays allocated by 'newPinnedPrimArray' or
--- 'newAlignedPinnedPrimArray'.
+-- This operation is only safe on /pinned/ primitive arrays (Arrays allocated by 'newPinnedPrimArray' or
+-- 'newAlignedPinnedPrimArray').
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withMutablePrimArrayContents :: MutablePrimArray RealWorld a -> (Ptr a -> IO b) -> IO b
@@ -588,3 +621,64 @@ castArray = unsafeCoerce#
 -- | Cast between mutable arrays
 castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#
+
+--------------------------------------------------------------------------------
+
+singletonArr :: Arr arr a => a -> arr a
+{-# INLINE singletonArr #-}
+singletonArr x = runST $ do
+    marr <- newArrWith 1 x
+    unsafeFreezeArr marr
+
+doubletonArr :: Arr arr a => a -> a -> arr a
+{-# INLINE doubletonArr #-}
+doubletonArr x y = runST $ do
+    marr <- newArrWith 2 x
+    writeArr marr 1 y
+    unsafeFreezeArr marr
+
+-- | Modify(strictly) an immutable some elements of an array with specified subrange.
+-- This function will produce a new array.
+modifyIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ index in new array
+               -> (a -> a)   -- ^ modify function
+               -> arr a
+{-# INLINE modifyIndexArr #-}
+modifyIndexArr arr off len ix f = runST $ do
+    marr <- unsafeThawArr (cloneArr arr off len)
+    !v <- f <$> readArr marr ix
+    writeArr marr ix v
+    unsafeFreezeArr marr
+
+-- | Insert a value to an immutable array at given index. This function will produce a new array.
+insertIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ insert index in new array
+               -> a          -- ^ value to be inserted
+               -> arr a
+{-# INLINE insertIndexArr #-}
+insertIndexArr arr s l i x = runST $ do
+    marr <- newArrWith (l+1) x
+    when (i>0) $ copyArr marr 0 arr s i
+    when (i<l) $ copyArr marr (i+1) arr (i+s) (l-i)
+    unsafeFreezeArr marr
+
+-- | Delete an element of the immutable array's at given index. This function will produce a new array.
+deleteIndexArr :: Arr arr a
+               => arr a
+               -> Int        -- ^ offset
+               -> Int        -- ^ length
+               -> Int        -- ^ the index of the element to delete
+               -> arr a
+{-# INLINE deleteIndexArr #-}
+deleteIndexArr arr s l i = runST $ do
+    marr <- newArr (l-1)
+    when (i>0) $ copyArr marr 0 arr s i
+    let i' = i+1
+    when (i'<l) $ copyArr marr i arr (i'+s) (l-i')
+    unsafeFreezeArr marr

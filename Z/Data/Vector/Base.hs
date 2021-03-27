@@ -86,31 +86,36 @@ import           Control.Exception
 import           Control.Monad
 import           Control.Monad.ST
 import           Data.Bits
-import           Data.Char                     (ord)
-import qualified Data.Foldable                 as F
-import           Data.Hashable                 (Hashable(..))
-import           Data.Hashable.Lifted          (Hashable1(..), hashWithSalt1)
-import qualified Data.List                     as List
+import           Data.Char                      (ord)
+import qualified Data.Foldable                  as F
+import           Data.Kind                      (Type)
+import           Data.Hashable                  (Hashable(..))
+import           Data.Hashable.Lifted           (Hashable1(..), hashWithSalt1)
+import qualified Data.List                      as List
+import           Data.List.NonEmpty       (NonEmpty ((:|)))
 import           Data.Maybe
-import qualified Data.CaseInsensitive          as CI
+import qualified Data.CaseInsensitive           as CI
 import           Data.Primitive
 import           Data.Primitive.Ptr
-import qualified Data.Traversable              as T
+import           Data.Semigroup                 (Semigroup (..))
+import qualified Data.Traversable               as T
 import           Foreign.C
 import           GHC.Exts
 import           GHC.Stack
 import           GHC.CString
 import           GHC.Word
-import           Prelude                       hiding (concat, concatMap,
+import           Prelude                        hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
                                                 all, any, replicate, traverse)
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
-import           Text.Read                     (Read(..))
-import           System.IO.Unsafe              (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary      (Arbitrary(..), CoArbitrary(..))
+import           Test.QuickCheck.Gen            (chooseInt)
+import           Text.Read                      (Read(..))
+import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 import           Z.Data.Array
+import           Z.Data.ASCII                   (toLower)
 
 -- | Typeclass for box and unboxed vectors, which are created by slicing arrays.
 --
@@ -124,7 +129,7 @@ import           Z.Data.Array
 -- 'toArr' will always return offset 0 and whole array length, and 'fromArr' is O(n) 'copyArr'.
 class (Arr (IArray v) a) => Vec v a where
     -- | Vector's immutable array type
-    type IArray v :: * -> *
+    type IArray v :: Type -> Type
     -- | Get underline array and slice range(offset and length).
     toArr :: v a -> (IArray v a, Int, Int)
     -- | Create a vector by slicing an array(with offset and length).
@@ -176,7 +181,7 @@ pattern Vec :: Vec v a => IArray v a -> Int -> Int -> v a
 pattern Vec arr s l <- (toArr -> (arr,s,l)) where
         Vec arr s l = fromArr arr s l
 
--- | /O(1)/ Index array element.
+-- | /O(1)/ Index vector's element.
 --
 -- Return 'Nothing' if index is out of bounds.
 --
@@ -247,6 +252,10 @@ compareVector (Vector baA sA lA) (Vector baB sB lB)
 instance Semigroup (Vector a) where
     {-# INLINE (<>) #-}
     (<>)    = append
+    {-# INLINE sconcat #-}
+    sconcat (b:|bs) = concat (b:bs)
+    {-# INLINE stimes #-}
+    stimes  = _cycleN
 
 instance Monoid (Vector a) where
     {-# INLINE mempty #-}
@@ -305,7 +314,12 @@ instance T.Traversable Vector where
     traverse = traverseVec
 
 instance Arbitrary a => Arbitrary (Vector a) where
-    arbitrary = pack <$> arbitrary
+    arbitrary = do
+        vs <- arbitrary
+        let l = List.length vs
+        s <- chooseInt (0, l)
+        l' <- chooseInt (0, l - s)
+        pure $ fromArr (pack vs) s l'
     shrink v = pack <$> shrink (unpack v)
 
 instance CoArbitrary a => CoArbitrary (Vector a) where
@@ -459,6 +473,10 @@ compareBytes (PrimVector (PrimArray baA#) (I# sA#) lA)
 instance Prim a => Semigroup (PrimVector a) where
     {-# INLINE (<>) #-}
     (<>)    = append
+    {-# INLINE sconcat #-}
+    sconcat (b:|bs) = concat (b:bs)
+    {-# INLINE stimes #-}
+    stimes  = _cycleN
 
 instance Prim a => Monoid (PrimVector a) where
     {-# INLINE mempty #-}
@@ -479,7 +497,12 @@ instance (Prim a, Read a) => Read (PrimVector a) where
     readPrec = pack <$> readPrec
 
 instance (Prim a, Arbitrary a) => Arbitrary (PrimVector a) where
-    arbitrary = pack <$> arbitrary
+    arbitrary = do
+        vs <- arbitrary
+        let l = List.length vs
+        s <- chooseInt (0, l)
+        l' <- chooseInt (0, l - s)
+        pure $ fromArr (pack vs) s l'
     shrink v = pack <$> shrink (unpack v)
 
 instance (Prim a, CoArbitrary a) => CoArbitrary (PrimVector a) where
@@ -526,16 +549,10 @@ instance Prim a => IsList (PrimVector a) where
     {-# INLINE fromListN #-}
     fromListN = packN
 
+-- | This instance assume ASCII encoded bytes
 instance CI.FoldCase Bytes where
     {-# INLINE foldCase #-}
-    foldCase = map toLower8
-      where
-        toLower8 :: Word8 -> Word8
-        toLower8 w
-          |  65 <= w && w <=  90 ||
-            192 <= w && w <= 214 ||
-            216 <= w && w <= 222 = w + 32
-          | otherwise            = w
+    foldCase = map toLower
 
 -- | /O(n)/, pack an ASCII 'String', multi-bytes char WILL BE CHOPPED!
 packASCII :: String -> Bytes
@@ -705,7 +722,6 @@ pack :: Vec v a => [a] -> v a
 {-# INLINE pack #-}
 pack = packN defaultInitSize
 
-
 -- | /O(n)/ Convert a list into a vector with an approximate size.
 --
 -- If the list's length is large than the size given, we simply double the buffer size
@@ -730,7 +746,7 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
         if i < n
         then do writeArr marr i x
                 return (IPair (i+1) marr)
-        else do let !n' = n `shiftL` 1
+        else do let !n' = n `unsafeShiftL` 1
                 !marr' <- resizeMutableArr marr n'
                 writeArr marr' i x
                 return (IPair (i+1) marr')
@@ -784,7 +800,7 @@ packRN n0 = \ ws0 -> runST (do let n = max 4 n0
         if i >= 0
         then do writeArr marr i x
                 return (IPair (i-1) marr)
-        else do let !n' = n `shiftL` 1  -- double the buffer
+        else do let !n' = n `unsafeShiftL` 1  -- double the buffer
                 !marr' <- newArr n'
                 copyMutableArr marr' n marr 0 n
                 writeArr marr' (n-1) x
@@ -1211,11 +1227,16 @@ replicate n x | n <= 0    = empty
 -- | /O(n*m)/ 'cycleN' a vector n times.
 cycleN :: forall v a. Vec v a => Int -> v a -> v a
 {-# INLINE cycleN #-}
-cycleN n (Vec arr s l)
+cycleN = _cycleN
+
+-- | /O(n*m)/ 'cycleN''s polymorphic type version
+_cycleN :: forall v a x. (Vec v a, Integral x) => x -> v a -> v a
+{-# INLINE _cycleN #-}
+_cycleN n (Vec arr s l)
     | l == 0    = empty
     | otherwise = create end (go 0)
   where
-    !end = n*l
+    !end = fromIntegral n * l
     go :: Int -> MArr (IArray v) s a -> ST s ()
     go !i !marr | i >= end  = return ()
                 | otherwise = copyArr marr i arr s l >> go (i+l) marr
@@ -1397,3 +1418,4 @@ foreign import ccall unsafe "hs_memchr" c_memchr ::
 -- HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n);
 foreign import ccall unsafe "hs_memrchr" c_memrchr ::
     ByteArray# -> Int -> Word8 -> Int -> Int
+

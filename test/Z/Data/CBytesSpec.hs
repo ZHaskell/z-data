@@ -1,23 +1,24 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module Z.Data.CBytesSpec where
 
-import qualified Data.List                  as List
-import qualified GHC.Exts                   as List
+import           Data.Char                (ord)
+import           Data.Hashable            (hash, hashWithSalt)
+import qualified Data.List                as List
 import           Data.Word
-import           Data.Hashable              (hashWithSalt, hash)
-import qualified Z.Data.CBytes              as CB
-import qualified Z.Data.JSON                as JSON
-import           Z.Foreign
-import qualified Z.Data.Vector.Base         as V
+import qualified GHC.Exts                 as List
 import           System.IO.Unsafe
+import           Test.Hspec
+import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
-import           Test.Hspec
-import           Test.Hspec.QuickCheck
+import qualified Z.Data.CBytes            as CB
+import qualified Z.Data.JSON              as JSON
+import qualified Z.Data.Vector.Base       as V
+import           Z.Foreign
 
 spec :: Spec
 spec = describe "CBytes-base" $ do
@@ -77,3 +78,15 @@ spec = describe "CBytes-base" $ do
             CB.toBytes (CB.pack xs) ===
                 (unsafeDupablePerformIO $ CB.withCBytes (CB.pack xs) fromNullTerminated)
 
+    describe "CBytes.fromPrimArray" $ do
+        prop "CBytes pack === CBytes fromPrimArray" $ \(ASCIIString xs) ->
+            let xs' = List.filter (/= '\NUL') xs
+             in CB.pack xs' === CB.fromPrimArray (primArrayFromList $ map (fromIntegral . ord) xs')
+
+    describe "CBytes.fromMutablePrimArray" $ do
+        prop "CBytes pack === CBytes fromMutablePrimArray" $ \(ASCIIString xs) ->
+            let xs' = List.filter (/= '\NUL') xs
+             in unsafeDupablePerformIO $ do
+                 marr <- unsafeThawPrimArray (primArrayFromList $ map (fromIntegral . ord) xs')
+                 cb <- CB.fromMutablePrimArray marr
+                 return $ CB.pack xs' === cb

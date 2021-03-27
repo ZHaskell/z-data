@@ -23,36 +23,41 @@ There's no lazy parsers here, every pieces of JSON document will be parsed into 
 
 module Z.Data.JSON.Value
   ( -- * Value type
-    Value(..)
+    Value(..), key, nth
     -- * parse into JSON Value
   , parseValue
   , parseValue'
   , parseValueChunks
-  , parseValueChunks'
     -- * Value Parsers
   , value
   , object
   , array
   , string
   , skipSpaces
+    -- * Convert to Scientific
+  , floatToScientific
+  , doubleToScientific
   ) where
 
 import           Control.DeepSeq
-import           Data.Bits                ((.&.))
+import           Data.Bits                  ((.&.))
 import           Data.Functor
-import           Data.Scientific          (Scientific, scientific)
+import           Data.Scientific            (Scientific, scientific)
 import           Data.Typeable
+import           Data.Int
 import           Data.Word
 import           GHC.Generics
-import qualified Z.Data.Parser          as P
-import qualified Z.Data.Text.Base       as T
-import           Z.Data.Text.Print     (Print(..))
-import           Z.Data.Vector.Base     as V
-import           Z.Data.Vector.Extra    as V
+import qualified Z.Data.Parser              as P
+import qualified Z.Data.Builder.Numeric     as B
+import qualified Z.Data.Text.Base           as T
+import           Z.Data.Text.Print          (Print(..))
+import           Z.Data.Vector.Base         as V
+import           Z.Data.Vector.Extra        as V
+import           Z.Data.Vector.Search       as V
 import           Z.Foreign
-import           System.IO.Unsafe         (unsafeDupablePerformIO)
-import           Test.QuickCheck.Arbitrary (Arbitrary(..))
-import           Test.QuickCheck.Gen (Gen(..), listOf)
+import           System.IO.Unsafe           (unsafeDupablePerformIO)
+import           Test.QuickCheck.Arbitrary  (Arbitrary(..))
+import           Test.QuickCheck.Gen        (Gen(..), listOf)
 
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
@@ -128,6 +133,29 @@ instance Arbitrary Value where
     shrink (Array vs) = V.unpack vs
     shrink _          = []
 
+-- | Lense for 'Array' element.
+--
+-- 1. return `Null` if 'Value' is not an 'Array' or index not exist.
+-- 2. Modify will have no effect if 'Value' is not an 'Array' or index not exist.
+--
+nth :: Functor f => Int -> (Value -> f Value) -> Value -> f Value
+{-# INLINABLE nth #-}
+nth ix f (Array vs) | Just v <- vs `indexMaybe` ix =
+    fmap (\ x -> Array (V.unsafeModifyIndex vs ix (const x))) (f v)
+nth _ f v = fmap (const v) (f Null)
+
+-- | Lense for 'Object' element
+--
+-- 1. return `Null` if 'Value' is not an 'Object' or key not exist.
+-- 2. Modify will have no effect if 'Value' is not an 'Object' or key not exist.
+-- 4. On duplicated keys prefer the last one.
+--
+key :: Functor f => T.Text -> (Value -> f Value) -> Value -> f Value
+{-# INLINABLE key #-}
+key k f (Object kvs) | (i, Just (_, v)) <- V.findR ((k ==) . fst) kvs =
+    fmap (\ x -> Object (V.unsafeModifyIndex kvs i (const (k, x)))) (f v)
+key _ f v = fmap (const v) (f Null)
+
 -- | Parse 'Value' without consuming trailing bytes.
 parseValue :: V.Bytes -> (V.Bytes, Either P.ParseError Value)
 {-# INLINE parseValue #-}
@@ -140,15 +168,9 @@ parseValue' :: V.Bytes -> Either P.ParseError Value
 parseValue' = P.parse' (value <* skipSpaces <* P.endOfInput)
 
 -- | Increamental parse 'Value' without consuming trailing bytes.
-parseValueChunks :: Monad m => m V.Bytes -> V.Bytes -> m (V.Bytes, Either P.ParseError Value)
+parseValueChunks :: Monad m => P.ParseChunks m V.Bytes P.ParseError Value
 {-# INLINE parseValueChunks #-}
 parseValueChunks = P.parseChunks value
-
--- | Increamental parse 'Value' and consume all trailing JSON white spaces, if there're
--- bytes left, parsing will fail.
-parseValueChunks' :: Monad m => m V.Bytes -> V.Bytes -> m (Either P.ParseError Value)
-{-# INLINE parseValueChunks' #-}
-parseValueChunks' mi inp = snd <$> P.parseChunks (value <* skipSpaces <* P.endOfInput) mi inp
 
 --------------------------------------------------------------------------------
 
@@ -265,3 +287,28 @@ string_ = do
 
 foreign import ccall unsafe find_json_string_end :: MBA# Word32 -> BA# Word8 -> Int -> Int -> IO Int
 foreign import ccall unsafe decode_json_string :: MBA# Word8 -> BA# Word8 -> Int -> Int -> IO Int
+
+--------------------------------------------------------------------------------
+
+-- | Convert IEEE float to scientific notition.
+floatToScientific :: Float -> Scientific
+{-# INLINE floatToScientific #-}
+floatToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3_sp (-rf)))
+                     | rf == 0   = 0
+                     | otherwise = fromFloatingDigits (B.grisu3_sp rf)
+
+-- | Convert IEEE double to scientific notition.
+doubleToScientific :: Double -> Scientific
+{-# INLINE doubleToScientific #-}
+doubleToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3 (-rf)))
+                      | rf == 0   = 0
+                      | otherwise = fromFloatingDigits (B.grisu3 rf)
+
+fromFloatingDigits :: ([Int], Int) -> Scientific
+{-# INLINE fromFloatingDigits #-}
+fromFloatingDigits (digits, e) = go digits 0 0
+  where
+    -- There's no way a float or double has more digits a 'Int64' can't handle
+    go :: [Int] -> Int64 -> Int -> Scientific
+    go []     !c !n = scientific (fromIntegral c) (e - n)
+    go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)

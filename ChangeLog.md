@@ -1,11 +1,48 @@
 # Revision history for Z-Data
 
-## 0.5.0.0  -- 2020-01-15
+## 0.7.2.0  -- 2021-03-22
 
-* Add `ParseChunks` alias, remove `parseChunks'` from `Z.Data.JSON`.
+* Add `fromMutablePrimArray` for constructing CBytes.
+* Add `toBytes'/toBuilder'`(convert with the \NUL terminator) to `Z.Data.CBytes`.
+
+## 0.7.1.0  -- 2021-03-03
+
+* Add `CPtr` type, a more lightweight foreign pointer.
+* Add `toLower/toUpper/toLowerLatin/toUpperLatin` to `Z.Data.ASCII`.
+
+## 0.7.0.0  -- 2021-03-03
+
+* Add more patterns to `Z.Data.ASCII`.
+* Fix a bug in `Z.Data.Vector.Search` where needle is a singleton.
+* Optimize `mergeDupAdjacent` family funtions in `Z.Data.Vector.Sort` to not copy vector in case of no duplication.
+* Add `scientific'` to `Z.Data.Builder`, Add more `Print` instances.
+* Bump deps to support GHC 9.0.
+
+## 0.6.1.0  -- 2021-02-04
+
+* Add `key` and `nth` lens to `Z.Data.JSON.Value` for manipulating nested value more easily.
+* Port patch from bytestring #301 #310 #315, Improve `stime`, `sconcat`, `intersperse`.
+* Add JSON pretty printer `prettyJSON/prettyValue` to `Z.Data.JSON`.
+* Move many instances from `Z.Data.JSON.Base` to `Z.Data.JSON` to reduce the chance of heap overflow when compile.
+* Add `modifyIndex/insertIndex/deleteIndex` to array and vector, rewrite `FlatMap/FlatSet/FlatInMap/FlatIntSet' to use them.
+* Remove `linearSearch` from `Z.Data.Vector.FlatMap/FlatInMap`, use `find/findR` from `Z.Data.Vector.Search` instead.
+* Add `displayWidth` to `Z.Data.Text`.
+* Move `floatToScientific/doubleToScientific` to `Z.Data.JSON.Value`.
+
+## 0.6.0.0  -- 2021-02-04
+
+* Add `primArrayFromBE/primArrayFromBE` to `Z.Data.Array.Unaligned`.
+* Change `[Char]` 's JSON instance to use JSON text, Add `Bytes` 's JSON instance to use base64 encoding.
+* Add `escapeCBytes`, `toEscapedText` to `Z.Data.CBytes`, change `CBytes` 's JSON instance to use base64 encoding.
+
+## 0.5.0.0  -- 2021-01-15
+
+* Add `ParseChunks` type alias, remove `parseChunks'` from `Z.Data.JSON`.
+* Change JSON instance of `Data.Version` to use JSON Array.
 * Add `fromByteString` and `toByteString` to `Z.Foreign`.
+* Change license's copyright to test --test-show-details=direct
 
-## 0.4.0.0  -- 2020-01-11
+## 0.4.0.0  -- 2021-01-11
 
 * Merge `FromValue`, `ToValue`, `EncodeJSON` to `JSON` class, add instances for containers.
 * A new `Z.Data.JSON.Converter` module to be reused in other protocol decoding.
@@ -68,7 +105,7 @@
 * Remove `Str` newtype.
 * Make `CBytes` a newtype.
 * Add JSON instances for `ExitCode`, Add Unaligned instances for `Ptr a`.
-* Use type alias instead of newtypes for `Locale`, `Category` in `Z.Data.Text`. 
+* Use type alias instead of newtypes for `Locale`, `Category` in `Z.Data.Text`.
 
 ## 0.1.6.0  -- 2020-10-09
 

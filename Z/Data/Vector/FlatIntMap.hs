@@ -26,8 +26,8 @@ module Z.Data.Vector.FlatIntMap
   , merge, mergeWithKey'
     -- * fold and traverse
   , foldrWithKey, foldrWithKey', foldlWithKey, foldlWithKey', traverseWithKey
-    -- * binary & linear search on vectors
-  , linearSearch, linearSearchR, binarySearch
+    -- * binary search on vectors
+  , binarySearch
   ) where
 
 import           Control.DeepSeq
@@ -39,6 +39,7 @@ import qualified Data.Semigroup             as Semigroup
 import qualified Data.Monoid                as Monoid
 import qualified Data.Primitive.SmallArray  as A
 import qualified Z.Data.Vector.Base         as V
+import qualified Z.Data.Vector.Extra        as V
 import qualified Z.Data.Vector.Sort         as V
 import qualified Z.Data.Text.Print          as T
 import           Data.Function              (on)
@@ -193,45 +194,33 @@ lookup k' (FlatIntMap (V.Vector arr s0 l)) = go s0 (s0+l-1)
 -- | /O(N)/ Insert new key value into map, replace old one if key exists.
 insert :: Int -> v -> FlatIntMap v -> FlatIntMap v
 {-# INLINE insert #-}
-insert k v (FlatIntMap vec@(V.Vector arr s l)) =
+insert k v (FlatIntMap vec) =
     case binarySearch vec k of
-        Left i -> FlatIntMap (V.create (l+1) (\ marr -> do
-            when (i>0) $ A.copySmallArray marr 0 arr s i
-            A.writeSmallArray marr i (V.IPair k v)
-            when (i<l) $ A.copySmallArray marr (i+1) arr (i+s) (l-i)))
-        Right i -> FlatIntMap (V.Vector (runST (do
-            let arr' = A.cloneSmallArray arr s l
-            marr <- A.unsafeThawSmallArray arr'
-            A.writeSmallArray marr i (V.IPair k v)
-            A.unsafeFreezeSmallArray marr)) 0 l)
+        Left i -> FlatIntMap (V.unsafeInsertIndex vec i (V.IPair k v))
+        Right i -> FlatIntMap (V.unsafeModifyIndex vec i (const (V.IPair k v)))
 
 -- | /O(N)/ Delete a key value pair by key.
 delete :: Int -> FlatIntMap v -> FlatIntMap v
 {-# INLINE delete #-}
-delete k m@(FlatIntMap vec@(V.Vector arr s l)) =
+delete k m@(FlatIntMap vec) =
     case binarySearch vec k of
         Left _  -> m
-        Right i -> FlatIntMap $ V.create (l-1) (\ marr -> do
-            when (i>0) $ A.copySmallArray marr 0 arr s i
-            let i' = i+1
-            when (i'<l) $ A.copySmallArray marr i arr (i'+s) (l-i'))
+        Right i -> FlatIntMap (V.unsafeDeleteIndex vec i)
 
 -- | /O(N)/ Modify a value by key.
 --
 -- The value is evaluated to WHNF before writing into map.
 adjust' :: (v -> v) -> Int -> FlatIntMap v -> FlatIntMap v
 {-# INLINE adjust' #-}
-adjust' f k m@(FlatIntMap vec@(V.Vector arr s l)) =
+adjust' f k m@(FlatIntMap vec) =
     case binarySearch vec k of
         Left _  -> m
-        Right i -> FlatIntMap $ V.create l (\ marr -> do
-            A.copySmallArray marr 0 arr s l
-            let !v' = f (V.isnd (A.indexSmallArray arr (i+s)))
-            A.writeSmallArray marr i (V.IPair k v'))
+        Right i -> FlatIntMap . V.unsafeModifyIndex vec i $
+            \ (V.IPair k' v) -> let !v' = f v in V.IPair k' v'
 
 -- | /O(n+m)/ Merge two 'FlatIntMap', prefer right value on key duplication.
 merge :: forall v. FlatIntMap v -> FlatIntMap v -> FlatIntMap v
-{-# INLINE merge #-}
+{-# INLINABLE merge #-}
 merge fmL@(FlatIntMap (V.Vector arrL sL lL)) fmR@(FlatIntMap (V.Vector arrR sR lR))
     | null fmL = fmR
     | null fmR = fmL
@@ -355,28 +344,3 @@ binarySearch (V.Vector arr s0 l) !k' = go s0 (s0+l-1)
             in case k' `compare` k of LT -> go s (mid-1)
                                       GT -> go (mid+1) e
                                       _  -> Right mid
-
---------------------------------------------------------------------------------
-
--- | linear scan search from left to right, return the first one if exist.
-linearSearch :: V.Vector (V.IPair v) -> Int -> Maybe v
-{-# INLINABLE linearSearch #-}
-linearSearch (V.Vector arr s l) !k' = go s
-  where
-    !end = s + l
-    go !i
-        | i >= end = Nothing
-        | otherwise =
-            let V.IPair k v  = arr `A.indexSmallArray` i
-            in if k' == k then Just v else go (i+1)
-
--- | linear scan search from right to left, return the first one if exist.
-linearSearchR :: V.Vector (V.IPair v) -> Int -> Maybe v
-{-# INLINABLE linearSearchR #-}
-linearSearchR (V.Vector arr s l) !k' = go (s+l-1)
-  where
-    go !i
-        | i < s = Nothing
-        | otherwise =
-            let V.IPair k v  = arr `A.indexSmallArray` i
-            in if k' == k then Just v else go (i-1)

@@ -32,8 +32,6 @@ module Z.Data.Parser.Numeric
   , hexLoop
   , decLoop
   , decLoopIntegerFast
-  , floatToScientific
-  , doubleToScientific
   ) where
 
 import           Control.Applicative
@@ -43,7 +41,6 @@ import           Data.Int
 import qualified Data.Scientific          as Sci
 import           Data.Word
 import           Z.Data.ASCII
-import qualified Z.Data.Builder.Numeric as B
 import           Z.Data.Parser.Base     (Parser, (<?>))
 import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
@@ -441,26 +438,3 @@ scientificallyInternal' h = do
             Just ec | ec == LETTER_e || ec == LETTER_E -> P.skipWord8 *> int
             _ -> pure 0
         pure $! Sci.scientific c (e' - e)
-
---------------------------------------------------------------------------------
-
-floatToScientific :: Float -> Sci.Scientific
-{-# INLINE floatToScientific #-}
-floatToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3_sp (-rf)))
-                     | rf == 0   = 0
-                     | otherwise = fromFloatingDigits (B.grisu3_sp rf)
-
-doubleToScientific :: Double -> Sci.Scientific
-{-# INLINE doubleToScientific #-}
-doubleToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3 (-rf)))
-                      | rf == 0   = 0
-                      | otherwise = fromFloatingDigits (B.grisu3 rf)
-
-fromFloatingDigits :: ([Int], Int) -> Sci.Scientific
-{-# INLINE fromFloatingDigits #-}
-fromFloatingDigits (digits, e) = go digits 0 0
-  where
-    -- There's no way a float or double has more digits a 'Int64' can't handle
-    go :: [Int] -> Int64 -> Int -> Sci.Scientific
-    go []     !c !n = Sci.scientific (fromIntegral c) (e - n)
-    go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)

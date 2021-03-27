@@ -28,25 +28,26 @@ module Z.Data.Text.Regex
   , extract
   ) where
 
-import Z.Foreign
 import Control.Exception
+import Control.Monad
 import Data.Int
 import Data.Word
 import GHC.Stack
 import GHC.Generics
-import Foreign.ForeignPtr
 import Foreign.Marshal.Utils            (fromBool)
 import System.IO.Unsafe
 import qualified Z.Data.Text.Base       as T
 import qualified Z.Data.Text.Print      as T
 import qualified Z.Data.Vector.Base     as V
 import qualified Z.Data.Array           as A
+import Z.Foreign.CPtr
+import Z.Foreign
 
 -- | A compiled RE2 regex.
 data Regex = Regex
-    { regexPtr   :: {-# UNPACK #-} !(ForeignPtr Regex)
-    , regexCaptureNum :: {-# UNPACK #-} !Int        -- ^ capturing group number(including @\\0@)
-    , regexPattern :: T.Text                        -- ^ Get back regex's pattern.
+    { regexPtr        :: {-# UNPACK #-} !(CPtr Regex)
+    , regexCaptureNum :: {-# UNPACK #-} !Int            -- ^ capturing group number(including @\\0@)
+    , regexPattern    :: T.Text                         -- ^ Get back regex's pattern.
     } deriving (Show, Generic)
       deriving anyclass T.Print
 
@@ -113,43 +114,43 @@ instance Exception RegexException
 regex :: HasCallStack => T.Text -> Regex
 {-# NOINLINE regex #-}
 regex t = unsafePerformIO $ do
-    r <- withPrimVectorUnsafe (T.getUTF8Bytes t) hs_re2_compile_pattern_default
+    (cp, r) <- newCPtrUnsafe (\ mba# ->
+        (withPrimVectorUnsafe (T.getUTF8Bytes t) (hs_re2_compile_pattern_default mba#)))
+        p_hs_re2_delete_pattern
+
+    when (r == nullPtr) (throwIO (InvalidRegexPattern t callStack))
     ok <- hs_re2_ok r
-    if ok /= 0
-    then do
-        p <- newForeignPtr p_hs_re2_delete_pattern r
-        n <- hs_num_capture_groups r
-        return (Regex p n t)
-    else do
-        hs_re2_delete_pattern r
-        throwIO (InvalidRegexPattern t callStack)
+    when (ok == 0) (throwIO (InvalidRegexPattern t callStack))
+
+    n <- withCPtr cp hs_num_capture_groups
+    return (Regex cp n t)
 
 -- | Compile a regex pattern withOptions, throw 'InvalidRegexPattern' in case of illegal patterns.
 regexOpts :: HasCallStack => RegexOpts -> T.Text -> Regex
 {-# NOINLINE regexOpts #-}
 regexOpts RegexOpts{..} t = unsafePerformIO $ do
-    r <- withPrimVectorUnsafe (T.getUTF8Bytes t) $ \ p o l ->
-        hs_re2_compile_pattern p o l
-            (fromBool posix_syntax  )
-            (fromBool longest_match )
-            max_mem
-            (fromBool literal       )
-            (fromBool never_nl      )
-            (fromBool dot_nl        )
-            (fromBool never_capture )
-            (fromBool case_sensitive)
-            (fromBool perl_classes  )
-            (fromBool word_boundary )
-            (fromBool one_line      )
+    (cp, r) <- newCPtrUnsafe ( \ mba# ->
+        (withPrimVectorUnsafe (T.getUTF8Bytes t) $ \ p o l ->
+            hs_re2_compile_pattern mba# p o l
+                (fromBool posix_syntax  )
+                (fromBool longest_match )
+                max_mem
+                (fromBool literal       )
+                (fromBool never_nl      )
+                (fromBool dot_nl        )
+                (fromBool never_capture )
+                (fromBool case_sensitive)
+                (fromBool perl_classes  )
+                (fromBool word_boundary )
+                (fromBool one_line      )))
+        p_hs_re2_delete_pattern
+
+    when (r == nullPtr) (throwIO (InvalidRegexPattern t callStack))
     ok <- hs_re2_ok r
-    if ok /= 0
-    then do
-        p <- newForeignPtr p_hs_re2_delete_pattern r
-        n <- hs_num_capture_groups r
-        return (Regex p n t)
-    else do
-        hs_re2_delete_pattern r
-        throwIO (InvalidRegexPattern t callStack)
+    when (ok == 0) (throwIO (InvalidRegexPattern t callStack))
+
+    n <- withCPtr cp hs_num_capture_groups
+    return (Regex cp n t)
 
 -- | Escape a piece of text literal so that it can be safely used in regex pattern.
 --
@@ -165,7 +166,7 @@ escape t = T.Text . unsafePerformIO . fromStdString $
 test :: Regex -> T.Text -> Bool
 {-# INLINABLE test #-}
 test (Regex fp _ _) (T.Text bs) = unsafePerformIO $ do
-    withForeignPtr fp $ \ p ->
+    withCPtr fp $ \ p ->
         withPrimVectorUnsafe bs $ \ ba# s l -> do
             r <- hs_re2_test p ba# s l
             return $! r /= 0
@@ -181,7 +182,7 @@ test (Regex fp _ _) (T.Text bs) = unsafePerformIO $ do
 match :: Regex -> T.Text -> (T.Text, [Maybe T.Text], T.Text)
 {-# INLINABLE match #-}
 match (Regex fp n _) t@(T.Text bs@(V.PrimVector ba _ _)) = unsafePerformIO $ do
-    withForeignPtr fp $ \ p ->
+    withCPtr fp $ \ p ->
         withPrimVectorUnsafe bs $ \ ba# s l -> do
             (starts, (lens, r)) <- allocPrimArrayUnsafe n $ \ p_starts ->
                 allocPrimArrayUnsafe n $ \ p_ends ->
@@ -216,7 +217,7 @@ replace :: Regex
         -> T.Text
 {-# INLINABLE replace #-}
 replace (Regex fp _ _) g inp rew = T.Text . unsafePerformIO $ do
-    withForeignPtr fp $ \ p ->
+    withCPtr fp $ \ p ->
         withPrimVectorUnsafe (T.getUTF8Bytes inp) $ \ inpp inpoff inplen ->
             withPrimVectorUnsafe (T.getUTF8Bytes rew) $ \ rewp rewoff rewlen ->
                 fromStdString ((if g then hs_re2_replace_g else hs_re2_replace)
@@ -234,16 +235,20 @@ extract :: Regex
         -> T.Text
 {-# INLINABLE extract #-}
 extract (Regex fp _ _) inp rew = T.Text . unsafePerformIO $ do
-    withForeignPtr fp $ \ p ->
+    withCPtr fp $ \ p ->
         withPrimVectorUnsafe (T.getUTF8Bytes inp) $ \ inpp inpoff inplen ->
             withPrimVectorUnsafe (T.getUTF8Bytes rew) $ \ rewp rewoff rewlen ->
                 fromStdString (hs_re2_extract p inpp inpoff inplen rewp rewoff rewlen)
 
 --------------------------------------------------------------------------------
 
-foreign import ccall unsafe hs_re2_compile_pattern_default :: BA# Word8 -> Int -> Int -> IO (Ptr Regex)
+foreign import ccall unsafe hs_re2_compile_pattern_default
+    :: MBA# (Ptr Regex) -> BA# Word8 -> Int -> Int
+    -> IO (Ptr Regex)
+
 foreign import ccall unsafe hs_re2_compile_pattern
-    :: BA# Word8 -> Int -> Int
+    :: MBA# (Ptr Regex)
+    -> BA# Word8 -> Int -> Int
     -> CBool -- ^ posix_syntax
     -> CBool -- ^ longest_match
     -> Int64 -- ^ max_mem
@@ -257,8 +262,7 @@ foreign import ccall unsafe hs_re2_compile_pattern
     -> CBool -- ^ one_line
     -> IO (Ptr Regex)
 
-foreign import ccall unsafe "&hs_re2_delete_pattern" p_hs_re2_delete_pattern :: FinalizerPtr Regex
-foreign import ccall unsafe hs_re2_delete_pattern :: Ptr Regex -> IO ()
+foreign import ccall unsafe "&hs_re2_delete_pattern" p_hs_re2_delete_pattern :: FunPtr (Ptr Regex -> IO ())
 
 foreign import ccall unsafe hs_re2_ok :: Ptr Regex -> IO CInt
 foreign import ccall unsafe hs_num_capture_groups :: Ptr Regex -> IO Int

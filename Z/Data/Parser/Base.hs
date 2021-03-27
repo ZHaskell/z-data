@@ -24,10 +24,12 @@ module Z.Data.Parser.Base
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
     -- * Primitive decoders
-  , decodePrim, decodePrimLE, decodePrimBE
+  , decodePrim, BE(..), LE(..)
+  , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
+  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Misc
@@ -41,13 +43,16 @@ import qualified Data.CaseInsensitive               as CI
 import qualified Data.Primitive.PrimArray           as A
 import           Data.Int
 import           Data.Word
+import           Data.Bits                          ((.&.))
 import           GHC.Types
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
-import qualified Z.Data.Text.Base                 as T
-import qualified Z.Data.Vector.Base               as V
-import qualified Z.Data.Vector.Extra              as V
+import qualified Z.Data.Text.Base                   as T
+import qualified Z.Data.Text.Extra                  as T
+import qualified Z.Data.Text.UTF8Codec              as T
+import qualified Z.Data.Vector.Base                 as V
+import qualified Z.Data.Vector.Extra                as V
 
 -- | Simple parsing result, that represent respectively:
 --
@@ -172,7 +177,7 @@ finishParsing r = case r of
     Failure errs rest -> (rest, Left errs)
     Partial f         -> finishParsing (f V.empty)
 
--- | Type alias for a streaming parser, draw chunk from Monad m, and return result in @Either err x@.
+-- | Type alias for a streaming parser, draw chunk from Monad m (with a initial chunk), return result in @Either err x@.
 type ParseChunks m chunk err x = m chunk -> chunk -> m (chunk, Either err x)
 
 -- | Run a parser with an initial input string, and a monadic action
@@ -275,6 +280,7 @@ atEnd = Parser $ \ _ k inp ->
     then Partial (\ inp' -> k (V.null inp') inp')
     else k False inp
 
+-- | Decode a primitive type in host byte order.
 decodePrim :: forall a. (Unaligned a) => Parser a
 {-# INLINE decodePrim #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Word   #-}
@@ -297,6 +303,7 @@ decodePrim = do
   where
     n = getUnalignedSize (unalignedSize @a)
 
+-- | Decode a primitive type in little endian.
 decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# INLINE decodePrimLE #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Word   #-}
@@ -317,6 +324,7 @@ decodePrimLE = do
   where
     n = getUnalignedSize (unalignedSize @(LE a))
 
+-- | Decode a primitive type in big endian.
 decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# INLINE decodePrimBE #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Word   #-}
@@ -475,6 +483,18 @@ char8 :: Char -> Parser ()
 {-# INLINE char8 #-}
 char8 = word8 . c2w
 
+-- | Match a specific 7bit char.
+--
+char7 :: Char -> Parser ()
+{-# INLINE char7 #-}
+char7 chr = word8 (c2w chr .&. 0x7F)
+
+-- | Match a specific UTF8 char.
+--
+charUTF8 :: Char -> Parser ()
+{-# INLINE charUTF8 #-}
+charUTF8 = text . T.singleton
+
 -- | Take a byte and return as a 8bit char.
 --
 anyChar8 :: Parser Char
@@ -482,6 +502,40 @@ anyChar8 :: Parser Char
 anyChar8 = do
     w <- anyWord8
     return $! w2c w
+
+-- | Take a byte and return as a 7bit char, fail if exceeds @0x7F@.
+--
+anyChar7 :: Parser Char
+{-# INLINE anyChar7 #-}
+anyChar7 = do
+    w <- anyWord8
+    if w > 0x7f
+    then fail' "Z.Data.Parser.anyChar7: byte exceeds 0x7F"
+    else return $! w2c w
+
+-- | Decode next few bytes as an UTF8 char.
+--
+-- Don't use this method as UTF8 decoder, it's slower than 'T.validate'.
+anyCharUTF8 :: Parser Char
+{-# INLINABLE anyCharUTF8 #-}
+anyCharUTF8 = do
+    r <- Parser $ \ kf k inp -> do
+        let (V.PrimVector arr s l) = inp
+        if l > 0
+        then
+            let l' = T.decodeCharLen arr s
+            in if l' > l
+            then k (Left l') inp
+            else do
+                case T.validateMaybe (V.unsafeTake l' inp) of
+                    Just t -> k (Right $! T.head t) $! V.unsafeDrop l' inp
+                    _ -> kf ["Z.Data.Parser.Base.anyCharUTF8: invalid UTF8 bytes"] inp
+        else k (Left 1) inp
+    case r of
+        Left d -> do
+            ensureN d ["Z.Data.Parser.Base.anyCharUTF8: not enough bytes"]
+            anyCharUTF8
+        Right c -> return c
 
 -- | Match either a single newline byte @\'\\n\'@, or a carriage
 -- return followed by a newline byte @\"\\r\\n\"@.
@@ -677,7 +731,7 @@ bytes bs = do
         else kf ["Z.Data.Parser.Base.bytes: mismatch bytes"] inp)
 
 
--- | Same as 'bytes' but ignoring case.
+-- | Same as 'bytes' but ignoring ASCII case.
 bytesCI :: V.Bytes -> Parser ()
 {-# INLINE bytesCI #-}
 bytesCI bs = do

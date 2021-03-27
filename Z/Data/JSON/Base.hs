@@ -8,7 +8,7 @@ Stability   : experimental
 Portability : non-portable
 
 This module provides 'Converter' to convert 'Value' to haskell data types, and various tools to help
-user define 'JSON' instance.
+user define 'JSON' instance. It's recommended to use "Z.Data.JSON" instead since it contain more instances.
 
 -}
 
@@ -17,10 +17,12 @@ module Z.Data.JSON.Base
     JSON(..), Value(..), defaultSettings, Settings(..)
   , -- * Encode & Decode
     DecodeError
-  , decode, decode', decodeText, decodeText', P.ParseChunks, decodeChunks
+  , decode, decode', decodeText, decodeText'
+  , P.ParseChunks, decodeChunks
   , encode, encodeChunks, encodeText
+  , prettyJSON, JB.prettyValue
     -- * parse into JSON Value
-  , JV.parseValue, JV.parseValue', JV.parseValueChunks, JV.parseValueChunks'
+  , JV.parseValue, JV.parseValue', JV.parseValueChunks
   -- * Generic functions
   , gToValue, gFromValue, gEncodeJSON
   -- * Convert 'Value' to Haskell data
@@ -43,13 +45,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.ST
 import           Data.Char                      (ord)
-import           Data.Data
 import           Data.Fixed
-import           Data.Functor.Compose
-import           Data.Functor.Const
-import           Data.Functor.Identity
-import           Data.Functor.Product
-import           Data.Functor.Sum
 import           Data.Hashable
 import qualified Data.Foldable                  as Foldable
 import qualified Data.HashMap.Strict            as HM
@@ -61,30 +57,19 @@ import qualified Data.Sequence                  as Seq
 import qualified Data.Set                       as Set
 import qualified Data.Tree                      as Tree
 import           Data.Int
+import           Data.Kind                      (Type)
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.List.NonEmpty             as NonEmpty
-import qualified Data.Monoid                    as Monoid
 import qualified Data.Primitive.ByteArray       as A
 import qualified Data.Primitive.SmallArray      as A
 import           Data.Primitive.Types           (Prim)
-import           Data.Proxy                     (Proxy (..))
 import           Data.Ratio                     (Ratio, denominator, numerator, (%))
 import           Data.Scientific                (Scientific, base10Exponent, toBoundedInteger)
 import qualified Data.Scientific                as Scientific
-import qualified Data.Semigroup                 as Semigroup
-import           Data.Tagged                    (Tagged (..))
-import           Data.Time                      (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
-import           Data.Time.Calendar             (CalendarDiffDays (..), DayOfWeek (..))
-import           Data.Time.LocalTime            (CalendarDiffTime (..))
-import           Data.Time.Clock.System         (SystemTime (..))
-import           Data.Version                   (Version, parseVersion)
 import           Data.Word
-import           Foreign.C.Types
 import           GHC.Exts                       (Proxy#, proxy#)
 import           GHC.Generics
 import           GHC.Natural
-import           System.Exit
-import           Text.ParserCombinators.ReadP   (readP_to_S)
 import qualified Z.Data.Array                   as A
 import qualified Z.Data.Builder                 as B
 import           Z.Data.Generics.Utils
@@ -93,11 +78,11 @@ import           Z.Data.JSON.Converter
 import           Z.Data.JSON.Value              (Value (..))
 import qualified Z.Data.JSON.Value              as JV
 import qualified Z.Data.Parser                  as P
-import qualified Z.Data.Parser.Numeric          as P
-import qualified Z.Data.Text.Base               as T
 import qualified Z.Data.Text                    as T
+import qualified Z.Data.Text.Base               as T
 import qualified Z.Data.Text.Print              as T
 import qualified Z.Data.Vector.Base             as V
+import qualified Z.Data.Vector.Base64           as Base64
 import qualified Z.Data.Vector.Extra            as V
 import qualified Z.Data.Vector.FlatIntMap       as FIM
 import qualified Z.Data.Vector.FlatIntSet       as FIS
@@ -192,6 +177,11 @@ encodeText = T.Text . encode
 convertValue :: (JSON a) => Value -> Either ConvertError a
 {-# INLINE convertValue #-}
 convertValue = convert fromValue
+
+-- | Directly encode data to JSON bytes.
+prettyJSON :: JSON a => a -> B.Builder ()
+{-# INLINE prettyJSON #-}
+prettyJSON = JB.prettyValue . toValue
 
 --------------------------------------------------------------------------------
 
@@ -478,8 +468,8 @@ instance (GToValue f, Selector (MetaSel (Just l) u ss ds)) => GWriteFields (S1 (
 instance (GToValue f, Selector (MetaSel (Just l) u ss ds)) => GToValue (S1 (MetaSel (Just l) u ss ds) f) where
     {-# INLINE gToValue #-}
     gToValue s m1@(M1 x) =
-        let k = fieldFmt s $ selName m1
-            v = gToValue s x
+        let !k = fieldFmt s $ selName m1
+            !v = gToValue s x
         in Object (V.singleton (k, v))
 
 instance GToValue f => GToValue (S1 (MetaSel Nothing u ss ds) f) where
@@ -588,7 +578,7 @@ instance JSON a => GEncodeJSON (K1 i a) where
     {-# INLINE gEncodeJSON #-}
     gEncodeJSON _ (K1 x) = encodeJSON x
 
-class GAddPunctuation (f :: * -> *) where
+class GAddPunctuation (f :: Type -> Type) where
     gAddPunctuation :: Proxy# f -> B.Builder () -> B.Builder ()
 
 instance GAddPunctuation a => GAddPunctuation (a :*: b) where
@@ -677,8 +667,8 @@ instance (ProductSize a, GFromFields a, GFromFields b, LookupTable a ~ LookupTab
     => GFromFields (a :*: b) where
     {-# INLINE gFromFields #-}
     gFromFields s v idx = do
-        a <- gFromFields s v idx
-        b <- gFromFields s v (idx + productSize (proxy# :: Proxy# a))
+        !a <- gFromFields s v idx
+        !b <- gFromFields s v (idx + productSize (proxy# :: Proxy# a))
         pure (a :*: b)
 
 instance (GFromValue f) => GFromFields (S1 (MetaSel Nothing u ss ds) f) where
@@ -811,11 +801,6 @@ instance GConstrFromValue f => GFromValue (D1 c f) where
 --------------------------------------------------------------------------------
 -- Built-in Instances
 --------------------------------------------------------------------------------
--- | Use 'Null' as @Proxy a@
-instance JSON (Proxy a) where
-    {-# INLINE fromValue #-}; fromValue = fromNull "Proxy" Proxy;
-    {-# INLINE toValue #-}; toValue _ = Null;
-    {-# INLINE encodeJSON #-}; encodeJSON _ = "null";
 
 instance JSON Value   where
     {-# INLINE fromValue #-}; fromValue = pure;
@@ -831,7 +816,7 @@ instance JSON T.Text   where
 instance JSON Scientific where
     {-# INLINE fromValue #-}; fromValue = withScientific "Scientific" pure;
     {-# INLINE toValue #-}; toValue = Number;
-    {-# INLINE encodeJSON #-}; encodeJSON = JB.scientific;
+    {-# INLINE encodeJSON #-}; encodeJSON = B.scientific';
 
 -- | default instance prefer later key
 instance JSON a => JSON (FM.FlatMap T.Text a) where
@@ -1028,6 +1013,17 @@ instance (Prim a, JSON a) => JSON (V.PrimVector a) where
     {-# INLINE encodeJSON #-}
     encodeJSON = B.square . commaSepVec
 
+-- | This is an INCOHERENT instance, encode binary data with base64 encoding.
+instance {-# INCOHERENT #-} JSON V.Bytes where
+    fromValue = withText "Z.Data.Vector.Bytes" $ \ t ->
+        case Base64.base64Decode (T.getUTF8Bytes t) of
+            Just bs -> pure bs
+            Nothing -> fail' "illegal base64 encoding bytes"
+    {-# INLINE toValue #-}
+    toValue = String . Base64.base64EncodeText
+    {-# INLINE encodeJSON #-}
+    encodeJSON = B.quotes . Base64.base64EncodeBuilder
+
 instance (Eq a, Hashable a, JSON a) => JSON (HS.HashSet a) where
     {-# INLINE fromValue #-}
     fromValue = withArray "Z.Data.Vector.FlatSet.FlatSet" $ \ vs ->
@@ -1046,6 +1042,15 @@ instance JSON a => JSON [a] where
     toValue = Array . V.pack . map toValue
     {-# INLINE encodeJSON #-}
     encodeJSON = B.square . commaSepList
+
+-- | This is an INCOHERENT instance, to provide JSON text encoding behaviour.
+instance {-# INCOHERENT #-} JSON [Char] where
+    {-# INLINE fromValue #-}
+    fromValue = withText "String" (pure . T.unpack)
+    {-# INLINE toValue #-}
+    toValue = String . T.pack
+    {-# INLINE encodeJSON #-}
+    encodeJSON = JB.string . T.pack
 
 instance JSON a => JSON (NonEmpty a) where
     {-# INLINE fromValue #-}
@@ -1079,7 +1084,8 @@ instance JSON Char where
 --    \'\\t\':  \"\\t\"
 --    \'\"\':  \"\\\"\"
 --    \'\\\':  \"\\\\\"
---    other chars <= 0x1F: "\\u00XX"
+--    \'\DEL\':  \"\\u007f\"
+--    other chars <= 0x1F: "\\u00xx"
 -- @
     {-# INLINE encodeJSON #-}
     encodeJSON '\b' = "\"\\b\""
@@ -1095,26 +1101,26 @@ instance JSON Char where
 
 instance JSON Double where
     {-# INLINE fromValue #-}; fromValue = withRealFloat "Double" pure;
-    {-# INLINE toValue #-}; toValue = Number . P.doubleToScientific;
+    {-# INLINE toValue #-}; toValue = Number . JV.doubleToScientific;
     {-# INLINE encodeJSON #-}; encodeJSON = B.double;
 instance JSON Float  where
     {-# INLINE fromValue #-}; fromValue = withRealFloat "Float" pure;
-    {-# INLINE toValue #-}; toValue = Number . P.floatToScientific;
+    {-# INLINE toValue #-}; toValue = Number . JV.floatToScientific;
     {-# INLINE encodeJSON #-}; encodeJSON = B.float;
 
 #define INT_JSON_INSTANCE(typ) \
     instance JSON typ where \
-        {-# INLINE fromValue #-}; fromValue = withBoundedIntegral "/**/typ/**/" pure; \
+        {-# INLINE fromValue #-}; fromValue = withBoundedIntegral " typ " pure; \
         {-# INLINE toValue #-}; toValue = Number . fromIntegral; \
         {-# INLINE encodeJSON #-}; encodeJSON = B.int;
 
-INT_JSON_INSTANCE(Int   )
-INT_JSON_INSTANCE(Int8  )
-INT_JSON_INSTANCE(Int16 )
-INT_JSON_INSTANCE(Int32 )
-INT_JSON_INSTANCE(Int64 )
-INT_JSON_INSTANCE(Word  )
-INT_JSON_INSTANCE(Word8 )
+INT_JSON_INSTANCE(Int)
+INT_JSON_INSTANCE(Int8)
+INT_JSON_INSTANCE(Int16)
+INT_JSON_INSTANCE(Int32)
+INT_JSON_INSTANCE(Int64)
+INT_JSON_INSTANCE(Word)
+INT_JSON_INSTANCE(Word8)
 INT_JSON_INSTANCE(Word16)
 INT_JSON_INSTANCE(Word32)
 INT_JSON_INSTANCE(Word64)
@@ -1180,48 +1186,13 @@ instance JSON () where
     {-# INLINE encodeJSON #-}
     encodeJSON () = "[]"
 
-instance JSON ExitCode where
-    {-# INLINE fromValue #-}
-    fromValue (String "ExitSuccess") = return ExitSuccess
-    fromValue (Number x) =
-        case toBoundedInteger x of
-            Just i -> return (ExitFailure i)
-            _      -> fail' . B.unsafeBuildText $ do
-                "converting ExitCode failed, value is either floating or will cause over or underflow: "
-                T.scientific x
-    fromValue _ =  fail' "converting ExitCode failed, expected a string or number"
-
-    {-# INLINE toValue #-}
-    toValue ExitSuccess     = String "ExitSuccess"
-    toValue (ExitFailure n) = Number (fromIntegral n)
-
-    {-# INLINE encodeJSON #-}
-    encodeJSON ExitSuccess     = "\"ExitSuccess\""
-    encodeJSON (ExitFailure n) = B.int n
-
-instance JSON Version where
-    {-# INLINE fromValue #-}
-    fromValue = withText "Version" (go . readP_to_S parseVersion . T.unpack)
-      where
-        go [(v,[])] = pure v
-        go (_ : xs) = go xs
-        go _        = fail "converting Version failed"
-
-    {-# INLINE toValue #-}
-    toValue = String . T.pack . show
-
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.string7 . show
-
 instance JSON a => JSON (Maybe a) where
     {-# INLINE fromValue #-}
     fromValue Null = pure Nothing
     fromValue v    = Just <$> fromValue v
-
     {-# INLINE toValue #-}
     toValue Nothing  = Null
     toValue (Just x) = toValue x
-
     {-# INLINE encodeJSON #-}
     encodeJSON Nothing  = "null"
     encodeJSON (Just x) = encodeJSON x
@@ -1247,206 +1218,4 @@ instance HasResolution a => JSON (Fixed a) where
     {-# INLINE toValue #-}
     toValue = Number . realToFrac
     {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
-
---------------------------------------------------------------------------------
-
--- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
-instance JSON UTCTime where
-    {-# INLINE fromValue #-}
-    fromValue = withText "UTCTime" $ \ t ->
-        case P.parse' (P.utcTime <* P.endOfInput) (T.getUTF8Bytes t) of
-            Left err -> fail' $ "could not parse date as UTCTime: " <> T.toText err
-            Right r  -> return r
-    {-# INLINE toValue #-}
-    toValue t = String (B.unsafeBuildText (B.utcTime t))
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.quotes . B.utcTime
-
--- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
-instance JSON ZonedTime where
-    {-# INLINE fromValue #-}
-    fromValue = withText "ZonedTime" $ \ t ->
-        case P.parse' (P.zonedTime <* P.endOfInput) (T.getUTF8Bytes t) of
-            Left err -> fail' $ "could not parse date as ZonedTime: " <> T.toText err
-            Right r  -> return r
-    {-# INLINE toValue #-}
-    toValue t = String (B.unsafeBuildText (B.zonedTime t))
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.quotes . B.zonedTime
-
--- | @YYYY-MM-DD@
-instance JSON Day where
-    {-# INLINE fromValue #-}
-    fromValue = withText "Day" $ \ t ->
-        case P.parse' (P.day <* P.endOfInput) (T.getUTF8Bytes t) of
-            Left err -> fail' $ "could not parse date as Day: " <> T.toText err
-            Right r  -> return r
-    {-# INLINE toValue #-}
-    toValue t = String (B.unsafeBuildText (B.day t))
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.quotes . B.day
-
-
--- | @YYYY-MM-DDTHH:MM:SS.SSSZ@
-instance JSON LocalTime where
-    {-# INLINE fromValue #-}
-    fromValue = withText "LocalTime" $ \ t ->
-        case P.parse' (P.localTime <* P.endOfInput) (T.getUTF8Bytes t) of
-            Left err -> fail' $ "could not parse date as LocalTime: " <> T.toText err
-            Right r  -> return r
-    {-# INLINE toValue #-}
-    toValue t = String (B.unsafeBuildText (B.localTime t))
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.quotes . B.localTime
-
--- | @HH:MM:SS.SSS@
-instance JSON TimeOfDay where
-    {-# INLINE fromValue #-}
-    fromValue = withText "TimeOfDay" $ \ t ->
-        case P.parse' (P.timeOfDay <* P.endOfInput) (T.getUTF8Bytes t) of
-            Left err -> fail' $ "could not parse time as TimeOfDay: " <> T.toText err
-            Right r  -> return r
-    {-# INLINE toValue #-}
-    toValue t = String (B.unsafeBuildText (B.timeOfDay t))
-    {-# INLINE encodeJSON #-}
-    encodeJSON = B.quotes . B.timeOfDay
-
--- | This instance includes a bounds check to prevent maliciously
--- large inputs to fill up the memory of the target system. You can
--- newtype 'NominalDiffTime' and provide your own instance using
--- 'withScientific' if you want to allow larger inputs.
-instance JSON NominalDiffTime where
-    {-# INLINE fromValue #-}
-    fromValue = withBoundedScientific "NominalDiffTime" $ pure . realToFrac
-    {-# INLINE toValue #-}
-    toValue = Number . realToFrac
-    {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
-
--- | This instance includes a bounds check to prevent maliciously
--- large inputs to fill up the memory of the target system. You can
--- newtype 'DiffTime' and provide your own instance using
--- 'withScientific' if you want to allow larger inputs.
-instance JSON DiffTime where
-    {-# INLINE fromValue #-}
-    fromValue = withBoundedScientific "DiffTime" $ pure . realToFrac
-    {-# INLINE toValue #-}
-    toValue = Number . realToFrac
-    {-# INLINE encodeJSON #-}
-    encodeJSON = JB.scientific . realToFrac
-
--- | @{"seconds": SSS, "nanoseconds": NNN}@.
-instance JSON SystemTime where
-    {-# INLINE fromValue #-}
-    fromValue = withFlatMapR "SystemTime" $ \ v ->
-        MkSystemTime <$> v .: "seconds" <*> v .: "nanoseconds"
-    {-# INLINE toValue #-}
-    toValue (MkSystemTime s ns) = object [ "seconds" .= s , "nanoseconds" .= ns ]
-    {-# INLINE encodeJSON #-}
-    encodeJSON (MkSystemTime s ns) = object' ("seconds" .! s <> "nanoseconds" .! ns)
-
-instance JSON CalendarDiffTime where
-    {-# INLINE fromValue #-}
-    fromValue = withFlatMapR "CalendarDiffTime" $ \ v ->
-        CalendarDiffTime <$> v .: "months" <*> v .: "time"
-    {-# INLINE toValue #-}
-    toValue (CalendarDiffTime m nt) = object [ "months" .= m , "time" .= nt ]
-    {-# INLINE encodeJSON #-}
-    encodeJSON (CalendarDiffTime m nt) = object' ("months" .! m <> "time" .! nt)
-
-instance JSON CalendarDiffDays where
-    {-# INLINE fromValue #-}
-    fromValue = withFlatMapR "CalendarDiffDays" $ \ v ->
-        CalendarDiffDays <$> v .: "months" <*> v .: "days"
-    {-# INLINE toValue #-}
-    toValue (CalendarDiffDays m d) = object ["months" .= m, "days" .= d]
-    {-# INLINE encodeJSON #-}
-    encodeJSON (CalendarDiffDays m d) = object' ("months" .! m <> "days" .! d)
-
-instance JSON DayOfWeek where
-    {-# INLINE fromValue #-}
-    fromValue (String "Monday"   ) = pure Monday
-    fromValue (String "Tuesday"  ) = pure Tuesday
-    fromValue (String "Wednesday") = pure Wednesday
-    fromValue (String "Thursday" ) = pure Thursday
-    fromValue (String "Friday"   ) = pure Friday
-    fromValue (String "Saturday" ) = pure Saturday
-    fromValue (String "Sunday"   ) = pure Sunday
-    fromValue (String _   )        = fail' "converting DayOfWeek failed, value should be one of weekdays"
-    fromValue v                    = typeMismatch "DayOfWeek" "String" v
-
-    {-# INLINE toValue #-}
-    toValue Monday    = String "Monday"
-    toValue Tuesday   = String "Tuesday"
-    toValue Wednesday = String "Wednesday"
-    toValue Thursday  = String "Thursday"
-    toValue Friday    = String "Friday"
-    toValue Saturday  = String "Saturday"
-    toValue Sunday    = String "Sunday"
-
-    {-# INLINE encodeJSON #-}
-    encodeJSON Monday    = "\"Monday\""
-    encodeJSON Tuesday   = "\"Tuesday\""
-    encodeJSON Wednesday = "\"Wednesday\""
-    encodeJSON Thursday  = "\"Thursday\""
-    encodeJSON Friday    = "\"Friday\""
-    encodeJSON Saturday  = "\"Saturday\""
-    encodeJSON Sunday    = "\"Sunday\""
-
---------------------------------------------------------------------------------
-
-deriving newtype instance JSON (f (g a)) => JSON (Compose f g a)
-deriving newtype instance JSON a => JSON (Semigroup.Min a)
-deriving newtype instance JSON a => JSON (Semigroup.Max a)
-deriving newtype instance JSON a => JSON (Semigroup.First a)
-deriving newtype instance JSON a => JSON (Semigroup.Last a)
-deriving newtype instance JSON a => JSON (Semigroup.WrappedMonoid a)
-deriving newtype instance JSON a => JSON (Semigroup.Dual a)
-deriving newtype instance JSON a => JSON (Monoid.First a)
-deriving newtype instance JSON a => JSON (Monoid.Last a)
-deriving newtype instance JSON a => JSON (Identity a)
-deriving newtype instance JSON a => JSON (Const a b)
-deriving newtype instance JSON b => JSON (Tagged a b)
-
---------------------------------------------------------------------------------
-
-deriving newtype instance JSON CChar
-deriving newtype instance JSON CSChar
-deriving newtype instance JSON CUChar
-deriving newtype instance JSON CShort
-deriving newtype instance JSON CUShort
-deriving newtype instance JSON CInt
-deriving newtype instance JSON CUInt
-deriving newtype instance JSON CLong
-deriving newtype instance JSON CULong
-deriving newtype instance JSON CPtrdiff
-deriving newtype instance JSON CSize
-deriving newtype instance JSON CWchar
-deriving newtype instance JSON CSigAtomic
-deriving newtype instance JSON CLLong
-deriving newtype instance JSON CULLong
-deriving newtype instance JSON CBool
-deriving newtype instance JSON CIntPtr
-deriving newtype instance JSON CUIntPtr
-deriving newtype instance JSON CIntMax
-deriving newtype instance JSON CUIntMax
-deriving newtype instance JSON CClock
-deriving newtype instance JSON CTime
-deriving newtype instance JSON CUSeconds
-deriving newtype instance JSON CSUSeconds
-deriving newtype instance JSON CFloat
-deriving newtype instance JSON CDouble
-
---------------------------------------------------------------------------------
-
-deriving anyclass instance (JSON (f a), JSON (g a), JSON a) => JSON (Sum f g a)
-deriving anyclass instance (JSON a, JSON b) => JSON (Either a b)
-deriving anyclass instance (JSON (f a), JSON (g a)) => JSON (Product f g a)
-
-deriving anyclass instance (JSON a, JSON b) => JSON (a, b)
-deriving anyclass instance (JSON a, JSON b, JSON c) => JSON (a, b, c)
-deriving anyclass instance (JSON a, JSON b, JSON c, JSON d) => JSON (a, b, c, d)
-deriving anyclass instance (JSON a, JSON b, JSON c, JSON d, JSON e) => JSON (a, b, c, d, e)
-deriving anyclass instance (JSON a, JSON b, JSON c, JSON d, JSON e, JSON f) => JSON (a, b, c, d, e, f)
-deriving anyclass instance (JSON a, JSON b, JSON c, JSON d, JSON e, JSON f, JSON g) => JSON (a, b, c, d, e, f, g)
+    encodeJSON = B.scientific' . realToFrac

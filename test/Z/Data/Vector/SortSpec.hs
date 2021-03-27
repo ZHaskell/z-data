@@ -136,3 +136,8 @@ spec = describe "vector-sort" $ do
         prop "vector radixSort should be stable" $ \ xs ys ->
             (V.radixSort . V.pack @V.Vector $ List.zipWith StableTest xs ys)  ===
                 (V.pack $ List.sort $ List.zipWith StableTest xs ys)
+
+    describe "vector mergeDupAdjacent . sort == List nub . sort" . modifyMaxSuccess (*10) . modifyMaxSize (*10) $ do
+        prop "vector mergeDupAdjacent . sort == List nub . sort" $ \ xs ->
+            (V.mergeDupAdjacent . V.mergeSort . V.pack @V.Vector @Int $ List.sort xs)  ===
+                (V.pack . List.nub $ List.sort xs)

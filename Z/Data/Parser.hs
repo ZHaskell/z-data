@@ -35,11 +35,13 @@ module Z.Data.Parser
     -- * Basic parsers
   , ensureN, endOfInput, atEnd
     -- * Primitive decoders
-  , decodePrim, decodePrimLE, decodePrimBE
+  , decodePrim, BE(..), LE(..)
+  , decodePrimLE, decodePrimBE
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
-  , anyWord8, word8, anyChar8, char8, skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
+  , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
+  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Numeric parsers
     -- ** Decimal

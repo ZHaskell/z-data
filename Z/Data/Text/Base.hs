@@ -37,6 +37,8 @@ module Z.Data.Text.Base (
   , concat, concatMap
     -- ** Special folds
   , count, all, any
+    -- ** Text display width
+  , displayWidth
     -- ** normalization
   , NormalizationResult(..), NormalizeMode(..)
   , isNormalized, isNormalizedTo, normalize, normalizeTo
@@ -126,6 +128,7 @@ import           Data.Hashable             (Hashable(..))
 import qualified Data.List                 as List
 import           Data.Primitive.PrimArray
 import           Data.Typeable
+import           Data.Int
 import           Data.Word
 import           Foreign.C.Types           (CSize(..))
 import           GHC.Exts
@@ -228,7 +231,6 @@ index :: HasCallStack => Text -> Int -> Char
 {-# INLINABLE index #-}
 index t n = case t `indexMaybe` n of Nothing -> throw (IndexOutOfTextRange n callStack)
                                      Just x  -> x
-
 
 -- | /O(n)/ Get the nth codepoint from 'Text'.
 indexMaybe :: Text -> Int -> Maybe Char
@@ -1088,3 +1090,25 @@ spanCategory c (Text (V.PrimVector arr@(PrimArray arr#) s@(I# s#) l@(I# l#)))
 
 -- functions below will return error if the source ByteArray# is empty
 foreign import ccall utf8_iscategory :: ByteArray# -> Int# -> Int# -> Category -> Int
+
+-- | Get the display width of a piece of text.
+--
+-- You shouldn't pass texts with control characters(<0x20, \\DEL), which are counted with -1 width.
+--
+-- >>> displayWidth "你好世界！"
+-- >>> 10
+-- >>> displayWidth "hello world!"
+-- >>> 12
+--
+displayWidth :: Text -> Int
+{-# INLINE displayWidth #-}
+displayWidth (Text (V.PrimVector ba s l)) = go s 0
+  where
+    !end = s + l
+    go !i !acc
+        | i >= end = acc
+        | otherwise =
+            let (# c, n #) = decodeChar ba i
+            in go (i+n) (acc + mk_wcwidth (fromIntegral (fromEnum c)))
+
+foreign import ccall unsafe "hs_wcwidth.c mk_wcwidth" mk_wcwidth :: Int32 -> Int

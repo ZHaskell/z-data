@@ -49,22 +49,29 @@ module Z.Data.Vector.Extra (
   , init
   , last
   , index, indexM
+  , modifyIndex, modifyIndexMaybe
+  , insertIndex, insertIndexMaybe
+  , deleteIndex, deleteIndexMaybe
   , unsafeHead
   , unsafeTail
   , unsafeInit
   , unsafeLast
-  , unsafeIndex, unsafeIndexM
+  , unsafeIndex, unsafeIndexM, unsafeModifyIndex, unsafeInsertIndex, unsafeDeleteIndex
   , unsafeTake
   , unsafeDrop
   ) where
 
+import           Control.Exception              (assert)
 import           Control.Monad.ST
+import           Data.Primitive.ByteArray
 import           GHC.Stack
 import           GHC.Word
+import           GHC.Exts
 import           Z.Data.Array
+import           Z.Data.ASCII                   (isSpace)
 import           Z.Data.Vector.Base
 import           Z.Data.Vector.Search
-import           Prelude                       hiding (concat, concatMap,
+import           Prelude                        hiding (concat, concatMap,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
@@ -74,8 +81,8 @@ import           Prelude                       hiding (concat, concatMap,
                                                 takeWhile, dropWhile,
                                                 break, span, reverse,
                                                 words, lines, unwords, unlines)
-import qualified Data.List                     as List
-import           Control.Exception             (assert)
+import qualified Data.List                      as List
+import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 --------------------------------------------------------------------------------
 -- Slice
@@ -477,7 +484,7 @@ words (Vec arr s l) = go s s
                     if s' == end
                     then []
                     else let !v = fromArr arr s' (end-s') in [v]
-              | isASCIISpace (indexArr arr i) =
+              | isSpace (indexArr arr i) =
                     if s' == i
                     then go (i+1) (i+1)
                     else
@@ -552,7 +559,8 @@ reverse (Vec arr s l) = create l (go s (l-1))
 -- Lists.
 --
 intersperse :: forall v a. Vec v a => a -> v a -> v a
-{-# INLINE intersperse #-}
+{-# INLINE[1] intersperse #-}
+{-# RULES "intersperse/Bytes" intersperse = intersperseBytes #-}
 intersperse x v@(Vec arr s l) | l <= 1 = v
                               | otherwise = create (2*l-1) (go s 0)
    where
@@ -577,6 +585,18 @@ intersperse x v@(Vec arr s l) | l <= 1 = v
             writeArr marr j =<< indexArrM arr i
             writeArr marr (j+1) x
             go (i+1) (j+2) marr
+
+-- | /O(n)/ Special 'intersperse' for 'Bytes' using SIMD
+intersperseBytes :: Word8 -> Bytes -> Bytes
+{-# INLINE intersperseBytes #-}
+intersperseBytes c v@(PrimVector (PrimArray ba#) offset l)
+    | l <= 1 = v
+    | otherwise = unsafeDupablePerformIO $ do
+        mba@(MutableByteArray mba#) <- newByteArray n
+        c_intersperse mba# ba# offset l c
+        (ByteArray ba'#) <- unsafeFreezeByteArray mba
+        return (PrimVector (PrimArray ba'#) 0 n)
+  where n = 2*l-1
 
 -- | /O(n)/ The 'intercalate' function takes a vector and a list of
 -- vectors and concatenates the list after interspersing the first
@@ -727,9 +747,6 @@ rangeCut !r !min' !max' | r < min' = min'
                         | r > max' = max'
                         | otherwise = r
 
-isASCIISpace :: Word8 -> Bool
-{-# INLINE isASCIISpace #-}
-isASCIISpace w = w == 32 || w - 0x9 <= 4 || w == 0xa0
 
 --------------------------------------------------------------------------------
 
@@ -785,6 +802,61 @@ indexM :: (Vec v a, Monad m, HasCallStack) => v a -> Int -> m a
 indexM (Vec arr s l) i | i < 0 || i >= l = errorOutRange i
                        | otherwise       = arr `indexArrM` (s + i)
 
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+modifyIndex :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE modifyIndex #-}
+modifyIndex v@(Vec _ _ l) i f | i < 0 || i >= l = errorOutRange i
+                         | otherwise       = unsafeModifyIndex v i f
+
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+modifyIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE modifyIndexMaybe #-}
+modifyIndexMaybe v@(Vec _ _ l) i f | i < 0 || i >= l = v
+                                   | otherwise       = unsafeModifyIndex v i f
+
+-- | /O(n)/ insert element to vector under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+insertIndex :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE insertIndex #-}
+insertIndex v@(Vec _ _ l) i x | i < 0 || i > l = errorOutRange i
+                              | otherwise      = unsafeInsertIndex v i x
+
+-- | /O(n)/ insert element to vector under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+insertIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE insertIndexMaybe #-}
+insertIndexMaybe v@(Vec _ _ l) i x | i < 0 || i > l = v
+                                   | otherwise      = unsafeInsertIndex v i x
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Throw 'IndexOutOfVectorRange' if index outside of the vector.
+--
+deleteIndex :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE deleteIndex #-}
+deleteIndex v@(Vec _ _ l) i | i < 0 || i >= l = errorOutRange i
+                            | otherwise       = unsafeDeleteIndex v i
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Return original vector if index outside of the vector.
+--
+deleteIndexMaybe :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE deleteIndexMaybe #-}
+deleteIndexMaybe v@(Vec _ _ l) i | i < 0 || i >= l = v
+                                 | otherwise       = unsafeDeleteIndex v i
+
+
 -- | /O(1)/ Extract the first element of a vector.
 --
 -- Make sure vector is non-empty, otherwise segmentation fault await!
@@ -827,6 +899,27 @@ unsafeIndexM :: (Vec v a, Monad m) => v a -> Int -> m a
 {-# INLINE unsafeIndexM #-}
 unsafeIndexM (Vec arr s _) i = indexArrM arr (s + i)
 
+-- | /O(n)/ Modify vector's element under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeModifyIndex :: (Vec v a, HasCallStack) => v a -> Int -> (a -> a) -> v a
+{-# INLINE unsafeModifyIndex #-}
+unsafeModifyIndex (Vec arr s l) i f = Vec (modifyIndexArr arr s l i f) 0 l
+
+-- | /O(n)/ Insert element to vector under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeInsertIndex :: (Vec v a, HasCallStack) => v a -> Int -> a -> v a
+{-# INLINE unsafeInsertIndex #-}
+unsafeInsertIndex (Vec arr s l) i x = Vec (insertIndexArr arr s l i x) 0 (l+1)
+
+-- | /O(n)/ Delete vector's element under given index.
+--
+-- Make sure index is in bound, otherwise segmentation fault await!
+unsafeDeleteIndex :: (Vec v a, HasCallStack) => v a -> Int -> v a
+{-# INLINE unsafeDeleteIndex #-}
+unsafeDeleteIndex (Vec arr s l) i = Vec (deleteIndexArr arr s l i) 0 (l-1)
+
 -- | /O(1)/ 'take' @n@, applied to a vector @xs@, returns the prefix
 -- of @xs@ of length @n@.
 --
@@ -842,3 +935,8 @@ unsafeTake n (Vec arr s l) = assert (0 <= n && n <= l) (fromArr arr s n)
 unsafeDrop :: Vec v a => Int -> v a -> v a
 {-# INLINE unsafeDrop #-}
 unsafeDrop n (Vec arr s l) = assert (0 <= n && n <= l) (fromArr arr (s+n) (l-n))
+
+--------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bytes.h hs_intersperse" c_intersperse ::
+    MutableByteArray# RealWorld -> ByteArray# -> Int -> Int -> Word8 -> IO ()

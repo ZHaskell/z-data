@@ -1,13 +1,16 @@
 ## Z-Data
 
-[![Hackage](https://img.shields.io/hackage/v/Z-Data.svg?style=flat)](https://hackage.haskell.org/package/Z-Data) [![Linux Build Status](https://github.com/haskell-Z/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions) [![Windows Build Status](https://github.com/haskell-Z/z-data/workflows/win-ci/badge.svg)](https://github.com/haskell-Z/z-data/actions)
+[![Hackage](https://img.shields.io/hackage/v/Z-Data.svg?style=flat)](https://hackage.haskell.org/package/Z-Data)
+[![Linux Build Status](https://github.com/ZHaskell/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![Windows Build Status](https://github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 
-This package is part of [Z](https://github.com/haskell-Z/Z) project, provides basic data structures and functions:
+This package is part of [ZHaskell](https://z.haskell.world) project, providing basic data structures and functions:
 
-* Array, vector(array slice)
-* Text based UTF-8, basic unicode manipulating
+* Array, vector(array slice), sorting, searching
+* Text based UTF-8, basic unicode manipulating, regex
 * FFI utilties
-* Parsing and building monad
+* Fast parsing and building monad
 * JSON encoding and decoding
 
 ## Requirements
@@ -55,7 +58,7 @@ fromListN 7 [4,5,6,7,8,9,10]
 > B.buildBytes $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 [98,117,105,108,100,101,114,115,58,32,48,48,48,51,44,49,46,50,51,52,53,54,55,56]
 > 
-> T.validate . B.buildBytes $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
+> B.buildText $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 "builders: 0003,1.2345678"
 >
 > import qualified Z.Data.JSON as JSON
@@ -77,12 +80,12 @@ Object [("foo",Number 1.0e-2)]
 
 ```bash
 # get code
-git clone --recursive git@github.com:haskell-Z/z-data.git 
+git clone --recursive git@github.com:ZHaskell/z-data.git 
 cd z-data
 # build
 cabal build
 # test
-cabal run Z-Data-Test
+cabal test --test-show-details=direct
 # install 
 cabal install
 # generate document

@@ -12,10 +12,8 @@ This module provides base64 encoding & decoding tools, as well as 'Base64Bytes' 
 -}
 
 module Z.Data.Vector.Base64
-  ( -- * The Base64Bytes type
-    Base64Bytes(..)
-  -- * Encoding & Decoding functions
-  , base64Encode
+  (-- * Encoding & Decoding functions
+    base64Encode
   , base64EncodeLength
   , base64EncodeText
   , base64EncodeBuilder
@@ -30,38 +28,12 @@ module Z.Data.Vector.Base64
 import           Control.Exception
 import           Data.Word
 import           Data.Bits                      (unsafeShiftL, unsafeShiftR, (.&.))
-import           Data.Hashable                  (Hashable(..))
 import           GHC.Stack
 import           System.IO.Unsafe
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Builder.Base        as B
 import qualified Z.Data.Text.Base           as T
-import qualified Z.Data.Text.Print          as T
-import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
-
--- | New type wrapper for 'V.Bytes' with base64 encoding Show\/JSON instances.
-newtype Base64Bytes = Base64Bytes { unBase64Bytes :: V.Bytes }
-    deriving (Eq, Ord)
-    deriving newtype (Monoid, Semigroup, Hashable)
-
-instance Show Base64Bytes where
-    show (Base64Bytes bs) = T.unpack $ base64EncodeText bs
-
-instance T.Print Base64Bytes where
-    {-# INLINABLE toUTF8BuilderP #-}
-    toUTF8BuilderP _ (Base64Bytes bs) = B.quotes (base64EncodeBuilder bs)
-
-instance JSON.JSON Base64Bytes where
-    {-# INLINE fromValue #-}
-    fromValue = JSON.withText "Z.Data.Text.Base64Bytes" $ \ t ->
-        case base64Decode (T.getUTF8Bytes t) of
-            Just bs -> return (Base64Bytes bs)
-            Nothing -> JSON.fail' "illegal base64 encoding bytes"
-    {-# INLINE toValue #-}
-    toValue (Base64Bytes bs) = JSON.String (base64EncodeText bs)
-    {-# INLINE encodeJSON #-}
-    encodeJSON (Base64Bytes bs) = base64EncodeBuilder bs
 
 -- | Encode 'V.Bytes' using base64 encoding.
 base64Encode :: V.Bytes -> V.Bytes
