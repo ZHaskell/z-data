@@ -540,10 +540,6 @@ instance IsString Bytes where
     {-# INLINE fromString #-}
     fromString = packASCII
 
--- | This is an INCOHERENT instance, show binary data with ASCII(<=0x7f) or decimal values.
-instance {-# INCOHERENT #-} Show Bytes where
-    show = show . List.map (toEnum @Char . fromIntegral) . unpack
-
 instance Prim a => IsList (PrimVector a) where
     type Item (PrimVector a) = a
     {-# INLINE fromList #-}

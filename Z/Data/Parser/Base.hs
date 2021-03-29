@@ -50,8 +50,8 @@ import           GHC.Exts                           (State#, runRW#, unsafeCoerc
 import           Prelude                            hiding (take, takeWhile)
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
+import qualified Z.Data.Text                        as T
 import qualified Z.Data.Text.Base                   as T
-import qualified Z.Data.Text.Extra                  as T
 import qualified Z.Data.Text.UTF8Codec              as T
 import qualified Z.Data.Vector.Base                 as V
 import qualified Z.Data.Vector.Extra                as V
@@ -463,7 +463,8 @@ satisfy p = do
         let w = V.unsafeHead inp
         in if p w
             then k s w (V.unsafeTail inp)
-            else kf ["Z.Data.Parser.Base.satisfy: unsatisfied byte"] (V.unsafeTail inp)
+            else kf [ "Z.Data.Parser.Base.satisfy: unsatisfied bytes " <> T.toText (V.take 8 inp) ]
+                    (V.unsafeTail inp)
 
 -- | The parser @satisfyWith f p@ transforms a byte, and succeeds if
 -- the predicate @p@ returns 'True' on the transformed value. The
@@ -489,7 +490,14 @@ word8 w' = do
         let w = V.unsafeHead inp
         in if w == w'
             then k s () (V.unsafeTail inp)
-            else kf ["Z.Data.Parser.Base.word8: mismatch byte"] inp)
+            else kf [ T.concat [
+                 "Z.Data.Parser.Base.word8: mismatch byte, expected "
+                , T.toText w'
+                , ", meet "
+                , T.toText w
+                , " at "
+                , T.toText (V.take 8 inp)
+                ] ] inp)
 
 -- | Return a byte, this is an alias to @decodePrim @Word8@.
 --
@@ -528,10 +536,8 @@ anyChar8 = do
 anyChar7 :: Parser Char
 {-# INLINE anyChar7 #-}
 anyChar7 = do
-    w <- anyWord8
-    if w > 0x7f
-    then fail' "Z.Data.Parser.anyChar7: byte exceeds 0x7F"
-    else return $! w2c w
+    w <- satisfy (<= 0x7f)
+    return $! w2c w
 
 -- | Decode next few bytes as an UTF8 char.
 --
@@ -565,7 +571,14 @@ endOfLine = do
     case w of
         10 -> return ()
         13 -> word8 10
-        _  -> fail' "Z.Data.Parser.Base.endOfLine: mismatch byte"
+
+        _  -> Parser (\ kf _ _ inp -> kf [
+            T.concat [
+             "Z.Data.Parser.Base.endOfLine: mismatch byte, expected 10 or 13, meet "
+            , T.toText w
+            , " at "
+            , T.toText (V.cons w (V.take 8 inp))
+            ] ] inp)
 
 --------------------------------------------------------------------------------
 
@@ -708,7 +721,9 @@ takeWhile1 :: (Word8 -> Bool) -> Parser V.Bytes
 takeWhile1 p = do
     bs <- takeWhile p
     if V.null bs
-    then fail' "Z.Data.Parser.Base.takeWhile1: no satisfied byte"
+    then Parser (\ kf _ _ inp ->
+            kf ["Z.Data.Parser.Base.takeWhile1: no satisfied byte at " <> T.toText (V.take 10 inp) ]
+               inp)
     else return bs
 
 -- | Take all the remaining input chunks and return as 'V.Bytes'.
@@ -735,7 +750,10 @@ takeN p n = do
     bs <- take n
     if go bs 0
     then return bs
-    else fail' "Z.Data.Parser.Base.takeWhileN: byte does not satisfy"
+    else Parser (\ kf _ _ inp ->
+        kf [ "Z.Data.Parser.Base.takeN: byte does not satisfy at " <> T.toText (bs <> V.take 10 inp) ]
+            inp)
+
   where
     go bs@(V.PrimVector _ _ l) !i
         | i < l = p (V.unsafeIndex bs i) && go bs (i+1)
@@ -751,7 +769,12 @@ bytes bs = do
     Parser (\ kf k s inp ->
         if bs == V.unsafeTake n inp
         then k s () $! V.unsafeDrop n inp
-        else kf ["Z.Data.Parser.Base.bytes: mismatch bytes"] inp)
+        else kf [ T.concat [
+             "Z.Data.Parser.Base.bytes: mismatch bytes, expected "
+            , T.toText bs
+            , ", meet "
+            , T.toText (V.take n inp)
+            ] ] inp)
 
 
 -- | Same as 'bytes' but ignoring ASCII case.
@@ -764,7 +787,13 @@ bytesCI bs = do
     Parser (\ kf k s inp ->
         if bs' == CI.foldCase (V.unsafeTake n inp)
         then k s () $! V.unsafeDrop n inp
-        else kf ["Z.Data.Parser.Base.bytesCI: mismatch bytes"] inp)
+        else kf [ T.concat [
+             "Z.Data.Parser.Base.bytesCI: mismatch bytes, expected "
+            , T.toText bs
+            , "(case insensitive), meet "
+            , T.toText (V.take n inp)
+            ] ] inp)
+
   where
     bs' = CI.foldCase bs
 
