@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.7.3.0  -- 2021-03-30
+
+* Add more helpers to debug `Parser`: `currentChunk`, `failWithInput`, `unsafeLiftIO`.
+* Parser now is an instance of `PrimMonad`, which can perform limited effects, e.g. array operations.
+* Make some parsers' error message more helpful.
+
 ## 0.7.2.0  -- 2021-03-22
 
 * Add `fromMutablePrimArray` for constructing CBytes.
