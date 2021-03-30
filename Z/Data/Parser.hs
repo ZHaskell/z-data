@@ -33,7 +33,7 @@ module Z.Data.Parser
   , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
-  , ensureN, endOfInput, atEnd
+  , ensureN, endOfInput, atEnd, currentChunk
     -- * Primitive decoders
   , decodePrim, BE(..), LE(..)
   , decodePrimLE, decodePrimBE
@@ -67,7 +67,7 @@ module Z.Data.Parser
   , utcTime
   , zonedTime
     -- * Misc
-  , fail'
+  , fail', failWithInput, unsafeLiftIO
   ) where
 
 import           Z.Data.Parser.Base

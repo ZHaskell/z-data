@@ -22,7 +22,7 @@ module Z.Data.Parser.Base
   , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
-  , ensureN, endOfInput, atEnd
+  , ensureN, endOfInput, currentChunk, atEnd
     -- * Primitive decoders
   , decodePrim, BE(..), LE(..)
   , decodePrimLE, decodePrimBE
@@ -32,8 +32,8 @@ module Z.Data.Parser.Base
   , skipWord8, endOfLine, skip, skipWhile, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
-    -- * Misc
-  , fail'
+    -- * Error reporting
+  , fail', failWithInput, unsafeLiftIO
   ) where
 
 import           Control.Applicative
@@ -105,6 +105,7 @@ newtype Parser a = Parser {
                   -> State# ParserState -> ParseStep r
     }
 
+-- | State token tag used in `Parser`
 data ParserState
 
 -- It seems eta-expand all params to ensure parsers are saturated is helpful
@@ -139,6 +140,16 @@ instance PrimMonad Parser where
         let !(# st', r #) = io st
         in k st' r inp
 
+-- | Unsafely lifted an `IO` action into 'Parser'.
+--
+-- This is only for debugging purpose(logging, etc). Don't mix compuation from
+-- realworld to parsing result, otherwise parsing is not deterministic.
+unsafeLiftIO :: IO a -> Parser a
+{-# INLINE unsafeLiftIO #-}
+unsafeLiftIO (IO io) = Parser $ \ _ k st inp ->
+    let !(# st', r #) = io (unsafeCoerce# st)
+    in k (unsafeCoerce# st') r inp
+
 instance Fail.MonadFail Parser where
     fail = fail' . T.pack
     {-# INLINE fail #-}
@@ -165,6 +176,11 @@ instance Alternative Parser where
 fail' :: T.Text -> Parser a
 {-# INLINE fail' #-}
 fail' msg = Parser (\ kf _ _ inp -> kf [msg] inp)
+
+-- | Similar to `fail'`, but can produce error message with current input chunk.
+failWithInput :: (V.Bytes -> T.Text) -> Parser a
+{-# INLINE failWithInput #-}
+failWithInput f = Parser (\ kf _ _ inp -> kf [f inp] inp)
 
 -- | Parse the complete input, without resupplying
 parse' :: Parser a -> V.Bytes -> Either ParseError a
@@ -277,6 +293,17 @@ ensureN n0 err = Parser $ \ kf k s inp -> do
                         let !inp' = V.concat (reverse (inp:acc))
                         in k s () inp'
         in go [inp0] l0 s0
+
+-- | Get current input chunk, draw new chunk if neccessary. 'V.null' means EOF.
+--
+-- Note this is different from 'takeRemaining', 'currentChunk' only return what's
+-- left in current input chunk.
+currentChunk :: Parser V.Bytes
+{-# INLINE currentChunk #-}
+currentChunk =  Parser $ \ _ k s inp ->
+    if V.null inp
+    then Partial (\ inp' -> k s inp' V.empty)
+    else k s inp V.empty
 
 -- | Test whether all input has been consumed, i.e. there are no remaining
 -- undecoded bytes. Fail if not 'atEnd'.
