@@ -29,7 +29,7 @@ module Z.Data.Parser.Base
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
-  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , skipWord8, endOfLine, skip, skipWhile, skipWhileList, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Error reporting
@@ -669,6 +669,11 @@ skipWhile p =
                     let !rest = V.dropWhile p inp
                     in if V.null rest then Partial (go s) else k s () rest
         in go s0
+
+-- | Skip past input for as long as the byte is not an element of a given list.
+skipWhileList :: [Word8] -> Parser ()
+{-# INLINE skipWhileList #-}
+skipWhileList xs = skipWhile (`notElem` xs)
 
 -- | Skip over white space using 'isSpace'.
 --

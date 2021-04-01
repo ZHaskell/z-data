@@ -40,7 +40,7 @@ module Z.Data.Parser
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
-  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , skipWord8, endOfLine, skip, skipWhile, skipWhileList, skipSpaces
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Numeric parsers
