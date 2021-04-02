@@ -323,6 +323,14 @@ spec =  describe "vector-extras" $ do
                 Just ys' = V.stripPrefix c $ V.pack ys
             in (a,b) === (xs', ys')
 
+    describe "vector split x [x] == [[],[]]"  $ do
+        prop "vector split x [x] == [[],[]]" $ \ x ->
+            V.split x (V.singleton @V.Vector @Integer x) == [V.empty, V.empty]
+        prop "vector split x [x] == [[],[]]" $ \ x ->
+            V.split x (V.singleton @V.PrimVector @Int x) == [V.empty, V.empty]
+        prop "vector split x [x] == [[],[]]" $ \ x ->
+            V.split x (V.singleton @V.PrimVector @Word8 x) == [V.empty, V.empty]
+
     describe "vector intercalate [x] . split x == id" $ do
         prop "vector intercalate [x] . split x == id" $ \ xs x ->
             (V.intercalate (V.singleton x) . V.split x . V.pack @V.Vector @Integer $ xs) ===
