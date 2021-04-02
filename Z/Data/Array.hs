@@ -28,7 +28,7 @@ Some mnemonics:
 module Z.Data.Array (
   -- * Arr typeclass
     Arr(..)
-  , singletonArr, doubletonArr
+  , emptyArr, singletonArr, doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr
   , RealWorld
   -- * Boxed array type
@@ -623,6 +623,12 @@ castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#
 
 --------------------------------------------------------------------------------
+
+emptyArr :: Arr arr a => arr a
+{-# NOINLINE emptyArr #-}
+emptyArr = runST $ do
+    marr <- newArrWith 0 uninitialized
+    unsafeFreezeArr marr
 
 singletonArr :: Arr arr a => a -> arr a
 {-# INLINE singletonArr #-}

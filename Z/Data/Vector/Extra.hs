@@ -465,13 +465,15 @@ splitOn needle = splitBySearch
 -- <https://github.com/haskell/bytestring/issues/56 #56>.
 splitWith :: Vec v a => (a -> Bool) -> v a -> [v a]
 {-# INLINE splitWith #-}
-splitWith f (Vec arr s l) = go s s
+splitWith f = go
   where
-    !end = s + l
-    go !p !q | q >= end  = let !v = Vec arr p (q-p) in [v]
-             | f x       = let !v = Vec arr p (q-p) in v:go (q+1) (q+1)
-             | otherwise = go p (q+1)
-        where (# x #) = indexArr' arr q
+    go v@(Vec _ _ l)
+        | l == 0    = []
+        | otherwise =
+            let n = findIndex f v
+            in if n == l
+                then [v]
+                else unsafeTake n v : go (unsafeDrop (n+1) v)
 
 -- | /O(n)/ Breaks a 'Bytes' up into a list of words, delimited by ascii space.
 words ::  Bytes -> [Bytes]
@@ -494,15 +496,11 @@ words (Vec arr s l) = go s s
 -- | /O(n)/ Breaks a 'Bytes' up into a list of lines, delimited by ascii @\n@.
 lines ::  Bytes -> [Bytes]
 {-# INLINE lines #-}
-lines (Vec arr s l) = go s s
-  where
-    !end = s + l
-    go :: Int -> Int -> [Bytes]
-    go !p !q | q >= end              = if p == q
-                                       then []
-                                       else let !v = Vec arr p (q-p) in [v]
-             | indexArr arr q == 10  = let !v = Vec arr p (q-p) in v:go (q+1) (q+1)
-             | otherwise             = go p (q+1)
+lines v
+    | null v = []
+    | otherwise = case elemIndex 10 v of
+         Nothing -> [v]
+         Just n  -> unsafeTake n v : lines (unsafeDrop (n+1) v)
 
 -- | /O(n)/ Joins words with ascii space.
 unwords :: [Bytes] -> Bytes

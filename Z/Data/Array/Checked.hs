@@ -16,7 +16,7 @@ with more informations.
 module Z.Data.Array.Checked
   ( -- * Arr typeclass re-export
     Arr, MArr
-  , A.singletonArr, A.doubletonArr
+  , A.emptyArr, A.singletonArr, A.doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr
   , RealWorld
   -- * Boxed array type
