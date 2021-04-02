@@ -536,7 +536,7 @@ hashWithSaltBytes salt (PrimVector (PrimArray ba#) s l) =
 type Bytes = PrimVector Word8
 
 -- | This instance use 'packASCII', which may silently chop bytes, use it with ASCII literals only.
-instance IsString Bytes where
+instance a ~ Word8 => IsString (PrimVector a) where
     {-# INLINE fromString #-}
     fromString = packASCII
 
