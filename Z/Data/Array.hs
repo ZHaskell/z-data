@@ -437,7 +437,7 @@ instance Prim a => Arr PrimArray a where
     {-# INLINE newArr #-}
     newArrWith n x = do
         marr <- newPrimArray n
-        setPrimArray marr 0 n x
+        when (n > 0) (setPrimArray marr 0 n x)
         return marr
     {-# INLINE newArrWith #-}
     readArr = readPrimArray
