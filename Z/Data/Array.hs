@@ -625,7 +625,6 @@ castMutableArray = unsafeCoerce#
 --------------------------------------------------------------------------------
 
 emptyArr :: Arr arr a => arr a
-{-# NOINLINE emptyArr #-}
 emptyArr = runST $ do
     marr <- newArrWith 0 uninitialized
     unsafeFreezeArr marr

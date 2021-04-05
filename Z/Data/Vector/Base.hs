@@ -697,7 +697,6 @@ createN2 n0 n1 fill = runST (do
 -- | /O(1)/. The empty vector.
 --
 empty :: Vec v a => v a
-{-# INLINE empty #-}
 empty = Vec emptyArr 0 0
 
 -- | /O(1)/. Single element vector.

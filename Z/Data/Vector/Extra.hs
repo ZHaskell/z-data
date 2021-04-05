@@ -468,7 +468,7 @@ splitWith :: Vec v a => (a -> Bool) -> v a -> [v a]
 splitWith f = go
   where
     go v@(Vec _ _ l)
-        | l == 0    = []
+        | l == 0    = [empty]
         | otherwise =
             let n = findIndex f v
             in if n == l
