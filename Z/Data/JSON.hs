@@ -140,13 +140,9 @@ import qualified Z.Data.Text                    as T
 -- escaping pass. To use custom 'Settings' just write:
 --
 -- > data T = T {fooT :: Int, barT :: [Int]} deriving Generic
--- > instance JSON.ToValue T where
+-- > instance JSON.JSON T where
 -- >     -- You can omit following definition if you don't need to change settings
 -- >     toValue = JSON.gToValue JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
--- >
--- > -- define this instances if you need fast JSON encoding(without convert to JSON.Value first)
--- > instance JSON.EncodeJSON T where
--- >     -- You can omit following definition if you don't need to change settings
 -- >     encodeJSON = JSON.gEncodeJSON JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
 --
 -- >>> JSON.toValue (T 0 [1,2,3])
