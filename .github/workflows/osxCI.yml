@@ -5,7 +5,7 @@ jobs:
     runs-on: macOS-latest
     strategy:
       matrix:
-        ghc: ['8.8', '8.10', '9,0']
+        ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.2', '3.4']
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
