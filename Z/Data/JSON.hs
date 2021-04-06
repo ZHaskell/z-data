@@ -100,14 +100,18 @@ import qualified Z.Data.Text                    as T
 -- >     deriving (Show, Generic)
 -- >     deriving anyclass (JSON.JSON)
 --
--- We can now encode & decode with 'T.Text' like so:
+-- We can now encode & decode JSON like this:
 --
+-- >>> JSON.toValue (Person{ name="Alice", age=16 })
+-- Object [("name",String "Alice"),("age",Number 16.0)]
+-- >>> JSON.encode (Person{ name="Alice", age=16 })
+-- [123,34,110,97,109,101,34,58,34,65,108,105,99,101,34,44,34,97,103,101,34,58,49,54,125]
 -- >>> JSON.encodeText (Person{ name="Alice", age=16 })
 -- "{\"age\":16,\"name\":\"Alice\"}"
 -- >>> JSON.decodeText' "{\"age\":16,\"name\":\"Alice\"}" :: Either JSON.DecodeError Person
 -- Right (Person {age = 16, name = "Alice"})
 --
--- The 'GHC.Generics.Generic' instances convert(encode) Haskell data with following rules:
+-- The 'GHC.Generics.Generic' based instances convert Haskell data with following rules:
 --
 --   * Constructors without payloads are encoded as JSON String, @data T = A | B@ are encoded as @\"A\"@ or @\"B\"@.
 --   * Single constructor are ingored if there're payloads, @data T = T ...@,  @T@ is ingored:
@@ -122,8 +126,7 @@ import qualified Z.Data.Text                    as T
 --         @{\"B\":{\"k1\":...,\"k2\":...}}@ in @B .. ..@ case, or @\"A\"@ in @A@ case.
 --     * Plain product are similar to above, wrappered by an outer single-key object layer marking which constructor.
 --
--- These rules apply to user defined ADTs, but some built-in instances have
--- different behaviour, namely:
+-- These rules apply to user defined ADTs, but some built-in instances have different behaviours, namely:
 --
 --   * @Maybe a@ are encoded as JSON @null@ in 'Nothing' case, or directly encoded to its payload in 'Just' case.
 --   * @[a]@ are encoded to JSON array, @[Char]@ are encoded into JSON string.
@@ -140,13 +143,9 @@ import qualified Z.Data.Text                    as T
 -- escaping pass. To use custom 'Settings' just write:
 --
 -- > data T = T {fooT :: Int, barT :: [Int]} deriving Generic
--- > instance JSON.ToValue T where
+-- > instance JSON.JSON T where
 -- >     -- You can omit following definition if you don't need to change settings
 -- >     toValue = JSON.gToValue JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
--- >
--- > -- define this instances if you need fast JSON encoding(without convert to JSON.Value first)
--- > instance JSON.EncodeJSON T where
--- >     -- You can omit following definition if you don't need to change settings
 -- >     encodeJSON = JSON.gEncodeJSON JSON.defaultSettings{ JSON.fieldFmt = JSON.snakeCase } . from
 --
 -- >>> JSON.toValue (T 0 [1,2,3])

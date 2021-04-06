@@ -28,7 +28,7 @@ Some mnemonics:
 module Z.Data.Array (
   -- * Arr typeclass
     Arr(..)
-  , singletonArr, doubletonArr
+  , emptyArr, singletonArr, doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr
   , RealWorld
   -- * Boxed array type
@@ -437,7 +437,7 @@ instance Prim a => Arr PrimArray a where
     {-# INLINE newArr #-}
     newArrWith n x = do
         marr <- newPrimArray n
-        setPrimArray marr 0 n x
+        when (n > 0) (setPrimArray marr 0 n x)
         return marr
     {-# INLINE newArrWith #-}
     readArr = readPrimArray
@@ -623,6 +623,11 @@ castMutableArray :: (Arr arr a, Cast a b) => MArr arr s a -> MArr arr s b
 castMutableArray = unsafeCoerce#
 
 --------------------------------------------------------------------------------
+
+emptyArr :: Arr arr a => arr a
+emptyArr = runST $ do
+    marr <- newArrWith 0 uninitialized
+    unsafeFreezeArr marr
 
 singletonArr :: Arr arr a => a -> arr a
 {-# INLINE singletonArr #-}

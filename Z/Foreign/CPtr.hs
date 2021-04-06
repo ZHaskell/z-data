@@ -12,7 +12,7 @@ This module provide a lightweight foreign pointer, support c initializer and fin
 
 module Z.Foreign.CPtr (
   -- * CPtr type
-    CPtr, newCPtrUnsafe, newCPtr, withCPtr
+    CPtr, newCPtr', newCPtrUnsafe, newCPtr, withCPtr
   -- * Ptr type
   , Ptr
   , nullPtr
@@ -43,6 +43,22 @@ instance Show (CPtr a) where
 instance T.Print (CPtr a) where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ (CPtr mpa) = T.toUTF8BuilderP 0 (indexPrimArray mpa 0)
+
+-- | Initialize a 'CPtr' with initializer which return an allocated pointer.
+--
+newCPtr' :: IO (Ptr a) -- ^ initializer
+         -> FunPtr (Ptr a -> IO b) -- ^ finalizer
+         -> IO (CPtr a)
+newCPtr' ini (FunPtr fin#) = mask_ $ do
+    mpa <- newPrimArray 1
+    p@(Ptr addr#) <- ini
+    writePrimArray mpa 0 p
+    pa@(PrimArray ba#) <- unsafeFreezePrimArray mpa
+    primitive_ $ \ s0# ->
+        let !(# s1#, w# #) = mkWeakNoFinalizer# ba# () s0#
+            !(# s2#, _ #) = addCFinalizerToWeak# fin# addr# 0# addr# w# s1#
+        in s2#
+    return (CPtr pa)
 
 -- | Initialize a 'CPtr' with initializer(must be unsafe FFI) and finalizer.
 --
