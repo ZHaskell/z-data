@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.7.4.0  -- 2021-04-06
+
+* Add `emptyArr` to `Z.Data.Array`. 
+* Add `newCPtr'` to accommodate common cases.
+* Use `memchr` in `split/splitWith/lines` if possible.
+
 ## 0.7.3.0  -- 2021-03-30
 
 * Add more helpers to debug `Parser`: `currentChunk`, `failWithInput`, `unsafeLiftIO`.
