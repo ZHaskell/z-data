@@ -187,9 +187,14 @@ library
     cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
 
   else
-    extra-libraries:
-      stdc++
-      pthread
+    if os(osx)
+      extra-libraries:
+          c++
+          pthread
+    else
+      extra-libraries:
+          stdc++
+          pthread
 
   if flag(integer-simple)
     cpp-options:   -DINTEGER_SIMPLE
