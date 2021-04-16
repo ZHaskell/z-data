@@ -56,7 +56,7 @@ fromListN 7 [4,5,6,7,8,9,10]
 > :set -XOverloadedStrings 
 >
 > -- Builders can be used with OverloadedStrings
-> B.buildBytes $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
+> B.build $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 [98,117,105,108,100,101,114,115,58,32,48,48,48,51,44,49,46,50,51,52,53,54,55,56]
 > 
 > B.buildText $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
