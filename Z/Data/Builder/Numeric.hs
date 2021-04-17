@@ -492,11 +492,11 @@ i2wHexUpper v
 -- import Data.Word
 -- import Data.Int
 --
--- > T.validate . B.buildBytes $ B.hex (125 :: Int8)
+-- > T.validate . B.build $ B.hex (125 :: Int8)
 -- "7d"
--- > T.validate . B.buildBytes $ B.hex (-1 :: Int8)
+-- > T.validate . B.build $ B.hex (-1 :: Int8)
 -- "ff"
--- > T.validate . B.buildBytes $ B.hex (125 :: Word16)
+-- > T.validate . B.build $ B.hex (125 :: Word16)
 -- "007d"
 -- @
 --
