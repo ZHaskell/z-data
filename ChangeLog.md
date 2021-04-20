@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.8.0.0  -- 2021-04-20
+
+* Change `Bytes` 's `Hashable` instance to use FNV-1a (proposed by @zypeh).
+
 ## 0.7.4.0  -- 2021-04-06
 
 * Add `emptyArr` to `Z.Data.Array`. 
