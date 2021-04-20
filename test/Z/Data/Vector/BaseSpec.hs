@@ -64,8 +64,6 @@ spec = describe "vector-base" $ do
 
     describe "Bytes Hashable instance property" . modifyMaxSuccess (*10) . modifyMaxSize (*10) $ do
 
-        prop "Vector Word8's hash should be equal to hashWithSalt (Bytes's one) (Bytes's length)" $ \ xs ->
-            hash (V.pack @V.Vector @Word8 xs) === hashWithSalt (hash (V.pack @V.PrimVector @Word8 xs)) (List.length xs)
         prop "Vector a's hash should be equal to [a]'s hash" $ \ xs ->
             hash (V.pack @V.Vector @Word8 xs) === hash xs
         prop "Vector a's hash should be equal to [a]'s hash" $ \ xs ->

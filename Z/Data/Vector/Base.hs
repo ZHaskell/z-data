@@ -444,10 +444,7 @@ instance (Prim a, Ord a) => Ord (PrimVector a) where
     compare = comparePrimVector
 
 comparePrimVector :: (Prim a, Ord a) => PrimVector a -> PrimVector a -> Ordering
-{-# INLINE [1] comparePrimVector #-}
-{-# RULES
-    "comparePrimVector/Bytes" comparePrimVector = compareBytes
-  #-}
+{-# INLINE comparePrimVector #-}
 comparePrimVector (PrimVector baA sA lA) (PrimVector baB sB lB)
     | baA `sameArr` baB = if sA == sB then lA `compare` lB else go sA sB
     | otherwise = go sA sB
@@ -459,6 +456,11 @@ comparePrimVector (PrimVector baA sA lA) (PrimVector baB sB lB)
              | otherwise = let o = indexPrimArray baA i `compare` indexPrimArray baB j
                            in case o of EQ -> go (i+1) (j+1)
                                         x  -> x
+
+-- | This is an INCOHERENT instance, compare binary data using SIMD.
+instance {-# INCOHERENT #-} Ord Bytes where
+    {-# INLINE compare #-}
+    compare = compareBytes
 
 compareBytes :: PrimVector Word8 -> PrimVector Word8 -> Ordering
 {-# INLINE compareBytes #-}
@@ -513,10 +515,7 @@ instance (Hashable a, Prim a) => Hashable (PrimVector a) where
     hashWithSalt = hashWithSaltPrimVector
 
 hashWithSaltPrimVector :: (Hashable a, Prim a) => Int -> PrimVector a -> Int
-{-# INLINE [1] hashWithSaltPrimVector #-}
-{-# RULES
-    "hashWithSaltPrimVector/Bytes" hashWithSaltPrimVector = hashWithSaltBytes
-  #-}
+{-# INLINE hashWithSaltPrimVector #-}
 hashWithSaltPrimVector salt0 (PrimVector arr s l) = go salt0 s
   where
     -- we don't do a final hash with length to keep consistent with Bytes's instance
@@ -524,6 +523,13 @@ hashWithSaltPrimVector salt0 (PrimVector arr s l) = go salt0 s
     go !salt !i
         | i >= end  = salt
         | otherwise = go (hashWithSalt salt (indexPrimArray arr i)) (i+1)
+
+-- | This is an INCOHERENT instance, hash binary data using FNV-1a
+--
+-- Note this is different from @Vector Word8@ or @[Word8]@ which use FNV-1.
+instance {-# INCOHERENT #-} Hashable Bytes where
+    {-# INLINE hashWithSalt #-}
+    hashWithSalt = hashWithSaltBytes
 
 hashWithSaltBytes :: Int -> Bytes -> Int
 {-# INLINE hashWithSaltBytes #-}

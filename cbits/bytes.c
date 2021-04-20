@@ -53,10 +53,13 @@ HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t c, HsInt n) {
     else return (p - a);
 }
 
-/* FNV-1 hash
+/* FNV-1a hash
  *
- * The FNV-1 hash description: http://isthe.com/chongo/tech/comp/fnv/
- * The FNV-1 hash is public domain: http://isthe.com/chongo/tech/comp/fnv/#public_domain
+ * The FNV-1a hash description: http://isthe.com/chongo/tech/comp/fnv/#FNV-1a
+ * The FNV-1a hash is public domain: http://isthe.com/chongo/tech/comp/fnv/#public_domain
+ * 
+ * Using FNV-1a because it has better avalanche properties compared to the FNV original version.
+ * See also https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
  *
  * The original version from hashable use long type which doesn't match 'Int' in haskell and
  * cause problems on window, here we use HsInt.
@@ -65,7 +68,7 @@ HsInt hs_fnv_hash_addr(const unsigned char *str, HsInt len, HsInt salt) {
 
     HsWord hash = salt;
     while (len--) {
-      hash = (hash * 16777619) ^ *str++;
+      hash = (hash ^ *str++) * 16777619;
     }
 
     return hash;
