@@ -129,7 +129,7 @@ class Print a where
     --
     -- You should return a 'B.Builder' writing in UTF8 encoding only, i.e.
     --
-    -- @Z.Data.Text.validateMaybe (Z.Data.Builder.buildBytes (toUTF8BuilderP p a)) /= Nothing@
+    -- @Z.Data.Text.validateMaybe (Z.Data.Builder.build (toUTF8BuilderP p a)) /= Nothing@
     toUTF8BuilderP :: Int -> a  -> B.Builder ()
 
     default toUTF8BuilderP :: (Generic a, GToText (Rep a)) => Int -> a -> B.Builder ()
