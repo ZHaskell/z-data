@@ -27,7 +27,6 @@ module Z.Data.JSON.Value
     -- * parse into JSON Value
   , parseValue
   , parseValue'
-  , parseValueChunks
     -- * Value Parsers
   , value
   , object
@@ -149,11 +148,6 @@ parseValue = P.parse value
 parseValue' :: V.Bytes -> Either P.ParseError Value
 {-# INLINE parseValue' #-}
 parseValue' = P.parse' (value <* skipSpaces <* P.endOfInput)
-
--- | Increamental parse 'Value' without consuming trailing bytes.
-parseValueChunks :: Monad m => P.ParseChunks m V.Bytes P.ParseError Value
-{-# INLINE parseValueChunks #-}
-parseValueChunks = P.parseChunks value
 
 --------------------------------------------------------------------------------
 

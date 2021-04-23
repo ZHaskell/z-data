@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.1.0  -- 2021-04-23
+
+* Change `ParseChunks` and `parseChunks` to based on `parseChunk`.
+* Remove `parseValueChunks`, add `decodeChunk` to `Z.Data.JSON`.
+
 ## 0.8.0.0  -- 2021-04-20
 
 * Change `Bytes` 's `Hashable` instance to use FNV-1a (proposed by @zypeh).

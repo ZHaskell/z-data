@@ -18,11 +18,11 @@ module Z.Data.JSON.Base
   , -- * Encode & Decode
     DecodeError
   , decode, decode', decodeText, decodeText'
-  , P.ParseChunks, decodeChunks
+  , P.ParseChunks, decodeChunk, decodeChunks
   , encode, encodeChunks, encodeText
   , prettyJSON, JB.prettyValue
     -- * parse into JSON Value
-  , JV.parseValue, JV.parseValue', JV.parseValueChunks
+  , JV.parseValue, JV.parseValue'
   -- * Generic functions
   , gToValue, gFromValue, gEncodeJSON
   -- * Convert 'Value' to Haskell data
@@ -146,17 +146,24 @@ decode bs = case P.parse JV.value bs of
         Left cErr -> (bs', Left (Right cErr))
         Right r   -> (bs', Right r)
 
+-- | Decode a JSON doc chunk.
+decodeChunk :: JSON a => V.Bytes -> P.Result DecodeError a
+{-# INLINE decodeChunk #-}
+decodeChunk bs = loop (P.parseChunk JV.value bs)
+  where
+    loop r = do
+        case r of
+            P.Success v rest ->
+                case convertValue v of
+                    Left cErr -> P.Failure (Right cErr) rest
+                    Right r'  -> P.Success r' rest
+            P.Failure e rest -> P.Failure (Left e) rest
+            P.Partial f' -> P.Partial (loop . f')
+
 -- | Decode JSON doc chunks, return trailing bytes.
-decodeChunks :: (JSON a, Monad m) => P.ParseChunks m V.Bytes DecodeError a
+decodeChunks :: (JSON a, Monad m) => P.ParseChunks m DecodeError a
 {-# INLINE decodeChunks #-}
-decodeChunks mb bs = do
-    mr <- P.parseChunks JV.value mb bs
-    case mr of
-        (bs', Left pErr) -> pure (bs', Left (Left pErr))
-        (bs', Right v) ->
-            case convertValue v of
-                Left cErr -> pure (bs', Left (Right cErr))
-                Right r   -> pure (bs', Right r)
+decodeChunks = P.parseChunks decodeChunk
 
 -- | Directly encode data to JSON bytes.
 encode :: JSON a => a -> V.Bytes

@@ -64,23 +64,23 @@ import qualified Z.Data.Vector.Extra                as V
 --
 -- * Partial: that need for more input data, supply empty bytes to indicate 'endOfInput'
 --
-data Result a
-    = Success a          !V.Bytes
-    | Failure ParseError !V.Bytes
-    | Partial (ParseStep a)
+data Result e r
+    = Success r !V.Bytes
+    | Failure e !V.Bytes
+    | Partial (ParseStep e r)
 
 -- | A parse step consumes 'V.Bytes' and produce 'Result'.
-type ParseStep r = V.Bytes -> Result r
+type ParseStep e r = V.Bytes -> Result e r
 
 -- | Type alias for error message
 type ParseError = [T.Text]
 
-instance Functor Result where
+instance Functor (Result e) where
     fmap f (Success a s)   = Success (f a) s
     fmap f (Partial k)     = Partial (fmap f . k)
     fmap _ (Failure e v)   = Failure e v
 
-instance Show a => Show (Result a) where
+instance (Show e, Show a) => Show (Result e a) where
     show (Success a _)    = "Success " ++ show a
     show (Partial _)      = "Partial _"
     show (Failure errs _) = "Failure: " ++ show errs
@@ -100,9 +100,9 @@ instance Show a => Show (Result a) where
 --        ... k s ... (if we get something useful for next parser)
 --  @
 newtype Parser a = Parser {
-        runParser :: forall r . (ParseError -> ParseStep r)
-                  -> (State# ParserState -> a -> ParseStep r)
-                  -> State# ParserState -> ParseStep r
+        runParser :: forall r . (ParseError -> ParseStep ParseError r)
+                  -> (State# ParserState -> a -> ParseStep ParseError r)
+                  -> State# ParserState -> ParseStep ParseError r
     }
 
 -- | State token tag used in `Parser`
@@ -195,38 +195,32 @@ parse (Parser p) inp = finishParsing (runRW# ( \ s ->
     unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp)))
 
 -- | Parse an input chunk
-parseChunk :: Parser a -> V.Bytes -> Result a
+parseChunk :: Parser a -> V.Bytes -> Result ParseError a
 {-# INLINE parseChunk #-}
 parseChunk (Parser p) = runRW# (\ s ->
     unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s)))
 
 -- | Finish parsing and fetch result, feed empty bytes if it's 'Partial' result.
-finishParsing :: Result a -> (V.Bytes, Either ParseError a)
+finishParsing :: Result ParseError a -> (V.Bytes, Either ParseError a)
 {-# INLINABLE finishParsing #-}
 finishParsing r = case r of
     Success a rest    -> (rest, Right a)
     Failure errs rest -> (rest, Left errs)
     Partial f         -> finishParsing (f V.empty)
 
--- | Type alias for a streaming parser, draw chunk from Monad m (with a initial chunk), return result in @Either err x@.
-type ParseChunks m chunk err x = m chunk -> chunk -> m (chunk, Either err x)
+-- | Type alias for a streaming parser, draw chunk from Monad m with a initial chunk,
+-- return result in @Either err x@.
+type ParseChunks m err x = m V.Bytes -> V.Bytes -> m (V.Bytes, Either err x)
 
--- | Run a parser with an initial input string, and a monadic action
+-- | Run a chunk parser with an initial input string, and a monadic action
 -- that can supply more input if needed.
 --
--- Note, once the monadic action return empty bytes, parsers will stop drawing
--- more bytes (take it as 'endOfInput').
-parseChunks :: Monad m => Parser a -> ParseChunks m V.Bytes ParseError a
+parseChunks :: Monad m => (V.Bytes -> Result e a) -> ParseChunks m e a
 {-# INLINABLE parseChunks #-}
-parseChunks (Parser p) m0 inp = go m0 (runRW# (\ s ->
-    unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp)))
+parseChunks pc m0 inp = go m0 (pc inp)
   where
     go m r = case r of
-        Partial f -> do
-            inp' <- m
-            if V.null inp'
-            then go (pure V.empty) (f V.empty)
-            else go m (f inp')
+        Partial f -> go m . f =<< m
         Success a rest    -> pure (rest, Right a)
         Failure errs rest -> pure (rest, Left errs)
 
@@ -239,7 +233,7 @@ infixr 0 <?>
 -- Once it's finished, return the final result (always 'Success' or 'Failure') and
 -- all consumed chunks.
 --
-runAndKeepTrack :: Parser a -> Parser (Result a, [V.Bytes])
+runAndKeepTrack :: Parser a -> Parser (Result ParseError a, [V.Bytes])
 {-# INLINE runAndKeepTrack #-}
 runAndKeepTrack (Parser pa) = Parser $ \ _ k0 st0 inp ->
     let go !acc r k (st :: State# ParserState) = case r of
@@ -277,9 +271,9 @@ ensureN n0 err = Parser $ \ kf k s inp -> do
     else Partial (ensureNPartial l inp kf k s)
   where
     {-# INLINABLE ensureNPartial #-}
-    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep r)
-                   -> (State# ParserState -> () -> ParseStep r)
-                   -> State# ParserState -> ParseStep r
+    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
+                   -> (State# ParserState -> () -> ParseStep ParseError r)
+                   -> State# ParserState -> ParseStep ParseError r
     ensureNPartial l0 inp0 kf k s0 =
         let go acc !l s = \ inp -> do
                 let l' = V.length inp
@@ -432,8 +426,8 @@ scanChunks s0 consume = Parser (\ _ k st inp ->
   where
     -- we want to inline consume if possible
     {-# INLINABLE scanChunksPartial #-}
-    scanChunksPartial :: forall r. s -> (State# ParserState -> (V.PrimVector Word8, s) -> ParseStep r)
-                      -> State# ParserState -> V.PrimVector Word8 -> ParseStep r
+    scanChunksPartial :: forall r. s -> (State# ParserState -> (V.PrimVector Word8, s) -> ParseStep ParseError r)
+                      -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     scanChunksPartial s0' k st0 inp0 =
         let go s acc st = \ inp ->
                 if V.null inp
@@ -621,8 +615,9 @@ skip n =
             then k s () $! V.unsafeDrop n' inp
             else Partial (skipPartial (n'-l) kf k s))
 
-skipPartial :: Int -> (ParseError -> ParseStep r) -> (State# ParserState -> () -> ParseStep r)
-            -> State# ParserState -> ParseStep r
+skipPartial :: Int -> (ParseError -> ParseStep ParseError r)
+            -> (State# ParserState -> () -> ParseStep ParseError r)
+            -> State# ParserState -> ParseStep ParseError r
 {-# INLINABLE skipPartial #-}
 skipPartial n kf k s0 =
     let go !n' s = \ inp ->
@@ -660,7 +655,8 @@ skipWhile p =
   where
     -- we want to inline p if possible
     {-# INLINABLE skipWhilePartial #-}
-    skipWhilePartial :: forall r. (State# ParserState -> () -> ParseStep r) -> State# ParserState -> ParseStep r
+    skipWhilePartial :: forall r. (State# ParserState -> () -> ParseStep ParseError r)
+                     -> State# ParserState -> ParseStep ParseError r
     skipWhilePartial k s0 =
         let go s = \ inp ->
                 if V.null inp
@@ -699,8 +695,8 @@ takeTill p = Parser (\ _ k s inp ->
         else k s want rest)
   where
     {-# INLINABLE takeTillPartial #-}
-    takeTillPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep r)
-                    -> State# ParserState -> V.PrimVector Word8 -> ParseStep r
+    takeTillPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
+                    -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeTillPartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
@@ -726,8 +722,8 @@ takeWhile p = Parser (\ _ k s inp ->
   where
     -- we want to inline p if possible
     {-# INLINABLE takeWhilePartial #-}
-    takeWhilePartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep r)
-                     -> State# ParserState -> V.PrimVector Word8 -> ParseStep r
+    takeWhilePartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
+                     -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeWhilePartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
@@ -759,8 +755,8 @@ takeRemaining :: Parser V.Bytes
 takeRemaining = Parser (\ _ k s inp -> Partial (takeRemainingPartial k s inp))
   where
     {-# INLINABLE takeRemainingPartial #-}
-    takeRemainingPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep r)
-                         -> State# ParserState -> V.PrimVector Word8 -> ParseStep r
+    takeRemainingPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
+                         -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeRemainingPartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
