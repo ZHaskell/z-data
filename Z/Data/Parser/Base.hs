@@ -29,7 +29,7 @@ module Z.Data.Parser.Base
     -- * More parsers
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
-  , skipWord8, endOfLine, skip, skipWhile, skipSpaces
+  , skipWord8, endOfLine, skip, skipWhile, skipWhile1, skipSpaces, skipSpaces'
   , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
   , text
     -- * Error reporting
@@ -666,11 +666,29 @@ skipWhile p =
                     in if V.null rest then Partial (go s) else k s () rest
         in go s0
 
+-- | Similar to 'skipWhile', but requires the predicate to succeed on at least one byte
+-- of input: it will fail if the predicate never returns 'True' or reach the end of input
+--
+skipWhile1 :: (Word8 -> Bool) -> Parser ()
+skipWhile1 p = do
+    bs <- takeWhile p
+    if V.null bs
+    then Parser $ \ kf _ _ inp ->
+            kf ["Z.Data.Parser.Base.skipWhile1: no satisfied byte at " <> T.toText (V.take 10 inp) ]
+               inp
+    else pure ()
+
 -- | Skip over white space using 'isSpace'.
 --
 skipSpaces :: Parser ()
 {-# INLINE skipSpaces #-}
 skipSpaces = skipWhile isSpace
+
+-- | Skip over white space and @\'\\n\'@ using 'isSpace'.
+--
+skipSpaces' :: Parser ()
+{-# INLINE skipSpaces' #-}
+skipSpaces' = skipWhile (\ w -> isSpace w || w == NEWLINE)
 
 take :: Int -> Parser V.Bytes
 {-# INLINE take #-}
