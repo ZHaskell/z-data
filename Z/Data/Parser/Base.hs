@@ -684,12 +684,6 @@ skipSpaces :: Parser ()
 {-# INLINE skipSpaces #-}
 skipSpaces = skipWhile isSpace
 
--- | Skip over white space and @\'\\n\'@ using 'isSpace'.
---
-skipSpaces' :: Parser ()
-{-# INLINE skipSpaces' #-}
-skipSpaces' = skipWhile (\ w -> isSpace w || w == NEWLINE)
-
 take :: Int -> Parser V.Bytes
 {-# INLINE take #-}
 take n = do

@@ -34,9 +34,9 @@ isASCII :: Word8 -> Bool
 isASCII w = w <= DEL
 
 -- | @A ~ Z && a ~ z@
-isLatin :: Word8 -> Bool
-{-# INLINE isLatin #-}
-isLatin w = isUpper w && isLower w
+isAlpha :: Word8 -> Bool
+{-# INLINE isAlpha #-}
+isAlpha w = isUpper w && isLower w
 
 -- | @A ~ Z@
 isUpper :: Word8 -> Bool
