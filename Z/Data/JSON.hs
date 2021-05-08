@@ -124,7 +124,7 @@ import qualified Z.Data.Text                    as T
 --
 --     * Records are encoded as JSON object like above. @data T = A | B {k1 :: .., k2 :: ..}@ are encoded as
 --         @{\"B\":{\"k1\":...,\"k2\":...}}@ in @B .. ..@ case, or @\"A\"@ in @A@ case.
---     * Plain product are similar to above, wrappered by an outer single-key object layer marking which constructor.
+--     * Products inside a sum type are similar to above, wrapped by an outer single-key object layer marking which constructor used during data construction.
 --
 -- These rules apply to user defined ADTs, but some built-in instances have different behaviours, namely:
 --
