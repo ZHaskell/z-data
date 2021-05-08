@@ -184,9 +184,9 @@ import qualified Z.Data.Text                    as T
 --
 -- The 'Value' type is different from aeson's one in that we use @Vector (Text, Value)@ to represent JSON objects, thus
 -- we can choose different strategies on key duplication, the lookup map type, etc. so instead of a single 'withObject',
--- we provide 'withHashMap', 'withHashMapR', 'withFlatMap' and 'withFlatMapR' which use different lookup map type, and different key order piority. Most of time 'FlatMap' is faster than 'HashMap' since we only use the lookup map once, the cost of constructing a 'HashMap' is higher. If you want to directly working on key-values, 'withKeyValues' provide key-values vector access.
+-- we provide 'withHashMap', 'withHashMapR', 'withFlatMap' and 'withFlatMapR' which use different lookup map type, and different key order priority. Most of the time 'FlatMap' is faster than 'HashMap' since we only use the lookup map once, the cost of constructing a 'HashMap' is higher. If you want to directly work on key-values, 'withKeyValues' provide key-values vector access.
 --
--- There're some useful tools to help write encoding code in "Z.Data.JSON.Builder" module, such as JSON string escaping tool, etc.
+-- There're some useful tools to help write encoding code in "Z.Data.JSON.Builder" module, such as a JSON string escaping tool, etc.
 --
 -- If you don't particularly care for fast encoding, you can also use 'toValue' together with value builder, the overhead is usually very small.
 
