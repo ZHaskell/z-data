@@ -10,8 +10,8 @@ maintainer:         winterland1989@gmail.com
 copyright:          (c) Z.Haskell Contributors
 category:           Data
 build-type:         Custom
-homepage:           https://github.com/haskell-Z/z-data
-bug-reports:        https://github.com/haskell-Z/z-data/issues
+homepage:           https://github.com/ZHaskell/z-data
+bug-reports:        https://github.com/ZHaskell/z-data/issues
 extra-source-files:
   AUTHORS
   cbits/bytes.c
