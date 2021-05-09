@@ -9,7 +9,7 @@ Portability : non-portable
 
 A 'Text' wrap a 'Bytes' which will be interpreted using UTF-8 encoding. User should always use 'validate' \/ 'validateMaybe' to construt a 'Text' (instead of using construtor directly or coercing), otherwise illegal UTF-8 encoded codepoints will cause undefined behaviours.
 
-This library also provide simple unicode processing based on <https://github.com/haskell-Z/utf8rewind/ utf8rewind>,
+This library also provide simple unicode processing based on <https://github.com/ZHaskell/utf8rewind/ utf8rewind>,
 see 'normalize', 'caseFold' (current using unicode 13 databases).
 
 -}
