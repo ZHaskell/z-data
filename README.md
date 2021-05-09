@@ -2,7 +2,7 @@
 
 [![Hackage](https://img.shields.io/hackage/v/Z-Data.svg?style=flat)](https://hackage.haskell.org/package/Z-Data)
 [![Linux Build Status](https://github.com/ZHaskell/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
-[![MacOS Build Status](https://github.com/haskell-Z/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![macOS Build Status](https://github.com/ZHaskell/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 [![Windows Build Status](https://github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Z-Haskell/community)
 
