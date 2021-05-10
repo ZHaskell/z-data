@@ -12,8 +12,7 @@ This module provides definition and parsers for JSON 'Value's, a Haskell JSON re
   * The numeric representation use 'Scientific', which impose a limit on number's exponent part(limited to 'Int').
   * Unescaped control characters(<=0x1F) are NOT accepted, (different from aeson).
   * Only @0x20, 0x09, 0x0A, 0x0D@ are valid JSON whitespaces, 'skipSpaces' from this module is different from 'P.skipSpaces'.
-  * A JSON document shouldn't have trailing characters except whitespaces describe above, see 'parseValue''
-    and 'parseValueChunks''.
+  * A JSON document shouldn't have trailing characters except whitespaces describe above, see 'parseValue''.
   * Objects are represented as key-value vectors, key order and duplicated keys are preserved for further processing.
 
 Note that rfc8258 doesn't enforce unique key in objects, it's up to users to decided how to deal with key duplication, e.g. prefer first or last key, see 'Z.Data.JSON.Base.withFlatMap' or 'Std.Data.JSON.Base.withFlatMapR' for example.

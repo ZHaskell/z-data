@@ -217,10 +217,10 @@ type ParseChunks m err x = m V.Bytes -> V.Bytes -> m (V.Bytes, Either err x)
 --
 parseChunks :: Monad m => (V.Bytes -> Result e a) -> ParseChunks m e a
 {-# INLINABLE parseChunks #-}
-parseChunks pc m0 inp = go m0 (pc inp)
+parseChunks pc m inp = go (pc inp)
   where
-    go m r = case r of
-        Partial f -> go m . f =<< m
+    go r = case r of
+        Partial f -> go . f =<< m
         Success a rest    -> pure (rest, Right a)
         Failure errs rest -> pure (rest, Left errs)
 

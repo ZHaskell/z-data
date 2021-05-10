@@ -43,7 +43,7 @@ module Z.Data.Text (
     -- ** Special folds
   , count, all, any
     -- ** Text display width
-  , displayWidth
+  , displayWidth, displayWidthChar
   -- * Slice manipulation
   , cons, snoc
   , uncons, unsnoc

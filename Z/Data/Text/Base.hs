@@ -38,7 +38,7 @@ module Z.Data.Text.Base (
     -- ** Special folds
   , count, all, any
     -- ** Text display width
-  , displayWidth
+  , displayWidth, displayWidthChar
     -- ** normalization
   , NormalizationResult(..), NormalizeMode(..)
   , isNormalized, isNormalizedTo, normalize, normalizeTo
@@ -1107,6 +1107,13 @@ displayWidth (Text (V.PrimVector ba s l)) = go s 0
         | i >= end = acc
         | otherwise =
             let (# c, n #) = decodeChar ba i
-            in go (i+n) (acc + mk_wcwidth (fromIntegral (fromEnum c)))
+            in go (i+n) (acc + displayWidthChar c)
+
+-- | Get the display width of a 'Char'.
+--
+-- You shouldn't pass texts with control characters(<0x20, \\DEL), which are counted with -1 width.
+displayWidthChar :: Char -> Int
+{-# INLINE displayWidthChar #-}
+displayWidthChar c =  mk_wcwidth (fromIntegral (fromEnum c))
 
 foreign import ccall unsafe "hs_wcwidth.c mk_wcwidth" mk_wcwidth :: Int32 -> Int
