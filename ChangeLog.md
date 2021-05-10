@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.2.0  -- 2021-05-10
+
+* Add `withCPtrs`, `withCPtrsUnsafe` to `Z.Foreign.CPtr`.
+* Add `displayWidthChar` to `Z.Data.Text`.
+
 ## 0.8.1.0  -- 2021-04-23
 
 * Change `ParseChunks` and `parseChunks` to based on `parseChunk`.

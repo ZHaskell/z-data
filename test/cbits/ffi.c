@@ -21,3 +21,11 @@ HsInt sum_first_safe (HsInt** bufs, HsInt len) {
   }
   return res;
 }
+
+HsWord sum_pointer(void** addr, HsInt len){
+    HsWord sum = 0;
+    for(HsInt ix = 0;ix < len;ix++) {
+        sum += (size_t)addr[ix];
+    }
+    return sum;
+}

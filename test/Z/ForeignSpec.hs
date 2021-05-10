@@ -11,7 +11,6 @@ import qualified Z.Data.JSON                as JSON
 import           Z.Foreign
 import qualified Z.Data.Vector.Base         as V
 import qualified Z.Data.Array               as A
-import           Z.Foreign
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property

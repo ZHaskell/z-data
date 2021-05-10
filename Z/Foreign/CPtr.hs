@@ -12,19 +12,22 @@ This module provide a lightweight foreign pointer, support c initializer and fin
 
 module Z.Foreign.CPtr (
   -- * CPtr type
-    CPtr, newCPtr', newCPtrUnsafe, newCPtr, withCPtr
+    CPtr, newCPtr', newCPtrUnsafe, newCPtr, withCPtr, withCPtrsUnsafe, withCPtrs
   -- * Ptr type
   , Ptr
   , nullPtr
   , FunPtr
   ) where
 
+import Control.Monad
 import Control.Monad.Primitive
-import Control.Exception        (mask_)
+import Control.Exception                    (mask_)
 import Data.Primitive.PrimArray
-import Z.Data.Text              as T
+import qualified Z.Data.Text                as T
 import GHC.Ptr
 import GHC.Exts
+import Z.Data.Array
+import Z.Foreign
 
 -- | Lightweight foreign pointers.
 newtype CPtr a = CPtr (PrimArray (Ptr a))
@@ -38,7 +41,7 @@ instance Ord (CPtr a) where
     CPtr a `compare` CPtr b = indexPrimArray a 0 `compare` indexPrimArray b 0
 
 instance Show (CPtr a) where
-    show = toString
+    show = T.toString
 
 instance T.Print (CPtr a) where
     {-# INLINE toUTF8BuilderP #-}
@@ -102,3 +105,26 @@ withCPtr (CPtr pa@(PrimArray ba#)) f = do
     r <- f (indexPrimArray pa 0)
     primitive_ (touch# ba#)
     return r
+
+-- | Pass a list of 'CPtr Foo' as @foo**@. USE THIS FUNCTION WITH UNSAFE FFI ONLY!
+withCPtrsUnsafe :: forall a b. [CPtr a] -> (BA# (Ptr a) -> Int -> IO b) -> IO b
+withCPtrsUnsafe cptrs f = do
+    mpa <- newPrimArray @IO @(Ptr a) len
+    foldM_ (\ !i (CPtr pa) ->
+        writePrimArray mpa i (indexPrimArray pa 0) >> return (i+1)) 0 cptrs
+    (PrimArray ba#) <- unsafeFreezePrimArray mpa
+    r <- f ba# len
+    primitive_ (touch# cptrs)
+    return r
+  where len = length cptrs
+
+-- | Pass a list of 'CPtr Foo' as @foo**@.
+withCPtrs :: forall a b. [CPtr a] -> (Ptr (Ptr a) -> Int -> IO b) -> IO b
+withCPtrs cptrs f = do
+    mpa <- newPinnedPrimArray @IO @(Ptr a) len
+    foldM_ (\ !i (CPtr pa) ->
+        writePrimArray mpa i (indexPrimArray pa 0) >> return (i+1)) 0 cptrs
+    r <- withMutablePrimArrayContents mpa $ \ p -> f p len
+    primitive_ (touch# cptrs)
+    return r
+  where len = length cptrs
