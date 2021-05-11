@@ -14,7 +14,7 @@ short byte sequences, such as file path, environment variables, etc.
 
 module Z.Data.CBytes
   (  -- * The CBytes type
-    CBytes(CB)
+    CBytes(CB, CBytes)
   , rawPrimArray, fromPrimArray, fromMutablePrimArray
   , toBytes, toBytes', fromBytes, toText, toTextMaybe, fromText
   , toBuilder, toBuilder', buildCBytes
@@ -22,7 +22,8 @@ module Z.Data.CBytes
   , unpack
   , null, length
   , empty, singleton, append, concat, intercalate, intercalateElem
-  , fromCString, fromCStringN, fromStdString
+  , fromCString, fromCStringN
+  , fromStdString, peekStdString, peekStdStringIdx, peekStdStringN
   , withCBytesUnsafe, withCBytes, allocCBytesUnsafe, allocCBytes
   , withCBytesListUnsafe, withCBytesList
   , pokeMBACBytes, peekMBACBytes, indexBACBytes
@@ -70,7 +71,8 @@ import qualified Z.Data.Text.Print         as T
 import           Z.Data.Text.UTF8Codec     (decodeChar, encodeCharModifiedUTF8)
 import qualified Z.Data.Text.UTF8Codec     as T
 import qualified Z.Data.Vector.Base        as V
-import           Z.Foreign                 hiding (fromStdString)
+import           Z.Foreign                 hiding (fromStdString, peekStdString,
+                                            peekStdStringIdx, peekStdStringN)
 
 -- | A efficient wrapper for short immutable null-terminated byte sequences which can be
 -- automatically freed by ghc garbage collector.
@@ -640,6 +642,27 @@ allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
     writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
     return (CBytes bs, a)
+
+-- | Peek a pointer of std::string to 'CBytes'. We assume that the string
+-- doesn't contains @\\NUL@.
+--
+-- Note that we do NOT delete the pointee std::string. If you want to auto free
+-- it, see 'fromStdString' instead.
+peekStdString :: Ptr StdString -> IO CBytes
+peekStdString ptr = do
+    siz <- hs_std_string_size ptr
+    let !siz' = siz + 1
+    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray siz'
+    !_ <- hs_copy_std_string ptr siz mba#
+    writePrimArray mpa siz 0
+    !pa <- unsafeFreezePrimArray mpa
+    return (CBytes pa)
+
+peekStdStringN :: Int -> Ptr StdString -> IO [CBytes]
+peekStdStringN len ptr = forM [0..len-1] (peekStdStringIdx ptr)
+
+peekStdStringIdx :: Ptr StdString -> Int -> IO CBytes
+peekStdStringIdx p idx = peekStdString =<< hs_cal_std_string_off p idx
 
 -- | Run FFI in bracket and marshall @std::string*@ result into 'CBytes',
 -- memory pointed by @std::string*@ will be @delete@ ed.

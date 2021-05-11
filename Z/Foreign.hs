@@ -81,7 +81,9 @@ module Z.Foreign
   , clearPtr
   , castPtr
   , fromNullTerminated, fromPtr, fromPrimPtr
-  , StdString, fromStdString
+  , StdString
+  , peekStdString, peekStdStringIdx , peekStdStringN
+  , fromStdString
   -- ** convert between bytestring
   , fromByteString
   , toByteString
@@ -97,28 +99,30 @@ module Z.Foreign
   , hs_std_string_size
   , hs_copy_std_string
   , hs_delete_std_string
+  , hs_cal_std_string_off
   ) where
 
-import           Control.Exception          (bracket)
+import           Control.Exception              (bracket)
 import           Control.Monad
 import           Control.Monad.Primitive
+import           Data.ByteString                (ByteString)
+import qualified Data.ByteString                as B
+import           Data.ByteString.Short.Internal (ShortByteString (..),
+                                                 fromShort, toShort)
+import qualified Data.ByteString.Unsafe         as B
+import qualified Data.List                      as List
 import           Data.Primitive
-import           Data.Word
-import qualified Data.List                  as List
-import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
+import           Data.Primitive.Ptr
+import           Data.Word
 import           Foreign.C.Types
-import           GHC.Ptr
 import           GHC.Exts
+import           GHC.Ptr
 import           Z.Data.Array
 import           Z.Data.Array.Unaligned
 import           Z.Data.Array.UnliftedArray
 import           Z.Data.Vector.Base
-import           Data.ByteString            (ByteString)
-import qualified Data.ByteString            as B
-import qualified Data.ByteString.Unsafe     as B
-import           Data.ByteString.Short.Internal (ShortByteString(..), fromShort, toShort)
 
 -- | Type alias for 'ByteArray#'.
 --
@@ -483,8 +487,24 @@ fromPrimPtr (Ptr addr#) len = do
 -- | @std::string@ Pointer tag.
 data StdString
 
--- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap bytes,
--- memory pointed by @std::string*@ will be @delete@ ed.
+-- | Peek a pointer of std::string to 'Bytes'.
+--
+-- Note that we do NOT delete the pointee std::string. If you want to auto free
+-- it, see 'fromStdString' instead.
+peekStdString :: Ptr StdString -> IO Bytes
+peekStdString ptr = do
+    siz <- hs_std_string_size ptr
+    (bs, _) <- allocBytesUnsafe siz (hs_copy_std_string ptr siz)
+    return bs
+
+peekStdStringIdx :: Ptr StdString -> Int -> IO Bytes
+peekStdStringIdx p idx = peekStdString =<< hs_cal_std_string_off p idx
+
+peekStdStringN :: Int -> Ptr StdString -> IO [Bytes]
+peekStdStringN len ptr = forM [0..len-1] (peekStdStringIdx ptr)
+
+-- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap
+-- bytes, memory pointed by @std::string*@ will be @delete@ ed.
 fromStdString :: IO (Ptr StdString) -> IO Bytes
 fromStdString f = bracket f hs_delete_std_string
     (\ q -> do
@@ -495,6 +515,7 @@ fromStdString f = bracket f hs_delete_std_string
 foreign import ccall unsafe hs_std_string_size :: Ptr StdString -> IO Int
 foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> Int -> MBA# Word8 -> IO ()
 foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()
+foreign import ccall unsafe hs_cal_std_string_off :: Ptr StdString -> Int -> IO (Ptr StdString)
 
 -- | O(n), Convert from 'ByteString'.
 fromByteString :: ByteString -> Bytes

@@ -39,19 +39,19 @@ int64_t hs_re2_kDefaultMaxMem(){
 }
 
 re2::RE2* hs_re2_compile_pattern(re2::RE2** re, const char *input, HsInt off, HsInt input_len
-     , bool    posix_syntax                  
-     , bool    longest_match                 
-     , int64_t max_mem                       
-     , bool    literal                       
-     , bool    never_nl                      
-     , bool    dot_nl                        
-     , bool    never_capture                 
-     , bool    case_sensitive                
-     , bool    perl_classes                  
-     , bool    word_boundary                 
+     , bool    posix_syntax
+     , bool    longest_match
+     , int64_t max_mem
+     , bool    literal
+     , bool    never_nl
+     , bool    dot_nl
+     , bool    never_capture
+     , bool    case_sensitive
+     , bool    perl_classes
+     , bool    word_boundary
      , bool    one_line ){
     re2::RE2::Options opts;
-    opts.set_posix_syntax  ( posix_syntax  ); 
+    opts.set_posix_syntax  ( posix_syntax  );
     opts.set_longest_match ( longest_match );
     opts.set_max_mem       ( max_mem       );
     opts.set_literal       ( literal       );
@@ -82,19 +82,6 @@ bool hs_re2_ok(re2::RE2 *regex) {
 
 HsInt hs_num_capture_groups(re2::RE2 *regex) {
     return regex->NumberOfCapturingGroups()+1;
-}
-
-HsInt hs_std_string_size(std::string* str) {
-    if (str != NULL) return (HsInt)str->size();
-    else return 0;
-}
-
-void hs_copy_std_string(std::string* str, HsInt siz, char* buf) {
-    if (str != NULL) memcpy(buf, str->c_str(), siz);
-}
-
-void hs_delete_std_string(std::string* str) {
-    delete str;
 }
 
 std::string* hs_re2_quote_meta(const char *in, HsInt off, HsInt len) {

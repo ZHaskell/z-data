@@ -11,7 +11,7 @@ jobs:
           # GHC 9+ only works with cabal v3.4+
           - ghc: 9.0
             cabal: 3.2
-    name: Haskell GHC ${{ matrix.ghc }} sample
+    name: Haskell GHC ${{ matrix.ghc }}
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
     steps:
