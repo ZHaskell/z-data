@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.3.0  -- 2021-05-11
+
+* Export `CBytes` data constructor
+* Add `peekStdString`, `peekStdStrings` in both `Z.CBytes` and `Z.Foreign` module.
+
 ## 0.8.2.0  -- 2021-05-10
 
 * Add `withCPtrs`, `withCPtrsUnsafe` to `Z.Foreign.CPtr`.
@@ -16,7 +21,7 @@
 
 ## 0.7.4.0  -- 2021-04-06
 
-* Add `emptyArr` to `Z.Data.Array`. 
+* Add `emptyArr` to `Z.Data.Array`.
 * Add `newCPtr'` to accommodate common cases.
 * Use `memchr` in `split/splitWith/lines` if possible.
 
