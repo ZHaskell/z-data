@@ -36,7 +36,7 @@ infixr 5 :+
 infixl 6 :-
 
 spec :: Spec
-spec = describe "JSON Base instances" $ do
+spec = describe "Print Base instances" $ do
 
     it "Nullary constructor are encoded as text" $
         toText (Nullary :: T Integer) === "Nullary"

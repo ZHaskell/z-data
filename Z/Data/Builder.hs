@@ -56,7 +56,7 @@ module Z.Data.Builder
   , scientific'
   , scientificWith
     -- * Builder helpers
-  , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
+  , paren, parenWhen, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
     -- * Time
   , day
   , timeOfDay

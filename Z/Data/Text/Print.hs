@@ -50,9 +50,8 @@ module Z.Data.Text.Print
   , B.scientific'
   , B.scientificWith
   -- * Helpers
-  , B.paren, B.curly, B.square, B.angle, B.quotes, B.squotes
+  , B.paren, B.parenWhen, B.curly, B.square, B.angle, B.quotes, B.squotes
   , B.colon, B.comma, B.intercalateVec, B.intercalateList
-  , parenWhen
   ) where
 
 import           Control.Monad
@@ -195,7 +194,7 @@ instance (Constructor c) => GToText (C1 c U1) where
 instance (GFieldToText (S1 sc f), Constructor c) => GToText (C1 c (S1 sc f)) where
     {-# INLINE gToUTF8BuilderP #-}
     gToUTF8BuilderP p m1@(M1 x) =
-        parenWhen (p > 10) $ do
+        B.parenWhen (p > 10) $ do
             B.stringModifiedUTF8 $ conName m1
             B.char8 ' '
             if conIsRecord m1
@@ -206,27 +205,19 @@ instance (GFieldToText (a :*: b), Constructor c) => GToText (C1 c (a :*: b)) whe
     {-# INLINE gToUTF8BuilderP #-}
     gToUTF8BuilderP p m1@(M1 x) =
         case conFixity m1 of
-            Prefix -> parenWhen (p > 10) $ do
+            Prefix -> B.parenWhen (p > 10) $ do
                 B.stringModifiedUTF8 $ conName m1
                 B.char8 ' '
                 if conIsRecord m1
                 then B.curly $ gFieldToUTF8BuilderP (B.char7 ',' >> B.char7 ' ') p x
                 else gFieldToUTF8BuilderP (B.char7 ' ') 11 x
-            Infix _ p' -> parenWhen (p > p') $ do
+            Infix _ p' -> B.parenWhen (p > p') $ do
                 gFieldToUTF8BuilderP
                     (B.char8 ' ' >> B.stringModifiedUTF8 (conName m1) >> B.char8 ' ') (p'+1) x
 
 instance Print a => GToText (K1 i a) where
     {-# INLINE gToUTF8BuilderP #-}
     gToUTF8BuilderP p (K1 x) = toUTF8BuilderP p x
-
--- | Add "(..)" around builders when condition is met, otherwise add nothing.
---
--- This is useful when defining 'Print' instances.
-parenWhen :: Bool -> B.Builder () -> B.Builder ()
-{-# INLINE parenWhen #-}
-parenWhen True b = B.paren b
-parenWhen _    b = b
 
 --------------------------------------------------------------------------------
 -- Data types
@@ -244,21 +235,21 @@ instance Print Char where
     {-# INLINE toUTF8BuilderP #-}
     toUTF8BuilderP _ = B.string8 . show
 
-instance Print Double where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.double;}
-instance Print Float  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.float;}
+instance Print Double where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.double x) ;}
+instance Print Float  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.float x) ;}
 
-instance Print Int     where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance Print Int8    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance Print Int16   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance Print Int32   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
-instance Print Int64   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
+instance Print Int     where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.int x) ;}
+instance Print Int8    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.int x) ;}
+instance Print Int16   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.int x) ;}
+instance Print Int32   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.int x) ;}
+instance Print Int64   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.int x) ;}
 instance Print Word    where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 instance Print Word8   where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 instance Print Word16  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 instance Print Word32  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 instance Print Word64  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.int;}
 
-instance Print Integer  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer;}
+instance Print Integer  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.integer x) ;}
 instance Print Natural  where {{-# INLINE toUTF8BuilderP #-}; toUTF8BuilderP _ = B.integer . fromIntegral}
 instance Print Ordering where
     {-# INLINE toUTF8BuilderP #-}
@@ -312,7 +303,7 @@ foreign import ccall unsafe escape_json_string
 
 instance Print Sci.Scientific where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP _ = B.scientific
+    toUTF8BuilderP p x = B.parenWhen (p > 6 && x < 0) (B.scientific x)
 
 instance Print a => Print [a] where
     {-# INLINE toUTF8BuilderP #-}
@@ -389,17 +380,17 @@ instance (Print a, Print b, Print c, Print d, Print e, Print f, Print g) => Prin
 
 instance Print a => Print (Maybe a) where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p (Just x) = parenWhen (p > 10) $ "Just " >> toUTF8BuilderP 11 x
+    toUTF8BuilderP p (Just x) = B.parenWhen (p > 10) $ "Just " >> toUTF8BuilderP 11 x
     toUTF8BuilderP _ _        = "Nothing"
 
 instance (Print a, Print b) => Print (Either a b) where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p (Left x) = parenWhen (p > 10) $ "Left " >> toUTF8BuilderP 11 x
-    toUTF8BuilderP p (Right x) = parenWhen (p > 10) $ "Right " >> toUTF8BuilderP 11 x
+    toUTF8BuilderP p (Left x) = B.parenWhen (p > 10) $ "Left " >> toUTF8BuilderP 11 x
+    toUTF8BuilderP p (Right x) = B.parenWhen (p > 10) $ "Right " >> toUTF8BuilderP 11 x
 
 instance (Print a, Integral a) => Print (Ratio a) where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p r = parenWhen (p > 10) $ do
+    toUTF8BuilderP p r = B.parenWhen (p > 10) $ do
         toUTF8BuilderP 8 (numerator r)
         " % "
         toUTF8BuilderP 8 (denominator r)
@@ -504,7 +495,7 @@ instance Print DiffTime where
 
 instance Print SystemTime where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p (MkSystemTime s ns) = parenWhen (p > 10) $ do
+    toUTF8BuilderP p (MkSystemTime s ns) = B.parenWhen (p > 10) $ do
         "MkSystemTime {systemSeconds = "
         B.int s
         ", systemNanoseconds = "
@@ -513,7 +504,7 @@ instance Print SystemTime where
 
 instance Print CalendarDiffTime where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p (CalendarDiffTime m nt) = parenWhen (p > 10) $ do
+    toUTF8BuilderP p (CalendarDiffTime m nt) = B.parenWhen (p > 10) $ do
         B.encodePrim LETTER_P
         B.integer m
         B.encodePrim (LETTER_M, LETTER_T)
@@ -522,7 +513,7 @@ instance Print CalendarDiffTime where
 
 instance Print CalendarDiffDays where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p (CalendarDiffDays m d) = parenWhen (p > 10) $ do
+    toUTF8BuilderP p (CalendarDiffDays m d) = B.parenWhen (p > 10) $ do
         B.encodePrim LETTER_P
         B.integer m
         B.encodePrim LETTER_M

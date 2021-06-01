@@ -49,7 +49,7 @@ module Z.Data.Builder.Base
   , stringModifiedUTF8, charModifiedUTF8, stringUTF8
   , charUTF8, string7, char7, word7, string8, char8, word8, word8N, text
   -- * Builder helpers
-  , paren, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
+  , paren, parenWhen, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
   ) where
 
 import           Control.Monad
@@ -494,6 +494,14 @@ text (T.Text bs) = bytes bs
 paren :: Builder () -> Builder ()
 {-# INLINE paren #-}
 paren b = encodePrim PAREN_LEFT >> b >> encodePrim PAREN_RIGHT
+
+-- | Add "(..)" around builders when condition is met, otherwise add nothing.
+--
+-- This is useful when defining 'Print' instances.
+parenWhen :: Bool -> Builder () -> Builder ()
+{-# INLINE parenWhen #-}
+parenWhen True b = paren b
+parenWhen _    b = b
 
 -- | add @{...}@ to original builder.
 curly :: Builder () -> Builder ()
