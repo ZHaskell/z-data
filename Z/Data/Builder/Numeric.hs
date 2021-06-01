@@ -133,13 +133,13 @@ c_intWith (IFormat{..}) x
     | x < 0 =
         let !x' = (fromIntegral (complement x) :: Word64) + 1
         in ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec x' (-1) width pad (unsafeCoerce# mba#) i))
+            (c_int_dec x' (-1) width pad mba# i))
     | posSign =
         ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec (fromIntegral x) 1 width pad (unsafeCoerce# mba#) i))
+            (c_int_dec (fromIntegral x) 1 width pad mba# i))
     | otherwise =
         ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec (fromIntegral x) 0 width pad (unsafeCoerce# mba#) i))
+            (c_int_dec (fromIntegral x) 0 width pad mba# i))
   where
     width' = max 21 width
     pad = case padding of NoPadding          -> 0

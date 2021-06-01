@@ -166,9 +166,12 @@ decodeChunks :: (JSON a, Monad m) => P.ParseChunks m DecodeError a
 decodeChunks = P.parseChunks decodeChunk
 
 -- | Directly encode data to JSON bytes.
+--
+-- This function use 'B.buildWith' 'V.smallChunkSize' to balance common use case, if you need fine tuning on memory usage,
+-- please use 'B.buildWith' and a custom initial chunk size with 'encodeJSON'.
 encode :: JSON a => a -> V.Bytes
 {-# INLINE encode #-}
-encode = B.build . encodeJSON
+encode = B.buildWith V.smallChunkSize . encodeJSON
 
 -- | Encode data to JSON bytes chunks.
 encodeChunks :: JSON a => a -> [V.Bytes]

@@ -1071,15 +1071,18 @@ behavior.
 -}
 
 isCategory :: Category -> Text -> Bool
+{-# INLINE isCategory #-}
 isCategory c (Text (V.PrimVector (PrimArray arr#) (I# s#) l@(I# l#)))
     | l == 0 = True
     | otherwise = utf8_iscategory arr# s# l# c == l
+
 
 {-|
 Try to match as many code points with the matching category flags as possible
 and return the prefix and suffix.
 -}
 spanCategory :: Category -> Text -> (Text, Text)
+{-# INLINE spanCategory #-}
 spanCategory c (Text (V.PrimVector arr@(PrimArray arr#) s@(I# s#) l@(I# l#)))
     | l == 0 = (empty, empty)
     | otherwise =

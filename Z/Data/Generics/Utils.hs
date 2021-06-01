@@ -16,6 +16,8 @@ useful during JSON deserializing, to decide the array length used to store recor
 module Z.Data.Generics.Utils
   ( ProductSize(..)
   , productSize
+  , SumSize(..)
+  , sumSize
   ) where
 
 import GHC.Generics
@@ -34,3 +36,17 @@ instance (KnownNat (PSize a + PSize b), ProductSize a, ProductSize b) => Product
 productSize :: forall f. KnownNat (PSize f) => Proxy# f -> Int
 {-# INLINE productSize #-}
 productSize _ = fromIntegral (natVal' (proxy# :: Proxy# (PSize f)))
+
+
+class KnownNat (SSize f) => SumSize (f :: * -> *) where
+    type SSize f :: Nat
+
+instance SumSize (C1 c a) where
+    type SSize (C1 c a) = 1
+
+instance (KnownNat (SSize a + SSize b), SumSize a, SumSize b) => SumSize (a :+: b) where
+    type SSize (a :+: b) = SSize a + SSize b
+
+sumSize :: forall f. KnownNat (SSize f) => Proxy# f -> Int
+{-# INLINE sumSize #-}
+sumSize _ = fromIntegral (natVal' (proxy# :: Proxy# (SSize f)))
