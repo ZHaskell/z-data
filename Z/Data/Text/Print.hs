@@ -390,7 +390,7 @@ instance (Print a, Print b) => Print (Either a b) where
 
 instance (Print a, Integral a) => Print (Ratio a) where
     {-# INLINE toUTF8BuilderP #-}
-    toUTF8BuilderP p r = B.parenWhen (p > 10) $ do
+    toUTF8BuilderP p r = B.parenWhen (p > 7) $ do
         toUTF8BuilderP 8 (numerator r)
         " % "
         toUTF8BuilderP 8 (denominator r)
