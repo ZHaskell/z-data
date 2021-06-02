@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            0.8.3.1
+version:            0.8.4.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -242,6 +242,7 @@ library
     third_party/Turbo-Base64/turbob64c.c
     third_party/Turbo-Base64/turbob64d.c
     third_party/Turbo-Base64/turbob64sse.c
+    -- third_party/Turbo-Base64/turbob64avx2.c, this file is conditionally included from bytes.c
     third_party/utf8rewind/source/internal/casemapping.c
     third_party/utf8rewind/source/internal/codepoint.c
     third_party/utf8rewind/source/internal/composition.c

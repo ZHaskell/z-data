@@ -135,10 +135,10 @@ class (Arr (IArray v) a) => Vec v a where
     -- | Create a vector by slicing an array(with offset and length).
     fromArr :: IArray v a -> Int -> Int -> v a
 
--- | Construct a 'Vec' by slicing a whole array.
-arrVec :: Vec v a => IArray v a -> v a
+-- | Change vector types based on same array type, e.g. construct an array from a slice, or vice-versa.
+arrVec :: (Vec v a, Vec u a, IArray v ~ IArray u) => v a -> u a
 {-# INLINE arrVec #-}
-arrVec arr = fromArr arr 0 (sizeofArr arr)
+arrVec bs = let (arr, s, l) = toArr bs in fromArr arr s l
 
 instance Vec Array a where
     type IArray Array = Array
