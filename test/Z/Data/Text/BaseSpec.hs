@@ -7,14 +7,41 @@ module Z.Data.Text.BaseSpec where
 import qualified Data.List                as List
 import           Data.Word
 import qualified Z.Data.Text.Base       as T
+import qualified Z.Data.Vector.Base       as V
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
 import           Test.Hspec
+import           Test.HUnit
 import           Test.Hspec.QuickCheck
 
 spec :: Spec
 spec = describe "text-base" $ do
+
+    it "text validate cases" $ do
+        T.validateMaybe (V.pack [0xc0, 0xaf                        ]) @=? Nothing
+        T.validateMaybe (V.pack [0xe0, 0x80, 0xaf                  ]) @=? Nothing
+        T.validateMaybe (V.pack [0xf0, 0x80, 0x80, 0xaf            ]) @=? Nothing
+        T.validateMaybe (V.pack [0xf8, 0x80, 0x80, 0x80, 0xaf      ]) @=? Nothing
+        T.validateMaybe (V.pack [0xfc, 0x80, 0x80, 0x80, 0x80, 0xaf]) @=? Nothing
+
+        T.validateMaybe (V.pack [0xed, 0xa0, 0x80]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xad, 0xbf]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xae, 0x80]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xaf, 0xbf]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xb0, 0x80]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xbe, 0x80]                     ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xbf, 0xbf]                     ) @=? Nothing
+
+        T.validateMaybe (V.pack [0xed, 0xa0, 0x80, 0xed, 0xb0, 0x80]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xa0, 0x80, 0xed, 0xbf, 0xbf]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xad, 0xbf, 0xed, 0xb0, 0x80]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xad, 0xbf, 0xed, 0xbf, 0xbf]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xae, 0x80, 0xed, 0xb0, 0x80]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xae, 0x80, 0xed, 0xbf, 0xbf]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xaf, 0xbf, 0xed, 0xb0, 0x80]   ) @=? Nothing
+        T.validateMaybe (V.pack [0xed, 0xaf, 0xbf, 0xed, 0xbf, 0xbf]   ) @=? Nothing
+
     describe "text Eq Ord property" $ do
         prop "text eq === List.eq" $ \ xs ys ->
             (T.pack xs == T.pack ys) === (xs == ys)
