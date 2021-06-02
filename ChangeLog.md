@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.3.0  -- 2021-06-02
+
+* Fix numeric literals' `Print` instances when precedence > 6 and  value < 0.
+* Add `no-avx` build flag to run tests on VMs without AVX support.
+
 ## 0.8.2.0  -- 2021-05-10
 
 * Add `withCPtrs`, `withCPtrsUnsafe` to `Z.Foreign.CPtr`.

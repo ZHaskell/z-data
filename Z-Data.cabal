@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            0.8.2.0
+version:            0.8.3.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -114,6 +114,15 @@ flag integer-simple
 
   default:     False
   manual:      True
+
+flag no-avx
+  description:
+    Do not use AVX instructions(utf8 validation, base64 codec, etc), this is added for
+    making some cached code runnable on VMs where AVX is not available.
+
+  default:     False
+  manual:      True
+
 
 library
   exposed-modules:
@@ -272,6 +281,9 @@ library
   build-tool-depends: hsc2hs:hsc2hs -any
   cc-options:         -march=native -Wno-sign-compare
 
+  if flag(no-avx)
+    cc-options:     -DNO_AVX
+
   -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
   -- we work around this issue using Setup.hs
   cxx-options:        -std=c++11
@@ -371,3 +383,6 @@ test-suite Z-Data-Test
   else
     cpp-options:   -DINTEGER_GMP
     build-depends: integer-gmp >=0.2 && <1.2
+
+  if flag(no-avx)
+    cc-options:     -DNO_AVX
