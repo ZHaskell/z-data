@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.4.0  -- 2021-06-03
+
+* `arrVec` from `Z.Data.Vector` now could convert between vector(array slice) and array back and forth.
+* Fix a CPP bug in `no-avx` build flag.
+
 ## 0.8.3.0  -- 2021-06-02
 
 * Fix numeric literals' `Print` instances when precedence > 6 and  value < 0.
