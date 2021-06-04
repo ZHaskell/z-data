@@ -42,5 +42,7 @@ jobs:
           cabal configure $CONFIG
           cabal build
           cabal test --test-show-details=direct
+      - run: |
           cabal haddock
+          cabal check
           cabal sdist
