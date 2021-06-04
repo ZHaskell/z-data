@@ -28,6 +28,8 @@ jobs:
 
       - run: |
           cabal update
+          cabal configure ${{ matrix.avx_flag }} $CONFIG  
+          cabal build all --only-dependencies
           cabal freeze ${{ matrix.avx_flag }} $CONFIG
 
       - uses: actions/cache@v2
@@ -40,7 +42,6 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - run: |
-          cabal configure ${{ matrix.avx_flag }} $CONFIG  
           cabal build $CONFIG
           cabal test --test-show-details=direct
       - run: |
