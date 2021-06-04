@@ -37,7 +37,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - run: cabal v2-configure ${{ avx_flag }} $CONFIG  
+      - run: cabal v2-configure ${{ matrix.avx_flag }} $CONFIG  
       - run: cabal v2-build $CONFIG
       - run: cabal v2-test --test-show-details=direct
       - run: cabal v2-haddock

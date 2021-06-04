@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.9.0.0  -- 2021-06-05
+
+* Fix a bug in `peekMaybe` across buffer boundary.
+* Clean up base64 AVX/SSE CPP flags.
+
 ## 0.8.4.0  -- 2021-06-03
 
 * `arrVec` from `Z.Data.Vector` now could convert between vector(array slice) and array back and forth.
