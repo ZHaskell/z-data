@@ -1,6 +1,6 @@
 # Revision history for Z-Data
 
-## 0.9.0.0  -- 2021-06-05
+## 0.8.5.0  -- 2021-06-04
 
 * Fix a bug in `peekMaybe` across buffer boundary.
 * Clean up base64 AVX/SSE CPP flags.
