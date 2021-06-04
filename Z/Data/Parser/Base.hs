@@ -308,7 +308,7 @@ endOfInput = Parser $ \ kf k s inp ->
     then Partial (\ inp' ->
         if (V.null inp')
         then k s () inp'
-        else kf ["Z.Data.Parser.Base.endOfInput: end not reached yet"] inp)
+        else kf ["Z.Data.Parser.Base.endOfInput: end not reached yet"] inp')
     else kf ["Z.Data.Parser.Base.endOfInput: end not reached yet"] inp
 
 -- | Test whether all input has been consumed, i.e. there are no remaining
@@ -452,7 +452,7 @@ peekMaybe =
         if V.null inp
         then Partial (\ inp' -> k s (if V.null inp'
             then Nothing
-            else Just (V.unsafeHead inp)) inp')
+            else Just (V.unsafeHead inp')) inp')
         else k s (Just (V.unsafeHead inp)) inp
 
 -- | Match any byte, to perform lookahead.  Does not consume any

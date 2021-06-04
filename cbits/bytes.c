@@ -257,9 +257,7 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
 void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
     tb64avx2enc(input+off, (size_t)len, output+output_off);
-#elif defined(__AVX__) && !defined(NO_AVX)
-    tb64avxenc(input+off, (size_t)len, output+output_off);
-#elif defined(__SSSE3__)
+#elif defined(__SSSE3__) || defined(__ARM_NEON)
     tb64sseenc(input+off, (size_t)len, output+output_off);
 #else
     tb64xenc(input+off, (size_t)len, output+output_off);
@@ -269,9 +267,7 @@ void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, H
 HsInt hs_base64_decode(uint8_t* output, const uint8_t* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
     return (HsInt)tb64avx2dec(input+off, (size_t)len, output);
-#elif defined(__AVX__) && !defined(NO_AVX)
-    return (HsInt)tb64avxdec(input+off, (size_t)len, output);
-#elif defined(__SSSE3__)
+#elif defined(__SSSE3__) || defined(__ARM_NEON)
     return (HsInt)tb64ssedec(input+off, (size_t)len, output);
 #else
     return (HsInt)tb64xdec(input+off, (size_t)len, output);

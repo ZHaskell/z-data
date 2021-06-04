@@ -7,6 +7,7 @@ jobs:
       matrix:
         ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.2', '3.4']
+        avx_flag: ['', '-fno-avx']
         exclude:
           # GHC 9+ only works with cabal v3.4+
           - ghc: 9.0
@@ -36,7 +37,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - run: cabal v2-configure $CONFIG
+      - run: cabal v2-configure ${{ avx_flag }} $CONFIG  
       - run: cabal v2-build $CONFIG
       - run: cabal v2-test --test-show-details=direct
       - run: cabal v2-haddock
