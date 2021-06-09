@@ -86,6 +86,11 @@ module Z.Data.Text (
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
+   -- ** Collate
+  , collate
+  , Collator(..)
+  -- * Re-exports
+  , module Text.Collate
   -- * Constants
   -- ** Locale
   , Locale
@@ -151,5 +156,6 @@ import           Z.Data.Text.Search
 import           Z.Data.Text.Extra
 import           Z.Data.Text.Print
 import           Prelude                  ()
+import           Text.Collate              hiding (collate)
 
 

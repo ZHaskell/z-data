@@ -2,6 +2,7 @@
 Copyright (c) 2017-2019 Dong Han
 Copyright Johan Tibell 2011, Dong Han 2019
 Copyright Dmitry Ivanov 2020
+Copyright Georg Rudoy 2021
 All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -32,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <HsFFI.h>
 #include <chromiumbase64.h>
-#if defined(__AVX2__)
+#if defined(__x86_64__)
 #include <x86intrin.h>
 #include <fastavxbase64.h>
 #endif

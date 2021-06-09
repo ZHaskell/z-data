@@ -19,8 +19,8 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
 
 ## Requirements
 
+* Machine with `AVX2` support(Haswell and newer), or SSE4.2 support if you use `no_avx` flag.
 * A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
-
 * Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 
 ## Example usage

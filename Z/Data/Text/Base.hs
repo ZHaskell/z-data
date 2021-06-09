@@ -48,6 +48,11 @@ module Z.Data.Text.Base (
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
+   -- ** Collate
+  , collate
+  , Collator(..)
+  -- * Re-exports
+  , module Text.Collate
   -- * Constants
   -- ** Locale
   , Locale
@@ -150,6 +155,7 @@ import           Prelude                   hiding (concat, concatMap,
 
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 import           Text.Read                 (Read(..))
+import           Text.Collate              hiding (collate)
 
 -- | 'Text' represented as UTF-8 encoded 'Bytes'
 --
@@ -1120,3 +1126,8 @@ displayWidthChar :: Char -> Int
 displayWidthChar c =  mk_wcwidth (fromIntegral (fromEnum c))
 
 foreign import ccall unsafe "hs_wcwidth.c mk_wcwidth" mk_wcwidth :: Int32 -> Int
+
+-- | Compare two 'Text's with <https://www.unicode.org/reports/tr10/ Unicode Collation Algorithm>
+collate :: Collator -> Text -> Text -> Ordering
+{-# INLINE collate #-}
+collate cltr = collateWithUnpacker cltr unpack
