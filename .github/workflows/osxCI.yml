@@ -14,7 +14,14 @@ jobs:
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
+
     steps:
+
+      - name: CPU info
+        run: |
+            sudo apt-get install cpuid
+            cpuid
+
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
