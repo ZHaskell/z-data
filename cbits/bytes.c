@@ -266,7 +266,7 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
 ////////////////////////////////////////////////////////////////////////////////
 // Base64 codec
 
-void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt off, HsInt len){
+void hs_base64_encode(char* output, HsInt output_off, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
     chromium_base64_encode(output+output_off, input+off, len);
 #else
@@ -274,7 +274,7 @@ void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, H
 #endif
 }
 
-HsInt hs_base64_decode(uint8_t* output, const uint8_t* input, HsInt off, HsInt len){
+HsInt hs_base64_decode(char* output, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
     size_t r = chromium_base64_decode(output, input+off, len);
 #else

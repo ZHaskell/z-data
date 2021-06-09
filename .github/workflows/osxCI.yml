@@ -15,6 +15,11 @@ jobs:
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
     steps:
+      - name: CPU info
+        run: |
+            sysctl -n machdep.cpu.features
+            sysctl -n machdep.cpu.leaf7_features
+
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
