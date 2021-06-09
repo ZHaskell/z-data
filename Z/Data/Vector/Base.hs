@@ -47,7 +47,7 @@ module Z.Data.Vector.Base (
   , concat, concatMap
   , maximum, minimum, maximumMaybe, minimumMaybe
   , sum
-  , count
+  , count, countBytes
   , product, product'
   , all, any
   -- * Building vector
@@ -1164,8 +1164,14 @@ sum = foldl' (+) 0
 
 -- | /O(n)/ 'count' returns count of an element from a 'vector'
 count :: (Vec v a, Eq a) => a -> v a -> Int
-{-# INLINE count #-}
+{-# INLINE[1] count #-}
+{-# RULES "count/Bytes" count = countBytes #-}
 count w = foldl' (\ acc x -> if x == w then acc+1 else acc) 0
+
+countBytes :: Word8 -> Bytes -> Int
+{-# INLINE countBytes #-}
+countBytes w8 (PrimVector (PrimArray ba#) s l) =
+    unsafeDupablePerformIO (c_count_ba ba# s l w8)
 
 --------------------------------------------------------------------------------
 -- Accumulating maps
@@ -1407,13 +1413,13 @@ foreign import ccall unsafe "string.h strcmp"
 foreign import ccall unsafe "string.h strlen"
     c_strlen :: Addr# -> IO CSize
 
-foreign import ccall unsafe "text.h ascii_validate_addr"
+foreign import ccall unsafe "ascii_validate_addr"
     c_ascii_validate_addr :: Addr# -> Int -> IO Int
 
-foreign import ccall unsafe "bytes.h hs_fnv_hash_addr"
+foreign import ccall unsafe "hs_fnv_hash_addr"
     c_fnv_hash_addr :: Addr# -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "bytes.h hs_fnv_hash"
+foreign import ccall unsafe "hs_fnv_hash"
     c_fnv_hash_ba :: ByteArray# -> Int -> Int -> Int -> IO Int
 
 -- HsInt hs_memchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n);
@@ -1424,3 +1430,5 @@ foreign import ccall unsafe "hs_memchr" c_memchr ::
 foreign import ccall unsafe "hs_memrchr" c_memrchr ::
     ByteArray# -> Int -> Word8 -> Int -> Int
 
+foreign import ccall unsafe "hs_count_ba" c_count_ba ::
+    ByteArray# -> Int -> Int -> Word8 -> IO Int

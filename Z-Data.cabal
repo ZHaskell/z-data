@@ -19,13 +19,15 @@ extra-source-files:
   cbits/text.c
   cbits/text_width.c
   ChangeLog.md
-  include/bytes.h
-  include/dtoa.h
-  include/text.h
   LICENSE
   README.md
   third_party/fastvalidate-utf-8/include/simdasciicheck.h
   third_party/fastvalidate-utf-8/include/simdutf8check.h
+  third_party/fastbase64/include/chromiumbase64.h
+  third_party/fastbase64/include/fastavxbase64.h
+  third_party/fastbase64/src/fastavxbase64.c
+  third_party/fastbase64/src/chromiumbase64.c
+  third_party/fastbase64/src/fastavxbase64.c
   third_party/re2/re2/bitmap256.h
   third_party/re2/re2/bitstate.cc
   third_party/re2/re2/compile.cc
@@ -71,13 +73,6 @@ extra-source-files:
   third_party/re2/util/strutil.h
   third_party/re2/util/utf.h
   third_party/re2/util/util.h
-  third_party/Turbo-Base64/conf.h
-  third_party/Turbo-Base64/turbob64.h
-  third_party/Turbo-Base64/turbob64_.h
-  third_party/Turbo-Base64/turbob64avx2.c
-  third_party/Turbo-Base64/turbob64c.c
-  third_party/Turbo-Base64/turbob64d.c
-  third_party/Turbo-Base64/turbob64sse.c
   third_party/utf8rewind/include/utf8rewind/utf8rewind.h
   third_party/utf8rewind/source/internal/base.h
   third_party/utf8rewind/source/internal/casemapping.c
@@ -214,35 +209,27 @@ library
     build-depends: integer-gmp >=0.2 && <1.2
 
   include-dirs:
+    third_party/fastbase64/include
+    third_party/fastvalidate-utf-8/include
     include third_party/utf8rewind/include/utf8rewind
     third_party/utf8rewind/source/internal
     third_party/utf8rewind/source
-    third_party/fastvalidate-utf-8/include third_party/Turbo-Base64
     third_party/re2
 
   includes:
-    bytes.h
-    dtoa.h
     simdasciicheck.h
     simdutf8check.h
-    text.h
-    turbob64.h
     utf8rewind.h
-
-  install-includes:
-    bytes.h
-    dtoa.h
-    text.h
+    chromiumbase64.h
+    fastavxbase64.h
 
   c-sources:
     cbits/bytes.c
     cbits/dtoa.c
     cbits/text.c
     cbits/text_width.c
-    third_party/Turbo-Base64/turbob64c.c
-    third_party/Turbo-Base64/turbob64d.c
-    third_party/Turbo-Base64/turbob64sse.c
-    -- third_party/Turbo-Base64/turbob64avx2.c, this file is conditionally included from bytes.c
+    third_party/fastbase64/src/fastavxbase64.c
+    third_party/fastbase64/src/chromiumbase64.c
     third_party/utf8rewind/source/internal/casemapping.c
     third_party/utf8rewind/source/internal/codepoint.c
     third_party/utf8rewind/source/internal/composition.c

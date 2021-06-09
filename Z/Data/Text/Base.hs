@@ -341,13 +341,13 @@ validateASCIIMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
     | c_ascii_validate_ba ba# s# l# > 0 = Just (Text bs)
     | otherwise = Nothing
 
-foreign import ccall unsafe "text.h utf8_validate"
+foreign import ccall unsafe "utf8_validate"
     c_utf8_validate_ba :: ByteArray# -> Int# -> Int# -> Int
-foreign import ccall unsafe "text.h utf8_validate_addr"
+foreign import ccall unsafe "utf8_validate_addr"
     c_utf8_validate_addr :: Addr# -> Int -> IO Int
-foreign import ccall unsafe "text.h ascii_validate"
+foreign import ccall unsafe "ascii_validate"
     c_ascii_validate_ba :: ByteArray# -> Int# -> Int# -> Int
-foreign import ccall unsafe "text.h ascii_validate_addr"
+foreign import ccall unsafe "ascii_validate_addr"
     c_ascii_validate_addr :: Addr# -> Int -> IO Int
 
 data TextException = InvalidUTF8Exception CallStack
