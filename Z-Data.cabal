@@ -115,7 +115,7 @@ flag no-avx
     Do not use AVX instructions(utf8 validation, base64 codec, etc), this is added for
     making some cached code runnable on VMs where AVX is not available.
 
-  default:     False
+  default:     True
   manual:      True
 
 
