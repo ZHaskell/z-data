@@ -268,7 +268,7 @@ library
 
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
-  cc-options:         -march=native -Wno-sign-compare
+  cc-options:         -std=c11
 
   if flag(no-avx)
     cc-options:     -DNO_AVX

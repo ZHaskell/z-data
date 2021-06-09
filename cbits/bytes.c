@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <HsFFI.h>
 #include <chromiumbase64.h>
 #if defined(__x86_64__)
-#include <immintrin.h>
+#include <x86intrin.h>
 #include <fastavxbase64.h>
 #endif
 
