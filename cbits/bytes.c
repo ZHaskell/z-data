@@ -265,6 +265,27 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
     return 0;
 }
 
+HsInt hs_hex_decode_ws(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length) {
+    input = input+input_off;
+    uint8_t* out = output;
+    for(size_t i = 0; i != input_length;) {
+        const uint8_t w1 = input[i++];
+        
+        if (i == input_length) return -1;   // input too short
+        if (w1 == ' ' || (w1 >= 0x09 && w1 <= 0x0d)) continue;
+
+        const uint8_t hi = HEX_TO_BIN[w1];
+        const uint8_t lo = HEX_TO_BIN[input[i++]];
+        if((hi | lo) & 0xF0) { 
+            return -1;
+        }
+        else {
+            *(out++) = hi << 4 | lo;
+        }
+    }
+    return out - output;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Base64 codec
 
