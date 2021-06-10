@@ -251,6 +251,7 @@ static const uint8_t HEX_TO_BIN[256] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length) {
+    uint8_t* out = output;
     input = input+input_off;
     for(size_t i = 0; i != input_length;) {
         const uint8_t hi = HEX_TO_BIN[input[i++]];
@@ -259,15 +260,15 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
             return -1;
         }
         else {
-            *(output++) = hi << 4 | lo;
+            *(out++) = hi << 4 | lo;
         }
     }
-    return 0;
+    return out - output;
 }
 
 HsInt hs_hex_decode_ws(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length) {
-    input = input+input_off;
     uint8_t* out = output;
+    input = input+input_off;
     for(size_t i = 0; i != input_length;) {
         const uint8_t w1 = input[i++];
         

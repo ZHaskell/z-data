@@ -49,6 +49,7 @@ jobs:
       - run: |
           cabal configure ${{ matrix.avx_flag }} $CONFIG  
           cabal build $CONFIG
+      - run: |
           cabal test --test-show-details=direct
       - run: |
           cabal haddock

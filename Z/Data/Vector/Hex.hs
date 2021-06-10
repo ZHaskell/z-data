@@ -100,12 +100,12 @@ hexDecode ba
     | V.length ba == 0 = Just V.empty
     | V.length ba .&. 1 == 1 = Nothing
     | otherwise = unsafeDupablePerformIO $ do
-        (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
-            allocPrimVectorUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
+        (arr, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
+            allocPrimArrayUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
                 hs_hex_decode buf# ba# s l
         if r < 0
         then return Nothing
-        else return (Just out)
+        else return (Just (V.PrimVector arr 0 r))
 
 -- | Decode a hex encoding string, ignore ASCII whitespace(space, tab, newline, vertical tab, form feed, carriage return).
 --
@@ -121,14 +121,12 @@ hexDecodeWS :: V.Bytes -> Maybe V.Bytes
 hexDecodeWS ba
     | V.length ba == 0 = Just V.empty
     | otherwise = unsafeDupablePerformIO $ do
-        (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
-            allocPrimVectorUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
+        (arr, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
+            allocPrimArrayUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
                 hs_hex_decode_ws buf# ba# s l
         if r < 0
         then return Nothing
-        else do
-            let !out' = V.unsafeTake r out
-            return (Just out')
+        else return (Just (V.PrimVector arr 0 r))
 
 -- | Exception during hex decoding.
 data HexDecodeException = IllegalHexBytes V.Bytes CallStack

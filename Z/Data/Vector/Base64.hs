@@ -68,12 +68,12 @@ base64Decode ba
     | inputLen == 0 = Just V.empty
     | decodeLen == -1 = Nothing
     | otherwise = unsafeDupablePerformIO $ do
-        ((V.PrimVector arr s' _), r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
-            allocPrimVectorUnsafe decodeLen $ \ buf# ->
+        (arr, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
+            allocPrimArrayUnsafe decodeLen $ \ buf# ->
                 hs_base64_decode buf# ba# s l
         if r == 0
         then return Nothing
-        else return (Just (V.PrimVector arr s' r))
+        else return (Just (V.PrimVector arr 0 r))
   where
     inputLen = V.length ba
     decodeLen = base64DecodeLength inputLen
@@ -87,19 +87,9 @@ instance Exception Base64DecodeException
 -- | Decode a base64 encoding string, throw 'Base64DecodeException' on error.
 base64Decode' :: HasCallStack => V.Bytes -> V.Bytes
 {-# INLINABLE base64Decode' #-}
-base64Decode' ba
-    | inputLen == 0 = V.empty
-    | decodeLen == -1 = throw (IncompleteBase64Bytes ba callStack)
-    | otherwise = unsafeDupablePerformIO $ do
-        ((V.PrimVector arr s' _), r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
-            allocPrimVectorUnsafe decodeLen $ \ buf# ->
-                hs_base64_decode buf# ba# s l
-        if r == 0
-        then throwIO (IllegalBase64Bytes ba callStack)
-        else return (V.PrimVector arr s' r)
-  where
-    inputLen = V.length ba
-    decodeLen = base64DecodeLength inputLen
+base64Decode' ba = case base64Decode ba of
+    Just r -> r
+    _ -> throw (IllegalBase64Bytes ba callStack)
 
 -- | Return the upper bound of decoded length of a given input length
 -- , return -1 if illegal(not a multipler of 4).
