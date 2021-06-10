@@ -1,6 +1,6 @@
 # Revision history for Z-Data
 
-## 0.8.6.0  -- 2021-06-09
+## 0.8.6.1  -- 2021-06-09
 
 * Change SIMD base64 codec to https://github.com/lemire/fastbase64.
 * Add SIMD enabled `count` from bytestring.

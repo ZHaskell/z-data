@@ -96,7 +96,7 @@ base64Decode' ba = case base64Decode ba of
 base64DecodeLength :: Int -> Int
 {-# INLINABLE base64DecodeLength #-}
 base64DecodeLength n | n .&. 3 == 1 = -1
-                     | otherwise = (n `unsafeShiftR` 2) * 3
+                     | otherwise = (n `unsafeShiftR` 2) * 3 + 2
 
 --------------------------------------------------------------------------------
 
