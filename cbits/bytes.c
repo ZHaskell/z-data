@@ -270,17 +270,17 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
 
 void hs_base64_encode(char* output, HsInt output_off, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
-    chromium_base64_encode(output+output_off, input+off, len);
-#else
     fast_avx2_base64_encode(output+output_off, input+off, len);
+#else
+    chromium_base64_encode(output+output_off, input+off, len);
 #endif
 }
 
 HsInt hs_base64_decode(char* output, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
-    size_t r = chromium_base64_decode(output, input+off, len);
-#else
     size_t r = fast_avx2_base64_decode(output, input+off, len);
+#else
+    size_t r = chromium_base64_decode(output, input+off, len);
 #endif
     if (r == MODP_B64_ERROR) return 0;
     else return (HsInt)r;
