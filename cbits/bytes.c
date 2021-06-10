@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <chromiumbase64.h>
 #if defined(__x86_64__)
 #include <x86intrin.h>
+#endif
+#if defined(__AVX2__) && !defined(NO_AVX)
 #include <fastavxbase64.h>
 #endif
 

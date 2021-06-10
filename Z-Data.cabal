@@ -200,14 +200,16 @@ library
     simdutf8check.h
     utf8rewind.h
     chromiumbase64.h
-    fastavxbase64.h
+
+  if !flag(no-avx)
+      includes:
+        fastavxbase64.h
 
   c-sources:
     cbits/bytes.c
     cbits/dtoa.c
     cbits/text.c
     cbits/text_width.c
-    third_party/fastbase64/src/fastavxbase64.c
     third_party/fastbase64/src/chromiumbase64.c
     third_party/utf8rewind/source/internal/casemapping.c
     third_party/utf8rewind/source/internal/codepoint.c
@@ -218,6 +220,10 @@ library
     third_party/utf8rewind/source/internal/streaming.c
     third_party/utf8rewind/source/unicodedatabase.c
     third_party/utf8rewind/source/utf8rewind.c
+
+  if !flag(no-avx)
+      c-sources:
+        third_party/fastbase64/src/fastavxbase64.c
 
   cxx-sources:
     cbits/regex.cc
