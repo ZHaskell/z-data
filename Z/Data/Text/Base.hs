@@ -48,6 +48,11 @@ module Z.Data.Text.Base (
   , caseFold, caseFoldWith, toLower, toLowerWith, toUpper, toUpperWith, toTitle, toTitleWith
     -- ** Unicode category
   , isCategory, spanCategory
+   -- ** Collate
+  , collate
+  , Collator(..)
+  -- * Re-exports
+  , module Text.Collate
   -- * Constants
   -- ** Locale
   , Locale
@@ -150,6 +155,7 @@ import           Prelude                   hiding (concat, concatMap,
 
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 import           Text.Read                 (Read(..))
+import           Text.Collate              hiding (collate)
 
 -- | 'Text' represented as UTF-8 encoded 'Bytes'
 --
@@ -341,13 +347,13 @@ validateASCIIMaybe bs@(V.PrimVector (PrimArray ba#) (I# s#) l@(I# l#))
     | c_ascii_validate_ba ba# s# l# > 0 = Just (Text bs)
     | otherwise = Nothing
 
-foreign import ccall unsafe "text.h utf8_validate"
+foreign import ccall unsafe "utf8_validate"
     c_utf8_validate_ba :: ByteArray# -> Int# -> Int# -> Int
-foreign import ccall unsafe "text.h utf8_validate_addr"
+foreign import ccall unsafe "utf8_validate_addr"
     c_utf8_validate_addr :: Addr# -> Int -> IO Int
-foreign import ccall unsafe "text.h ascii_validate"
+foreign import ccall unsafe "ascii_validate"
     c_ascii_validate_ba :: ByteArray# -> Int# -> Int# -> Int
-foreign import ccall unsafe "text.h ascii_validate_addr"
+foreign import ccall unsafe "ascii_validate_addr"
     c_ascii_validate_addr :: Addr# -> Int -> IO Int
 
 data TextException = InvalidUTF8Exception CallStack
@@ -1120,3 +1126,8 @@ displayWidthChar :: Char -> Int
 displayWidthChar c =  mk_wcwidth (fromIntegral (fromEnum c))
 
 foreign import ccall unsafe "hs_wcwidth.c mk_wcwidth" mk_wcwidth :: Int32 -> Int
+
+-- | Compare two 'Text's with <https://www.unicode.org/reports/tr10/ Unicode Collation Algorithm>
+collate :: Collator -> Text -> Text -> Ordering
+{-# INLINE collate #-}
+collate cltr = collateWithUnpacker cltr unpack

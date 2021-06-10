@@ -20,6 +20,8 @@ module Z.Data.Vector.Hex
   , hexEncodeBuilder
   , hexDecode
   , hexDecode'
+  , hexDecodeWS
+  , hexDecodeWS'
   , HexDecodeException(..)
   -- * Internal C FFIs
   ,  hs_hex_encode, hs_hex_encode_upper, hs_hex_decode
@@ -32,6 +34,7 @@ import           Data.Hashable                  (Hashable(..))
 import           GHC.Stack
 import           System.IO.Unsafe
 import qualified Z.Data.Vector.Base         as V
+import qualified Z.Data.Vector.Extra        as V
 import qualified Z.Data.Builder.Base        as B
 import qualified Z.Data.Text.Base           as T
 import qualified Z.Data.Text.Print          as T
@@ -104,6 +107,29 @@ hexDecode ba
         then return Nothing
         else return (Just out)
 
+-- | Decode a hex encoding string, ignore ASCII whitespace(space, tab, newline, vertical tab, form feed, carriage return).
+--
+-- This is useful when you get some hex nibbles by pasting from web, note only whitesapces between bytes(two nibbles) are allowed:
+--
+-- >>> hexDecodeWS "6f7481 da0e53"
+-- Just [111,116,129,218,14,83]
+-- >>> hexDecodeWS "6f7481d a0e53"
+-- Nothing
+--
+hexDecodeWS :: V.Bytes -> Maybe V.Bytes
+{-# INLINABLE hexDecodeWS #-}
+hexDecodeWS ba
+    | V.length ba == 0 = Just V.empty
+    | otherwise = unsafeDupablePerformIO $ do
+        (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
+            allocPrimVectorUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
+                hs_hex_decode_ws buf# ba# s l
+        if r < 0
+        then return Nothing
+        else do
+            let !out' = V.unsafeTake r out
+            return (Just out')
+
 -- | Exception during hex decoding.
 data HexDecodeException = IllegalHexBytes V.Bytes CallStack
                         | IncompleteHexBytes V.Bytes CallStack
@@ -113,19 +139,20 @@ instance Exception HexDecodeException
 -- | Decode a hex encoding string, throw 'HexDecodeException' on error.
 hexDecode' :: HasCallStack => V.Bytes -> V.Bytes
 {-# INLINABLE hexDecode' #-}
-hexDecode' ba
-    | V.length ba == 0 = V.empty
-    | V.length ba .&. 1 == 1 = throw (IncompleteHexBytes ba callStack)
-    | otherwise = unsafeDupablePerformIO $ do
-        (out, r) <- withPrimVectorUnsafe ba $ \ ba# s l ->
-            allocPrimVectorUnsafe (l `unsafeShiftR` 1) $ \ buf# ->
-                hs_hex_decode buf# ba# s l
-        if r < 0
-        then throwIO (IllegalHexBytes ba callStack)
-        else return out
+hexDecode' ba = case hexDecode ba of
+    Just r -> r
+    _ -> throw (IllegalHexBytes ba callStack)
+
+-- | Decode a hex encoding string, ignore ASCII whitespace(space, tab, newline, vertical tab, form feed, carriage return), throw 'HexDecodeException' on error.
+hexDecodeWS' :: HasCallStack => V.Bytes -> V.Bytes
+{-# INLINABLE hexDecodeWS' #-}
+hexDecodeWS' ba = case hexDecodeWS ba of
+    Just r -> r
+    _ -> throw (IllegalHexBytes ba callStack)
 
 --------------------------------------------------------------------------------
 
 foreign import ccall unsafe hs_hex_encode :: MBA# Word8 -> Int -> BA# Word8 -> Int -> Int -> IO ()
 foreign import ccall unsafe hs_hex_encode_upper :: MBA# Word8 -> Int -> BA# Word8 -> Int -> Int -> IO ()
 foreign import ccall unsafe hs_hex_decode :: MBA# Word8 -> BA# Word8 -> Int -> Int -> IO Int
+foreign import ccall unsafe hs_hex_decode_ws :: MBA# Word8 -> BA# Word8 -> Int -> Int -> IO Int

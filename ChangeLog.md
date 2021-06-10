@@ -1,5 +1,13 @@
 # Revision history for Z-Data
 
+## 0.8.6.0  -- 2021-06-09
+
+* Change SIMD base64 codec to https://github.com/lemire/fastbase64.
+* Add SIMD enabled `count` from bytestring.
+* Switch `no-avx` on by default to improve compiled binary's portablity.
+* Add `collate`, courtesy by jgm: https://github.com/jgm/unicode-collation.
+* Add `hexDecodeWS/hexDecodeWS'` to `Z.Data.Vector.Hex`.
+
 ## 0.8.5.0  -- 2021-06-04
 
 * Fix a bug in `peekMaybe` across buffer boundary.

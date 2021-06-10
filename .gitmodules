@@ -4,9 +4,9 @@
 [submodule "third_party/utf8rewind"]
 	path = third_party/utf8rewind
 	url = git@github.com:ZHaskell/utf8rewind.git
-[submodule "third_party/Turbo-Base64"]
-	path = third_party/Turbo-Base64
-	url = git@github.com:ZHaskell/Turbo-Base64.git
 [submodule "third_party/re2"]
 	path = third_party/re2
 	url = https://github.com/google/re2.git
+[submodule "third_party/fastbase64"]
+	path = third_party/fastbase64
+	url = https://github.com/lemire/fastbase64.git

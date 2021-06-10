@@ -20,7 +20,6 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
 ## Requirements
 
 * A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
-
 * Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 
 ## Example usage

@@ -28,7 +28,7 @@
  *     http://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf
  */
 
-#include <dtoa.h>
+#include <HsFFI.h>
 #include <stdint.h> // uint64_t etc.
 #include <assert.h> // assert
 #include <math.h> // ceil

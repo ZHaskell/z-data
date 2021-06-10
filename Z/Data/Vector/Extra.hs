@@ -939,5 +939,5 @@ unsafeDrop n (Vec arr s l) = assert (0 <= n && n <= l) (fromArr arr (s+n) (l-n))
 
 --------------------------------------------------------------------------------
 
-foreign import ccall unsafe "bytes.h hs_intersperse" c_intersperse ::
+foreign import ccall unsafe "hs_intersperse" c_intersperse ::
     MutableByteArray# RealWorld -> ByteArray# -> Int -> Int -> Word8 -> IO ()

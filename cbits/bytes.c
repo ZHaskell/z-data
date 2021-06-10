@@ -2,6 +2,7 @@
 Copyright (c) 2017-2019 Dong Han
 Copyright Johan Tibell 2011, Dong Han 2019
 Copyright Dmitry Ivanov 2020
+Copyright Georg Rudoy 2021
 All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -27,31 +28,20 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <bytes.h>
-#include <turbob64.h>
-#ifdef __AVX2__
-#include <turbob64avx2.c>
-#endif
-
+#include <limits.h>
+#include <stdint.h>
+#include <string.h>
+#include <HsFFI.h>
+#include <chromiumbase64.h>
 #if defined(__x86_64__)
-#include <emmintrin.h>
-#include <xmmintrin.h>
+#include <x86intrin.h>
+#endif
+#if defined(__AVX2__) && !defined(NO_AVX)
+#include <fastavxbase64.h>
 #endif
 
-HsInt hs_memchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n) {
-    a += aoff;
-    uint8_t *p = memchr(a, b, (size_t)n);
-    if (p == NULL) return -1;
-    else return (p - a);
-}
-
-void* __memrchr(void *src_void, unsigned char c, size_t length);
-HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t c, HsInt n) {
-    uint8_t *s = a + aoff;
-    uint8_t *p = __memrchr(s, c, (size_t)n);
-    if (p == NULL) return -1;
-    else return (p - a);
-}
+////////////////////////////////////////////////////////////////////////////////
+// FNV-1a
 
 /* FNV-1a hash
  *
@@ -76,6 +66,25 @@ HsInt hs_fnv_hash_addr(const unsigned char *str, HsInt len, HsInt salt) {
 
 HsInt hs_fnv_hash(const unsigned char *str, HsInt offset, HsInt len, HsInt salt) {
     return hs_fnv_hash_addr(str + offset, len, salt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// memchr and memrchr
+
+HsInt hs_memchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n) {
+    a += aoff;
+    uint8_t *p = memchr(a, b, (size_t)n);
+    if (p == NULL) return -1;
+    else return (p - a);
+}
+
+void* __memrchr(void *src_void, unsigned char c, size_t length);
+
+HsInt hs_memrchr(uint8_t *a, HsInt aoff, uint8_t c, HsInt n) {
+    uint8_t *s = a + aoff;
+    uint8_t *p = __memrchr(s, c, (size_t)n);
+    if (p == NULL) return -1;
+    else return (p - a);
 }
 
 /*
@@ -149,6 +158,8 @@ void* __memrchr(void *src_void, unsigned char c, size_t length){
     return NULL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Hex codec
 
 static const char* BIN_TO_HEX = 
 	"000102030405060708090a0b0c0d0e0f"
@@ -254,35 +265,56 @@ HsInt hs_hex_decode(uint8_t* output, const uint8_t* input, HsInt input_off, HsIn
     return 0;
 }
 
-void hs_base64_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt off, HsInt len){
+HsInt hs_hex_decode_ws(uint8_t* output, const uint8_t* input, HsInt input_off, HsInt input_length) {
+    input = input+input_off;
+    uint8_t* out = output;
+    for(size_t i = 0; i != input_length;) {
+        const uint8_t w1 = input[i++];
+        
+        if (i == input_length) return -1;   // input too short
+        if (w1 == ' ' || (w1 >= 0x09 && w1 <= 0x0d)) continue;
+
+        const uint8_t hi = HEX_TO_BIN[w1];
+        const uint8_t lo = HEX_TO_BIN[input[i++]];
+        if((hi | lo) & 0xF0) { 
+            return -1;
+        }
+        else {
+            *(out++) = hi << 4 | lo;
+        }
+    }
+    return out - output;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Base64 codec
+
+void hs_base64_encode(char* output, HsInt output_off, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
-    tb64avx2enc(input+off, (size_t)len, output+output_off);
-#elif defined(__SSSE3__) || defined(__ARM_NEON)
-    tb64sseenc(input+off, (size_t)len, output+output_off);
+    fast_avx2_base64_encode(output+output_off, input+off, len);
 #else
-    tb64xenc(input+off, (size_t)len, output+output_off);
+    chromium_base64_encode(output+output_off, input+off, len);
 #endif
 }
 
-HsInt hs_base64_decode(uint8_t* output, const uint8_t* input, HsInt off, HsInt len){
+HsInt hs_base64_decode(char* output, const char* input, HsInt off, HsInt len){
 #if defined(__AVX2__) && !defined(NO_AVX)
-    return (HsInt)tb64avx2dec(input+off, (size_t)len, output);
-#elif defined(__SSSE3__) || defined(__ARM_NEON)
-    return (HsInt)tb64ssedec(input+off, (size_t)len, output);
+    size_t r = fast_avx2_base64_decode(output, input+off, len);
 #else
-    return (HsInt)tb64xdec(input+off, (size_t)len, output);
+    size_t r = chromium_base64_decode(output, input+off, len);
 #endif
+    if (r == MODP_B64_ERROR) return 0;
+    else return (HsInt)r;
 }
 
-/*  duplicate a string, interspersing the character through the elements
-    of the duplicated string
-    from https://github.com/haskell/bytestring/pull/310/files
-*/
+////////////////////////////////////////////////////////////////////////////////
+//  duplicate a string, interspersing the character through the elements of the duplicated string
+//  from https://github.com/haskell/bytestring/pull/310/files
 void hs_intersperse(unsigned char *q, 
                      unsigned char *p, HsInt p_offset,
                      HsInt n,
                      unsigned char c) {
-#if defined(__x86_64__)
+#if defined(__SSE2__)
   {
     const __m128i separator = _mm_set1_epi8(c);
     p += p_offset;
@@ -306,3 +338,129 @@ void hs_intersperse(unsigned char *q,
     if (n == 1)
         *q = *p;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// count the number of occurences of a char in a string 
+// from https://github.com/haskell/bytestring/pull/202/files
+
+// this function should be called with large enough len, otherwise underflow will happen.
+size_t hs_count_simd(unsigned char *str, size_t len, unsigned char w) {
+#if defined(__AVX2__) && !defined(NO_AVX)
+    __m256i pat = _mm256_set1_epi8(w);
+    size_t prefix = 0, res = 0;
+    size_t i = 0;
+
+    for (; i < len && (intptr_t)(str + i) % 64; ++i) {
+        prefix += str[i] == w;
+    }
+
+    for (size_t end = len - 128; i < end; i += 128) {
+        __m256i p0 = _mm256_load_si256((const __m256i*)(str + i + 32 * 0));
+        __m256i p1 = _mm256_load_si256((const __m256i*)(str + i + 32 * 1));
+        __m256i p2 = _mm256_load_si256((const __m256i*)(str + i + 32 * 2));
+        __m256i p3 = _mm256_load_si256((const __m256i*)(str + i + 32 * 3));
+        __m256i r0 = _mm256_cmpeq_epi8(p0, pat);
+        __m256i r1 = _mm256_cmpeq_epi8(p1, pat);
+        __m256i r2 = _mm256_cmpeq_epi8(p2, pat);
+        __m256i r3 = _mm256_cmpeq_epi8(p3, pat);
+        res += _popcnt64(_mm256_extract_epi64(r0, 0));
+        res += _popcnt64(_mm256_extract_epi64(r0, 1));
+        res += _popcnt64(_mm256_extract_epi64(r0, 2));
+        res += _popcnt64(_mm256_extract_epi64(r0, 3));
+        res += _popcnt64(_mm256_extract_epi64(r1, 0));
+        res += _popcnt64(_mm256_extract_epi64(r1, 1));
+        res += _popcnt64(_mm256_extract_epi64(r1, 2));
+        res += _popcnt64(_mm256_extract_epi64(r1, 3));
+        res += _popcnt64(_mm256_extract_epi64(r2, 0));
+        res += _popcnt64(_mm256_extract_epi64(r2, 1));
+        res += _popcnt64(_mm256_extract_epi64(r2, 2));
+        res += _popcnt64(_mm256_extract_epi64(r2, 3));
+        res += _popcnt64(_mm256_extract_epi64(r3, 0));
+        res += _popcnt64(_mm256_extract_epi64(r3, 1));
+        res += _popcnt64(_mm256_extract_epi64(r3, 2));
+        res += _popcnt64(_mm256_extract_epi64(r3, 3));
+    }
+
+    // _mm256_cmpeq_epi8(p, pat) returns a SIMD vector
+    // with `i`th byte consisting of eight `1`s if `p[i] == pat[i]`,
+    // and of eight `0`s otherwise,
+    // hence each matching byte is counted 8 times by popcnt.
+    // Dividing by 8 corrects for that.
+    res /= 8;
+
+    res += prefix;
+
+    for (; i < len; ++i) {
+        res += str[i] == w;
+    }
+
+    return res;
+#elif defined(__SSE4_2__)
+    const __m128i pat = _mm_set1_epi8(w);
+    size_t res = 0;
+    size_t i = 0;
+
+
+    for (; i < len && (intptr_t)(str + i) % 64; ++i) {
+        res += str[i] == w;
+    }
+
+    for (size_t end = len - 128; i < end; i += 128) {
+        __m128i p0 = _mm_load_si128((const __m128i*)(str + i + 16 * 0));
+        __m128i p1 = _mm_load_si128((const __m128i*)(str + i + 16 * 1));
+        __m128i p2 = _mm_load_si128((const __m128i*)(str + i + 16 * 2));
+        __m128i p3 = _mm_load_si128((const __m128i*)(str + i + 16 * 3));
+        __m128i p4 = _mm_load_si128((const __m128i*)(str + i + 16 * 4));
+        __m128i p5 = _mm_load_si128((const __m128i*)(str + i + 16 * 5));
+        __m128i p6 = _mm_load_si128((const __m128i*)(str + i + 16 * 6));
+        __m128i p7 = _mm_load_si128((const __m128i*)(str + i + 16 * 7));
+        // Here, cmpestrm compares two strings in the following mode:
+        // * _SIDD_SBYTE_OPS: interprets the strings as consisting of 8-bit chars,
+        // * _SIDD_CMP_EQUAL_EACH: computes the number of `i`s
+        //    for which `p[i]`, a part of `str`, is equal to `pat[i]`
+        //    (the latter being always equal to `w`).
+        //
+        // q.v. https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrm&expand=835
+#define MODE _SIDD_SBYTE_OPS | _SIDD_CMP_EQUAL_EACH
+        __m128i r0 = _mm_cmpestrm(p0, 16, pat, 16, MODE);
+        __m128i r1 = _mm_cmpestrm(p1, 16, pat, 16, MODE);
+        __m128i r2 = _mm_cmpestrm(p2, 16, pat, 16, MODE);
+        __m128i r3 = _mm_cmpestrm(p3, 16, pat, 16, MODE);
+        __m128i r4 = _mm_cmpestrm(p4, 16, pat, 16, MODE);
+        __m128i r5 = _mm_cmpestrm(p5, 16, pat, 16, MODE);
+        __m128i r6 = _mm_cmpestrm(p6, 16, pat, 16, MODE);
+        __m128i r7 = _mm_cmpestrm(p7, 16, pat, 16, MODE);
+#undef MODE
+        res += _popcnt64(_mm_extract_epi64(r0, 0));
+        res += _popcnt64(_mm_extract_epi64(r1, 0));
+        res += _popcnt64(_mm_extract_epi64(r2, 0));
+        res += _popcnt64(_mm_extract_epi64(r3, 0));
+        res += _popcnt64(_mm_extract_epi64(r4, 0));
+        res += _popcnt64(_mm_extract_epi64(r5, 0));
+        res += _popcnt64(_mm_extract_epi64(r6, 0));
+        res += _popcnt64(_mm_extract_epi64(r7, 0));
+    }
+
+    for (; i < len; ++i) {
+        res += str[i] == w;
+    }
+
+    return res;
+#endif
+}
+
+HsInt hs_count_ba(unsigned char *str, HsInt off, HsInt len, unsigned char w) {
+#if (defined(__AVX2__) && !defined(NO_AVX)) || defined(__SSE2__)
+    if (len >= 1024) return (HsInt)hs_count_simd(str+off, len, w);
+    else {
+#endif
+        size_t res;
+        str = str+off;
+        for (res = 0; len-- != 0; ++str)
+            res += *str == w;
+        return res;
+#if (defined(__AVX2__) && !defined(NO_AVX)) || defined(__SSE2__)
+    }
+#endif
+}
+
