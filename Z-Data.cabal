@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            0.8.6.1
+version:            0.8.7.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -110,12 +110,18 @@ flag integer-simple
   default:     False
   manual:      True
 
-flag no-avx
+flag use-avx2
   description:
-    Do not use AVX instructions(utf8 validation, base64 codec, etc), this is added for
-    making some cached code runnable on VMs where AVX is not available.
+    Use AVX2 instructions(utf8 validation, base64 codec, etc).
 
-  default:     True
+  default:     False
+  manual:      True
+
+flag use-avx512
+  description:
+    Use AVX512 instructions(utf8 validation, base64 codec, etc).
+
+  default:     False
   manual:      True
 
 
@@ -201,9 +207,15 @@ library
     utf8rewind.h
     chromiumbase64.h
 
-  if !flag(no-avx)
+  if flag(use-avx2)
       includes:
         fastavxbase64.h
+
+  if flag(use-avx512)
+      includes:
+        simdasciicheck_avx512.h
+        simdutf8check_avx512.h
+        fastavx512bwbase64.h
 
   c-sources:
     cbits/bytes.c
@@ -221,9 +233,13 @@ library
     third_party/utf8rewind/source/unicodedatabase.c
     third_party/utf8rewind/source/utf8rewind.c
 
-  if !flag(no-avx)
+  if flag(use-avx2)
       c-sources:
         third_party/fastbase64/src/fastavxbase64.c
+
+  if flag(use-avx512)
+      c-sources:
+        third_party/fastbase64/src/fastavx512bwbase64.c
 
   cxx-sources:
     cbits/regex.cc
@@ -253,9 +269,15 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
 
-  cc-options:         -std=c11 -march=native -Wno-sign-compare
-  if flag(no-avx)
-    cc-options:       -DNO_AVX
+  cc-options:         -std=c11 -Wno-sign-compare
+
+  if flag(use-avx512)
+    cc-options:       -march=cannonlake -DZ_USE_AVX512
+  else
+    if flag(use-avx2)
+      cc-options:     -mavx2 -DZ_USE_AVX2
+    else
+      cc-options:     -msse4.2
 
   cxx-options:        -std=c++11
 
@@ -379,6 +401,3 @@ test-suite Z-Data-Test
   else
     cpp-options:   -DINTEGER_GMP
     build-depends: integer-gmp >=0.2 && <1.2
-
-  if flag(no-avx)
-    cc-options:     -DNO_AVX

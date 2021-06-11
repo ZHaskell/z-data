@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 0.8.7.0  -- 2021-06-12
+
+* Add `use-avx2` and `use-avx512` flags(default to False) to enable avx2 or avx512 base64 codec, UTF8 validator, etc.
+
 ## 0.8.6.1  -- 2021-06-09
 
 * Change SIMD base64 codec to https://github.com/lemire/fastbase64.

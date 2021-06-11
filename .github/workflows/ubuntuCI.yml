@@ -7,7 +7,7 @@ jobs:
       matrix:
         ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.2', '3.4']
-        avx_flag: ['', '-f-no-avx']
+        avx_flag: ['', '-fuse-avx2']  # vm doesnt support avx512 
         exclude:
           # GHC 9+ only works with cabal v3.4+
           - ghc: 9.0

@@ -36,7 +36,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
-#if defined(__AVX2__) && !defined(NO_AVX)
+#if defined(Z_USE_AVX512)
+#include <fastavx512bwbase64.h>
+#elif defined(Z_USE_AVX2)
 #include <fastavxbase64.h>
 #endif
 
@@ -291,7 +293,9 @@ HsInt hs_hex_decode_ws(uint8_t* output, const uint8_t* input, HsInt input_off, H
 // Base64 codec
 
 void hs_base64_encode(char* output, HsInt output_off, const char* input, HsInt off, HsInt len){
-#if defined(__AVX2__) && !defined(NO_AVX)
+#if defined(Z_USE_AVX512)
+    fast_avx512bw_base64_encode(output+output_off, input+off, len);
+#elif defined(Z_USE_AVX2)
     fast_avx2_base64_encode(output+output_off, input+off, len);
 #else
     chromium_base64_encode(output+output_off, input+off, len);
@@ -299,7 +303,9 @@ void hs_base64_encode(char* output, HsInt output_off, const char* input, HsInt o
 }
 
 HsInt hs_base64_decode(char* output, const char* input, HsInt off, HsInt len){
-#if defined(__AVX2__) && !defined(NO_AVX)
+#if defined(Z_USE_AVX512)
+    size_t r = fast_avx512bw_base64_decode(output, input+off, len);
+#elif defined(Z_USE_AVX2)
     size_t r = fast_avx2_base64_decode(output, input+off, len);
 #else
     size_t r = chromium_base64_decode(output, input+off, len);
@@ -346,7 +352,7 @@ void hs_intersperse(unsigned char *q,
 
 // this function should be called with large enough len, otherwise underflow will happen.
 size_t hs_count_simd(unsigned char *str, size_t len, unsigned char w) {
-#if defined(__AVX2__) && !defined(NO_AVX)
+#if defined(Z_USE_AVX2) 
     __m256i pat = _mm256_set1_epi8(w);
     size_t prefix = 0, res = 0;
     size_t i = 0;
@@ -451,7 +457,7 @@ size_t hs_count_simd(unsigned char *str, size_t len, unsigned char w) {
 }
 
 HsInt hs_count_ba(unsigned char *str, HsInt off, HsInt len, unsigned char w) {
-#if (defined(__AVX2__) && !defined(NO_AVX)) || defined(__SSE2__)
+#if defined(__SSE4_2__) || defined(Z_USE_AVX2) || defined(Z_USE_AVX512)
     if (len >= 1024) return (HsInt)hs_count_simd(str+off, len, w);
     else {
 #endif
@@ -460,7 +466,7 @@ HsInt hs_count_ba(unsigned char *str, HsInt off, HsInt len, unsigned char w) {
         for (res = 0; len-- != 0; ++str)
             res += *str == w;
         return res;
-#if (defined(__AVX2__) && !defined(NO_AVX)) || defined(__SSE2__)
+#if defined(__SSE4_2__) || defined(Z_USE_AVX2) || defined(Z_USE_AVX512)
     }
 #endif
 }
