@@ -34,7 +34,6 @@ import           Data.Hashable                  (Hashable(..))
 import           GHC.Stack
 import           System.IO.Unsafe
 import qualified Z.Data.Vector.Base         as V
-import qualified Z.Data.Vector.Extra        as V
 import qualified Z.Data.Builder.Base        as B
 import qualified Z.Data.Text.Base           as T
 import qualified Z.Data.Text.Print          as T
@@ -74,7 +73,6 @@ hexEncode upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
             if upper
             then hs_hex_encode_upper buf# 0 parr s l
             else hs_hex_encode buf# 0 parr s l
-
 
 -- | 'B.Builder' version of 'hexEncode'.
 hexEncodeBuilder :: Bool -- ^ uppercase?
