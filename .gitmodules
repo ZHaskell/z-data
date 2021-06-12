@@ -9,4 +9,4 @@
 	url = https://github.com/google/re2.git
 [submodule "third_party/fastbase64"]
 	path = third_party/fastbase64
-	url = https://github.com/lemire/fastbase64.git
+	url = https://github.com/ZHaskell/fastbase64.git
