@@ -32,6 +32,7 @@
 #include <stdint.h> // uint64_t etc.
 #include <assert.h> // assert
 #include <math.h> // ceil
+#include <string.h> // memcpy
 
 #ifdef _MSC_VER
 #pragma warning(disable : 4204) // nonstandard extension used : non-constant aggregate initializer
@@ -54,8 +55,6 @@
 #define MIN_TARGET_EXP   -60
 #define MASK32           0xFFFFFFFFULL
 
-#define CAST_U64(d) (*(uint64_t*)&d)
-#define CAST_U32(d) (*(uint32_t*)&d)
 #define MIN(x,y) ((x) <= (y) ? (x) : (y))
 #define MAX(x,y) ((x) >= (y) ? (x) : (y))
 
@@ -207,7 +206,8 @@ static diy_fp normalize_diy_fp(diy_fp n)
 static diy_fp double2diy_fp(double d)
 {
     diy_fp fp;
-    uint64_t u64 = CAST_U64(d);
+    uint64_t u64;
+    memcpy(&u64, &d, sizeof(double));
     if (!(u64 & D64_EXP_MASK)) {
         fp.f = u64 & D64_FRACT_MASK;
         fp.e = 1 - D64_EXP_BIAS;
@@ -222,7 +222,8 @@ static diy_fp double2diy_fp(double d)
 static diy_fp float2diy_fp(float d)
 {
     diy_fp fp;
-    uint32_t u32 = CAST_U32(d);
+    uint32_t u32;
+    memcpy(&u32, &d, sizeof(float));
     if (!(u32 & D32_EXP_MASK)) {
         fp.f = (uint64_t)u32 & D32_FRACT_MASK; 
         fp.e = 1 - D32_EXP_BIAS; 
@@ -315,7 +316,8 @@ HsInt grisu3(double v, char *buffer, HsInt *length, HsInt *d_exp)
     diy_fp b_plus = normalize_diy_fp(t);
     diy_fp b_minus;
     diy_fp c_mk; // Cached power of ten: 10^-k
-    uint64_t u64 = CAST_U64(v);
+    uint64_t u64;
+    memcpy(&u64, &v, sizeof(double));
     assert(v > 0 && v <= 1.7976931348623157e308); // Grisu only handles strictly positive finite numbers.
     if (!(u64 & D64_FRACT_MASK) && (u64 & D64_EXP_MASK) != 0) { 
         b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;
@@ -346,7 +348,8 @@ HsInt grisu3_sp(float v, char *buffer, HsInt *length, HsInt *d_exp)
     diy_fp b_plus = normalize_diy_fp(t);
     diy_fp b_minus;
     diy_fp c_mk; // Cached power of ten: 10^-k
-    uint64_t u32 = CAST_U32(v);
+    uint64_t u32;
+    memcpy(&u32, &v, sizeof(float));
     assert(v > 0 && v <= 3.4028235e38); // Grisu only handles strictly positive finite numbers.
     if (!(u32 & D32_FRACT_MASK) && (u32 & D32_EXP_MASK) != 0) {
         b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;
