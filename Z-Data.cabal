@@ -116,7 +116,7 @@ flag use-avx2
   description:
     Use AVX2 instructions(utf8 validation, base64 codec, etc).
 
-  default:     True
+  default:     False
   manual:      True
 
 flag use-avx512
