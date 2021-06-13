@@ -17,6 +17,7 @@ jobs:
     steps:
       - name: CPU info
         run: |
+            sysctl -n machdep.cpu.brand_string
             sysctl -n machdep.cpu.features
             sysctl -n machdep.cpu.leaf7_features
 
