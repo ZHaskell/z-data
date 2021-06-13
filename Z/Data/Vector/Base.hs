@@ -743,7 +743,7 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
 --
 -- There're rules to optimize the intermedia list away when m is an instance of 'PrimMoand',
 -- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
-replicateMVec :: (Monad m, Vec v a) => Int -> m a -> m (v a)
+replicateMVec :: (Applicative f, Vec v a) => Int -> f a -> f (v a)
 {-# INLINE [1] replicateMVec #-}
 {-# RULES "replicateMVec/PrimMonad" forall n (x :: IO a). replicateMVec n x = replicatePMVec n x #-}
 replicateMVec n f = packN n <$> replicateM n f
