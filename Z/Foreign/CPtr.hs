@@ -14,7 +14,7 @@ module Z.Foreign.CPtr (
   -- * CPtr type
     CPtr, newCPtr', newCPtrUnsafe, newCPtr
   , withCPtr, withCPtrsUnsafe, withCPtrForever, withCPtrs
-  , attachCPtrDep
+  , addCPtrDep
   -- * Ptr type
   , Ptr
   , nullPtr
@@ -156,14 +156,18 @@ withCPtrs cptrs f = do
     return r
   where len = length cptrs
 
--- | @attachCPtrDep a b@ make @b@\'s life depends on @a@\'s, so that @b@ is guaranteed to outlive @a@.
+-- | @addCPtrDep a b@ make @b@\'s life depends on @a@\'s, so that @b@ is guaranteed to outlive @a@.
 --
--- Be careful about this function, because it may increase the cost of collecting weak pointers, see
--- <http://blog.ezyang.com/2014/05/the-cost-of-weak-pointers-and-finalizers-in-ghc/>. e.g. If three 'CPtr's
--- form a dependency chain, then the dead weak list may get traversed three times.
-attachCPtrDep :: CPtr a -> CPtr b -> IO ()
-{-# INLINABLE attachCPtrDep #-}
-attachCPtrDep (CPtr (PrimArray ba#)) (CPtr pb) =
+-- This function is useful when you want to create life dependency among 'CPtr's,
+-- be careful about the cost of collecting weak pointers though, see
+-- <http://blog.ezyang.com/2014/05/the-cost-of-weak-pointers-and-finalizers-in-ghc/>.
+-- e.g. If three 'CPtr's form a dependency chain, the dead weak list may get traversed three times.
+-- So instead of adding dependencies in a chain or one by one, you should add them in a single call
+-- with a tuple like @addCPtrDep root (fieldA, fieldB, ...)@.
+--
+addCPtrDep :: CPtr a -> b -> IO ()
+{-# INLINABLE addCPtrDep #-}
+addCPtrDep (CPtr (PrimArray ba#)) b =
     primitive_ $ \ s0# ->
-        let !(# s1#, _ #) = mkWeakNoFinalizer# ba# pb s0#
+        let !(# s1#, _ #) = mkWeakNoFinalizer# ba# b s0#
         in s1#
