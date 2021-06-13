@@ -12,7 +12,9 @@ This module provide a lightweight foreign pointer, support c initializer and fin
 
 module Z.Foreign.CPtr (
   -- * CPtr type
-    CPtr, newCPtr', newCPtrUnsafe, newCPtr, withCPtr, withCPtrsUnsafe, withCPtrs
+    CPtr, newCPtr', newCPtrUnsafe, newCPtr
+  , withCPtr, withCPtrsUnsafe, withCPtrForever, withCPtrs
+  , attachCPtrDep
   -- * Ptr type
   , Ptr
   , nullPtr
@@ -21,11 +23,11 @@ module Z.Foreign.CPtr (
 
 import Control.Monad
 import Control.Monad.Primitive
-import Control.Exception                    (mask_)
 import Data.Primitive.PrimArray
 import qualified Z.Data.Text                as T
 import GHC.Ptr
 import GHC.Exts
+import GHC.IO
 import Z.Data.Array
 import Z.Foreign
 
@@ -52,6 +54,7 @@ instance T.Print (CPtr a) where
 newCPtr' :: IO (Ptr a) -- ^ initializer
          -> FunPtr (Ptr a -> IO b) -- ^ finalizer
          -> IO (CPtr a)
+{-# INLINABLE newCPtr' #-}
 newCPtr' ini (FunPtr fin#) = mask_ $ do
     mpa <- newPrimArray 1
     p@(Ptr addr#) <- ini
@@ -70,6 +73,7 @@ newCPtr' ini (FunPtr fin#) = mask_ $ do
 newCPtrUnsafe :: (MutableByteArray# RealWorld -> IO r) -- ^ initializer
               -> FunPtr (Ptr a -> IO b) -- ^ finalizer
               -> IO (CPtr a, r)
+{-# INLINABLE newCPtrUnsafe #-}
 newCPtrUnsafe ini (FunPtr fin#) = mask_ $ do
     mpa@(MutablePrimArray mba#) <- newPrimArray 1
     r <- ini mba#
@@ -88,6 +92,7 @@ newCPtrUnsafe ini (FunPtr fin#) = mask_ $ do
 newCPtr :: (Ptr (Ptr a) -> IO r) -- ^ initializer
         -> FunPtr (Ptr a -> IO b) -- ^ finalizer
         -> IO (CPtr a, r)
+{-# INLINABLE newCPtr #-}
 newCPtr ini (FunPtr fin#) = mask_ $ do
     mpa <- newPinnedPrimArray 1
     r <- ini (mutablePrimArrayContents mpa)
@@ -99,15 +104,36 @@ newCPtr ini (FunPtr fin#) = mask_ $ do
         in s2#
     return (CPtr pa, r)
 
--- | The only way to use 'CPtr' as a 'Ptr' in FFI is to use 'withCPtr'.
+-- | Use 'CPtr' as a 'Ptr' in FFI.
 withCPtr :: CPtr a -> (Ptr a -> IO b) -> IO b
+{-# INLINABLE withCPtr #-}
 withCPtr (CPtr pa@(PrimArray ba#)) f = do
     r <- f (indexPrimArray pa 0)
     primitive_ (touch# ba#)
     return r
 
+-- | Use 'CPtr' as a 'Ptr' in FFI(potentially running forever).
+--
+-- When you pass a forever loop to 'withCPtr', GHC's simplifier may think the 'touch#'(which keep the 'CPtr' alive) after the loop are unreachable,
+-- so it may be optimized away, 'withCPtrForever' solves that.
+--
+withCPtrForever :: CPtr a -> (Ptr a -> IO b) -> IO b
+#if MIN_VERSION_base(4,15,0)
+{-# INLINABLE withCPtrForever #-}
+withCPtrForever (CPtr pa@(PrimArray ba#)) f = IO $ \ s ->
+    case f (indexPrimArray pa 0) of
+        IO action# -> keepAlive# ba# s action#
+#else
+{-# NOINLINE withCPtrForever #-}
+withCPtrForever (CPtr pa@(PrimArray ba#)) f = do
+    r <- f (indexPrimArray pa 0)
+    primitive_ (touch# ba#)
+    return r
+#endif
+
 -- | Pass a list of 'CPtr Foo' as @foo**@. USE THIS FUNCTION WITH UNSAFE FFI ONLY!
 withCPtrsUnsafe :: forall a b. [CPtr a] -> (BA# (Ptr a) -> Int -> IO b) -> IO b
+{-# INLINABLE withCPtrsUnsafe #-}
 withCPtrsUnsafe cptrs f = do
     mpa <- newPrimArray @IO @(Ptr a) len
     foldM_ (\ !i (CPtr pa) ->
@@ -120,6 +146,7 @@ withCPtrsUnsafe cptrs f = do
 
 -- | Pass a list of 'CPtr Foo' as @foo**@.
 withCPtrs :: forall a b. [CPtr a] -> (Ptr (Ptr a) -> Int -> IO b) -> IO b
+{-# INLINABLE withCPtrs #-}
 withCPtrs cptrs f = do
     mpa <- newPinnedPrimArray @IO @(Ptr a) len
     foldM_ (\ !i (CPtr pa) ->
@@ -128,3 +155,15 @@ withCPtrs cptrs f = do
     primitive_ (touch# cptrs)
     return r
   where len = length cptrs
+
+-- | @attachCPtrDep a b@ make @b@\'s life depends on @a@\'s, so that @b@ is guaranteed to outlive @a@.
+--
+-- Be careful about this function, because it may increase the cost of collecting weak pointers, see
+-- <http://blog.ezyang.com/2014/05/the-cost-of-weak-pointers-and-finalizers-in-ghc/>. e.g. If three 'CPtr's
+-- form a dependency chain, then the dead weak list may get traversed three times.
+attachCPtrDep :: CPtr a -> CPtr b -> IO ()
+{-# INLINABLE attachCPtrDep #-}
+attachCPtrDep (CPtr (PrimArray ba#)) (CPtr pb) =
+    primitive_ $ \ s0# ->
+        let !(# s1#, _ #) = mkWeakNoFinalizer# ba# pb s0#
+        in s1#

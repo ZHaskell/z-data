@@ -1,5 +1,10 @@
 # Revision history for Z-Data
 
+## 0.8.8.0  -- 2021-06-12
+
+* Add `withCPtrForever` and `mkCPtrDep` to `Z.Foreign.CPtr` module.
+* Fix AVX512 text validate header building with C11.
+
 ## 0.8.7.0  -- 2021-06-12
 
 * Add `use-avx2` and `use-avx512` flags(default to False) to enable avx2 or avx512 base64 codec, UTF8 validator, etc.

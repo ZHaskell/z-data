@@ -13,7 +13,7 @@ jobs:
             cabal: 3.2
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
-        CONFIG: "--enable-tests --enable-benchmarks"
+        CONFIG: "--enable-tests --enable-benchmarks --test-show-details=direct"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -28,7 +28,7 @@ jobs:
 
       - run: |
           cabal update
-          cabal freeze $CONFIG
+          cabal freeze
 
       - uses: actions/cache@v2
         with:
@@ -42,7 +42,7 @@ jobs:
       - run: |
           cabal configure $CONFIG
           cabal build
-          cabal test --test-show-details=direct
+          cabal test
       - run: |
           cabal haddock
           cabal check

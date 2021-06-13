@@ -85,6 +85,7 @@ import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.ST
+import           Control.Monad.Primitive
 import           Data.Bits
 import           Data.Char                      (ord)
 import qualified Data.Foldable                  as F
@@ -341,48 +342,27 @@ instance Hashable1 Vector where
 -- | Traverse vector and gather result in another vector,
 traverseVec :: (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseVec #-}
-{-# RULES "traverseVec/ST" forall f. traverseVec f = traverseWithIndexST (const f) #-}
-{-# RULES "traverseVec/IO" forall f. traverseVec f = traverseWithIndexIO (const f) #-}
+{-# RULES "traverseVec/PrimMonad" forall (f :: PrimMonad m => a -> m b). traverseVec f = traverseWithIndexPM (const f) #-}
 traverseVec f v = packN (length v) <$> T.traverse f (unpack v)
 
 -- | Traverse vector and gather result in another vector,
 traverseWithIndex :: (Vec v a, Vec u b, Applicative f) => (Int -> a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseWithIndex #-}
-{-# RULES "traverseWithIndex/ST" traverseWithIndex = traverseWithIndexST #-}
-{-# RULES "traverseWithIndex/IO" traverseWithIndex = traverseWithIndexIO #-}
+{-# RULES "traverseWithIndex/PrimMonad" forall (f :: PrimMonad m => Int -> a -> m b). traverseWithIndex f = traverseWithIndexPM f #-}
 traverseWithIndex f v = packN (length v) <$> zipWithM f [0..] (unpack v)
 
-traverseWithIndexST :: forall v u a b s. (Vec v a, Vec u b) => (Int -> a -> ST s b) -> v a -> ST s (u b)
-{-# INLINE traverseWithIndexST #-}
-traverseWithIndexST f (Vec arr s l)
+traverseWithIndexPM :: forall m v u a b. (PrimMonad m, Vec v a, Vec u b) => (Int -> a -> m b) -> v a -> m (u b)
+{-# INLINE traverseWithIndexPM #-}
+traverseWithIndexPM f (Vec arr s l)
     | l == 0    = return empty
     | otherwise = do
         marr <- newArr l
-        go marr 0
-        ba <- unsafeFreezeArr marr
+        ba <- go marr 0
         return $! fromArr ba 0 l
   where
-    go :: MArr (IArray u) s b -> Int -> ST s ()
+    go :: MArr (IArray u) (PrimState m) b -> Int -> m (IArray u b)
     go !marr !i
-        | i >= l = return ()
-        | otherwise = do
-            x <- indexArrM arr (i+s)
-            writeArr marr i =<< f i x
-            go marr (i+1)
-
-traverseWithIndexIO :: forall v u a b. (Vec v a, Vec u b) => (Int -> a -> IO b) -> v a -> IO (u b)
-{-# INLINE traverseWithIndexIO #-}
-traverseWithIndexIO f (Vec arr s l)
-    | l == 0    = return empty
-    | otherwise = do
-        marr <- newArr l
-        go marr 0
-        ba <- unsafeFreezeArr marr
-        return $! fromArr ba 0 l
-  where
-    go :: MArr (IArray u) RealWorld b -> Int -> IO ()
-    go !marr !i
-        | i >= l = return ()
+        | i >= l = unsafeFreezeArr marr
         | otherwise = do
             x <- indexArrM arr (i+s)
             writeArr marr i =<< f i x
@@ -563,9 +543,7 @@ instance CI.FoldCase Bytes where
 -- | /O(n)/, pack an ASCII 'String', multi-bytes char WILL BE CHOPPED!
 packASCII :: String -> Bytes
 {-# INLINE CONLIKE [0] packASCII #-}
-{-# RULES
-    "packASCII/packASCIIAddr" forall addr . packASCII (unpackCString# addr) = packASCIIAddr addr
-  #-}
+{-# RULES "packASCII/packASCIIAddr" forall addr . packASCII (unpackCString# addr) = packASCIIAddr addr #-}
 packASCII = pack . fmap (fromIntegral . ord)
 
 packASCIIAddr :: Addr# -> Bytes
@@ -735,7 +713,7 @@ pack = packN defaultInitSize
 -- This function is a /good consumer/ in the sense of build/foldr fusion.
 --
 packN :: forall v a. Vec v a => Int -> [a] -> v a
-{-# INLINE packN #-}
+{-# INLINE [1] packN #-}
 packN n0 = \ ws0 -> runST (do let n = max 4 n0
                               marr <- newArr n
                               (IPair i marr') <- foldM go (IPair 0 marr) ws0
@@ -755,6 +733,25 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
                 !marr' <- resizeMutableArr marr n'
                 writeArr marr' i x
                 return (IPair (i+1) marr')
+
+{-# RULES "packN/replicate" forall m n x. packN m (List.take n (List.repeat x)) = replicate n x #-}
+{-# RULES "packN/replicateM"
+   forall m n (x :: PrimMonad m => m a). packN m `fmap` replicateM n x = replicateVecPM n x #-}
+
+-- | A version of 'replicateM' which works on 'PrimMonad' and 'Vec'.
+replicateVecPM :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
+{-# INLINE replicateVecPM #-}
+replicateVecPM n f = do
+    marr <- newArr n
+    !ba <- go marr 0
+    (return $! fromArr ba 0 n)
+  where
+    go marr i
+        | i >= n = unsafeFreezeArr marr
+        | otherwise = do
+            x <- f
+            writeArr marr i x
+            go marr (i+1)
 
 -- | /O(n)/ Convert a list into a vector with given size.
 --

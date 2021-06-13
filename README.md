@@ -19,7 +19,14 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
 
 ## Requirements
 
-* A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), hsc2hs.
+* A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), here're some options:
+    * Mac users can get them via [homebew](//brew.sh/): `brew install ghc cabal-install`.
+    * Windows users can get them via [chocolatey](//chocolatey.org): `choco install ghc cabal`.
+    * Ubuntu users are recommended to use this [ppa](//launchpad.net/~hvr/+archive/ubuntu/ghc).
+* A working C/C++ compiler support C++11, here're some options:
+    * Mac users can use the `clang` comes with the [XCode Command Line Tools](https://developer.apple.com/downloads).
+    * Windows users can use the mingw's one comes with GHC, you can use it by adding `your_path_to_ghc\mingw\bin` to your `PATH`.
+    * Ubuntu users can install `gcc/g++` by running `sudo apt install build-essential`.
 * Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
 
 ## Example usage

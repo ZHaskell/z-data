@@ -23,6 +23,8 @@ extra-source-files:
   README.md
   third_party/fastvalidate-utf-8/include/simdasciicheck.h
   third_party/fastvalidate-utf-8/include/simdutf8check.h
+  third_party/fastvalidate-utf-8/include/simdasciicheck_avx512.h
+  third_party/fastvalidate-utf-8/include/simdutf8check_avx512.h
   third_party/fastbase64/include/chromiumbase64.h
   third_party/fastbase64/include/fastavxbase64.h
   third_party/fastbase64/src/fastavxbase64.c
@@ -272,7 +274,7 @@ library
   cc-options:         -std=c11 -Wno-sign-compare
 
   if flag(use-avx512)
-    cc-options:       -march=cannonlake -DZ_USE_AVX512
+    cc-options:       -march=cannonlake
   else
     if flag(use-avx2)
       cc-options:     -mavx2 -DZ_USE_AVX2
