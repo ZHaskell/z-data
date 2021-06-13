@@ -204,20 +204,23 @@ library
     third_party/re2
 
   includes:
-    simdasciicheck.h
-    simdutf8check.h
     utf8rewind.h
     chromiumbase64.h
 
-  if flag(use-avx2)
-      includes:
-        fastavxbase64.h
+  if arch(x86_64)
+    includes:
+      simdasciicheck.h
+      simdutf8check.h
 
-  if flag(use-avx512)
-      includes:
-        simdasciicheck_avx512.h
-        simdutf8check_avx512.h
-        fastavx512bwbase64.h
+    if flag(use-avx2)
+        includes:
+          fastavxbase64.h
+
+    if flag(use-avx512)
+        includes:
+          simdasciicheck_avx512.h
+          simdutf8check_avx512.h
+          fastavx512bwbase64.h
 
   c-sources:
     cbits/bytes.c
@@ -235,13 +238,14 @@ library
     third_party/utf8rewind/source/unicodedatabase.c
     third_party/utf8rewind/source/utf8rewind.c
 
-  if flag(use-avx2)
-      c-sources:
-        third_party/fastbase64/src/fastavxbase64.c
+  if arch(x86_64)
+    if flag(use-avx2)
+        c-sources:
+          third_party/fastbase64/src/fastavxbase64.c
 
-  if flag(use-avx512)
-      c-sources:
-        third_party/fastbase64/src/fastavx512bwbase64.c
+    if flag(use-avx512)
+        c-sources:
+          third_party/fastbase64/src/fastavx512bwbase64.c
 
   cxx-sources:
     cbits/regex.cc
@@ -273,13 +277,17 @@ library
 
   cc-options:         -std=c11 -Wall
 
-  if flag(use-avx512)
-    cc-options:       -march=cannonlake
-    cxx-options:      -march=cannonlake
-  else
-    if flag(use-avx2)
-      cc-options:     -mavx2
-      cxx-options:    -mavx2
+  if arch(x86_64)
+    if flag(use-avx512)
+      cc-options:       -march=cannonlake
+      cxx-options:      -march=cannonlake
+    else
+      if flag(use-avx2)
+        cc-options:     -mavx2
+        cxx-options:    -mavx2
+      else
+        cc-options:     -msse4.2
+        cxx-options:    -msse4.2
 
   cxx-options:        -std=c++11 -Wall
 

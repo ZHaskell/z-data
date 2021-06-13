@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if defined(__AVX512F__) && defined(__AVX512VL__) && defined(__AVX512VBMI__)
 #include <simdasciicheck_avx512.h>
 #include <simdutf8check_avx512.h>
-#else
+#elif defined(__SSSE3__) 
 #include <simdasciicheck.h>
 #include <simdutf8check.h>
 #endif
@@ -44,7 +44,7 @@ HsInt ascii_validate(const char* p, HsInt off, HsInt len){
     return (HsInt)validate_ascii_fast_avx512(q, (size_t)len);
 #elif defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(q, (size_t)len);
-#elif defined(__SSE2__)
+#elif defined(__SSSE3__) 
     return (HsInt)validate_ascii_fast(q, (size_t)len);
 #else
     return (HsInt)ascii_u64(q, (size_t)len);
@@ -57,7 +57,7 @@ HsInt ascii_validate_addr(const char* p, HsInt len){
     return (HsInt)validate_ascii_fast_avx512(p, (size_t)len);
 #elif defined(__AVX2__)
     return (HsInt)validate_ascii_fast_avx(p, (size_t)len);
-#elif defined(__SSE2__)
+#elif defined(__SSSE3__) 
     return (HsInt)validate_ascii_fast(p, (size_t)len);
 #else
     return (HsInt)ascii_u64(p, (size_t)len);
@@ -70,7 +70,7 @@ HsInt utf8_validate(const char* p, HsInt off, HsInt len){
     return (HsInt)validate_utf8_fast_avx512(q, (size_t)len);
 #elif defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(q, (size_t)len);
-#elif defined(__SSE2__)
+#elif defined(__SSSE3__) 
     return (HsInt)validate_utf8_fast(q, (size_t)len);
 #else
     return utf8_validate_slow(q, (size_t)len);
@@ -83,7 +83,7 @@ HsInt utf8_validate_addr(const char* p, HsInt len){
     return (HsInt)validate_utf8_fast_avx512(p, (size_t)len);
 #elif defined(__AVX2__)
     return (HsInt)validate_utf8_fast_avx(p, (size_t)len);
-#elif defined(__SSE2__)
+#elif defined(__SSSE3__) 
     return (HsInt)validate_utf8_fast(p, (size_t)len);
 #else
     return utf8_validate_slow(p, (size_t)len);
