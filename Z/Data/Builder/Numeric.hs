@@ -516,7 +516,7 @@ hex w = writeN hexSiz (go w (hexSiz-2))
             let !i = fromIntegral v .&. 0xFF; !j = i + i
             writePrimArray marr off $ indexOffPtr hexDigitTable j
             writePrimArray marr (off + 1) $ indexOffPtr hexDigitTable (j+1)
-        | d < 0  = do         -- for FiniteBits instances which has extra bits
+        | otherwise = do         -- for FiniteBits instances which has extra bits
             let !i = fromIntegral v .&. 0x0F :: Int
             writePrimArray marr off $ i2wHex i
 
@@ -538,7 +538,7 @@ hexUpper w = writeN hexSiz (go w (hexSiz-2))
             let !i = fromIntegral v .&. 0xFF; !j = i + i
             writePrimArray marr off $ indexOffPtr hexDigitTableUpper j
             writePrimArray marr (off + 1) $ indexOffPtr hexDigitTableUpper (j+1)
-        | d < 0  = do         -- for FiniteBits instances which has extra bits
+        | otherwise = do         -- for FiniteBits instances which has extra bits
             let !i = fromIntegral v .&. 0x0F :: Int
             writePrimArray marr off $ i2wHexUpper i
 

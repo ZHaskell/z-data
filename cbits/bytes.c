@@ -142,12 +142,12 @@ void* __memrchr(void *src_void, unsigned char c, size_t length){
         mask = mask << 16 | mask;
         for (i = 32; i < LBLOCKSIZE * 8; i <<= 1)
             mask = (mask << i) | mask;
-            while (length >= LBLOCKSIZE) {
-                if (DETECTCHAR (*asrc, mask))
-                    break;
-                length -= LBLOCKSIZE;
-                asrc--;
-            }
+        while (length >= LBLOCKSIZE) {
+            if (DETECTCHAR (*asrc, mask))
+                break;
+            length -= LBLOCKSIZE;
+            asrc--;
+        }
         /* If there are fewer than LBLOCKSIZE characters left,
          then we resort to the bytewise loop.  */
         src = (unsigned char *) asrc + LBLOCKSIZE - 1;

@@ -276,6 +276,7 @@ library
   build-tool-depends: hsc2hs:hsc2hs -any
 
   cc-options:         -std=c11 -Wall
+  cxx-options:        -std=c++11 -Wall
 
   if arch(x86_64)
     if flag(use-avx512)
@@ -288,8 +289,6 @@ library
       else
         cc-options:     -msse4.2
         cxx-options:    -msse4.2
-
-  cxx-options:        -std=c++11 -Wall
 
   if os(windows)
     extra-libraries: stdc++
@@ -316,7 +315,7 @@ library
   -- we work around this issue using Setup.hs
 
   ghc-options:
-    -Wall -Wno-unticked-promoted-constructors -Wno-incomplete-patterns
+    -Wall -Wno-unticked-promoted-constructors  -Wno-incomplete-patterns
 
   default-extensions:
     BangPatterns

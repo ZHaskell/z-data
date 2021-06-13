@@ -355,6 +355,7 @@ intercalateElem w8 bss = case len bss 0 of
                 let i' = i + l
                 writePrimArray mba i' w8
                 copy bs (i'+1) mba
+    copy _ _ _ = error "Z.Data.CBytes.intercalateElem: impossible"
 
 instance IsString CBytes where
     {-# INLINE fromString #-}

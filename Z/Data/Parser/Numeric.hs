@@ -108,8 +108,7 @@ w2iHex :: Integral a => Word8 -> a
 w2iHex w
     | w <= 57   = fromIntegral w - 48
     | w <= 70   = fromIntegral w - 55
-    | w <= 102  = fromIntegral w - 87
-
+    | otherwise = fromIntegral w - 87
 
 -- | Same with 'uint', but sliently cast in case of overflow.
 uint_ :: forall a. (Integral a, Bounded a) => Parser a
