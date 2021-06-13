@@ -28,6 +28,7 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
     * Windows users can use the mingw's one comes with GHC, you can use it by adding `your_path_to_ghc\mingw\bin` to your `PATH`.
     * Ubuntu users can install `gcc/g++` by running `sudo apt install build-essential`.
 * Tests need [hspec-discover](https://hackage.haskell.org/package/hspec-discover).
+* Machine with AVX2 support, (SSE4.2 support if you turn off `use-avx2` flag, or more aggressively AVX512 support if you turn on `use-avx512` flag).
 
 ## Example usage
 

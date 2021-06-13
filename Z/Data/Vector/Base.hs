@@ -56,6 +56,7 @@ module Z.Data.Vector.Base (
   , mapAccumR
   -- ** Generating and unfolding vector
   , replicate
+  , replicateMVec
   , cycleN
   , unfoldr
   , unfoldrN
@@ -339,13 +340,16 @@ instance Hashable1 Vector where
             | i >= end  = salt
             | otherwise = go (h salt (indexArr arr i)) (i+1)
 
--- | Traverse vector and gather result in another vector,
+-- | Traverse vector and gather result in another vector.
+--
+-- There're rules to optimize the intermedia list away when @f@ is an instance of 'PrimMoand',
+-- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
 traverseVec :: (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseVec #-}
 {-# RULES "traverseVec/PrimMonad" forall (f :: PrimMonad m => a -> m b). traverseVec f = traverseWithIndexPM (const f) #-}
 traverseVec f v = packN (length v) <$> T.traverse f (unpack v)
 
--- | Traverse vector and gather result in another vector,
+-- | Traverse vector and gather result in another vector.
 traverseWithIndex :: (Vec v a, Vec u b, Applicative f) => (Int -> a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseWithIndex #-}
 {-# RULES "traverseWithIndex/PrimMonad" forall (f :: PrimMonad m => Int -> a -> m b). traverseWithIndex f = traverseWithIndexPM f #-}
@@ -734,16 +738,22 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
                 writeArr marr' i x
                 return (IPair (i+1) marr')
 
-{-# RULES "packN/replicate" forall m n x. packN m (List.take n (List.repeat x)) = replicate n x #-}
-{-# RULES "packN/replicateM"
-   forall m n (x :: PrimMonad m => m a). packN m `fmap` replicateM n x = replicateVecPM n x #-}
+
+-- | A version of 'replicateM' which works on 'Vec', with specialized rules under 'PrimMonad'.
+--
+-- There're rules to optimize the intermedia list away when m is an instance of 'PrimMoand',
+-- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
+replicateMVec :: (Monad m, Vec v a) => Int -> m a -> m (v a)
+{-# INLINE [1] replicateMVec #-}
+{-# RULES "replicateMVec/PrimMonad" forall n (x :: IO a). replicateMVec n x = replicatePMVec n x #-}
+replicateMVec n f = packN n <$> replicateM n f
 
 -- | A version of 'replicateM' which works on 'PrimMonad' and 'Vec'.
-replicateVecPM :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
-{-# INLINE replicateVecPM #-}
-replicateVecPM n f = do
+replicatePMVec :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
+{-# INLINE replicatePMVec #-}
+replicatePMVec n f = do
     marr <- newArr n
-    !ba <- go marr 0
+    ba <- go marr 0
     (return $! fromArr ba 0 n)
   where
     go marr i

@@ -1,8 +1,9 @@
 # Revision history for Z-Data
 
-## 0.8.8.0  -- 2021-06-12
+## 0.8.8.0  -- 2021-06-13
 
 * Add `withCPtrForever` and `mkCPtrDep` to `Z.Foreign.CPtr` module.
+* Add `replicateMVec` to `Z.Data.Vector`.
 * Fix AVX512 text validate header building with C11.
 
 ## 0.8.7.0  -- 2021-06-12

@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            0.8.7.0
+version:            0.8.8.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -116,12 +116,12 @@ flag use-avx2
   description:
     Use AVX2 instructions(utf8 validation, base64 codec, etc).
 
-  default:     False
+  default:     True
   manual:      True
 
 flag use-avx512
   description:
-    Use AVX512 instructions(utf8 validation, base64 codec, etc).
+    Use AVX512(AVX512F, AVX512VL, AVX512BW, AVX512VBMI) instructions(utf8 validation, base64 codec, etc).
 
   default:     False
   manual:      True

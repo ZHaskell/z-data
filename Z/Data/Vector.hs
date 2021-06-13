@@ -96,6 +96,7 @@ module Z.Data.Vector (
   , mapAccumR
   -- ** Generating and unfolding vector
   , replicate
+  , replicateMVec
   , cycleN
   , unfoldr
   , unfoldrN
