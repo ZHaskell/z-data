@@ -271,22 +271,22 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
 
-  cc-options:         -std=c11 -Wno-sign-compare
+  cc-options:         -std=c11 -Wall
 
   if flag(use-avx512)
     cc-options:       -march=cannonlake
+    cxx-options:      -march=cannonlake
   else
     if flag(use-avx2)
-      cc-options:     -mavx2 -DZ_USE_AVX2
-    else
-      cc-options:     -msse4.2
+      cc-options:     -mavx2
+      cxx-options:    -mavx2
 
-  cxx-options:        -std=c++11
+  cxx-options:        -std=c++11 -Wall
 
   if os(windows)
     extra-libraries: stdc++
     cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
-    cxx-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
+    cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
   else
     if os(osx)
       extra-libraries:
