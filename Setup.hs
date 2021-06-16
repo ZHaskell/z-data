@@ -18,7 +18,9 @@ main = do
     then do
         let mainArgs' =
 #ifdef darwin_HOST_OS
-                "--ghc-options":("-optcxx-cxx-isystem"++ system):mainArgs
+                "--ghc-options":("-optcxx-nostdinc++"):
+                "--ghc-options":("-optcxx-cxx-isystem"++ system):
+                "--ghc-options":("-optcxx-isystem"++ system):mainArgs
 #else
                 mainArgs
 #endif
