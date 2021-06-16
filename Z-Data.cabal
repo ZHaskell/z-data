@@ -275,7 +275,7 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
 
-  cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast
+  cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast -Wno-nullability-completeness
   cxx-options:        -std=c++11 -Wno-nullability-completeness
 
   if arch(x86_64)
