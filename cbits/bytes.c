@@ -3,6 +3,7 @@ Copyright (c) 2017-2019 Dong Han
 Copyright Johan Tibell 2011, Dong Han 2019
 Copyright Dmitry Ivanov 2020
 Copyright Georg Rudoy 2021
+Copyright (c) 2017 Zach Bjornson (From https://github.com/zbjornson/fast-hex/)
 All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -199,7 +200,8 @@ static const char* BIN_TO_HEX_UPPER =
 	"E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
 	"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF";
 
-void hs_hex_encode(char* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length){
+void hs_hex_encode_generic(uint8_t* output, size_t output_off,
+        const uint8_t* input, size_t input_off, size_t input_length){
     uint16_t* output_ptr = (uint16_t*)(output+output_off);
     const uint8_t* input_ptr = input + input_off;
     uint16_t* table = (uint16_t*)BIN_TO_HEX;
@@ -208,13 +210,90 @@ void hs_hex_encode(char* output, HsInt output_off, const uint8_t* input, HsInt i
     }
 }
 
-void hs_hex_encode_upper(char* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length){
+void hs_hex_encode_upper_generic(uint8_t* output, size_t output_off,
+        const uint8_t* input, size_t input_off, size_t input_length){
     uint16_t* output_ptr = (uint16_t*)(output+output_off);
     const uint8_t* input_ptr = input + input_off;
     uint16_t* table = (uint16_t*)BIN_TO_HEX_UPPER;
     for(size_t i = 0; i != input_length;) {
         *(output_ptr++) = table[input_ptr[i++]];
     }
+}
+
+#if defined(__AVX2__)
+inline static __m256i hex(__m256i value) {
+    __m256i HEX_LUTR = _mm256_setr_epi8(
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+    return _mm256_shuffle_epi8(HEX_LUTR, value);
+}
+inline static __m256i hex_upper(__m256i value) {
+    __m256i HEX_LUTR_UPPER = _mm256_setr_epi8(
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
+    return _mm256_shuffle_epi8(HEX_LUTR_UPPER, value);
+}
+
+// a -> [a >> 4, a & 0b1111]
+inline static __m256i byte2nib(__m128i val) {
+    __m256i ROT2 = _mm256_setr_epi8(
+          -1, 0, -1, 2, -1, 4, -1, 6, -1, 8, -1, 10, -1, 12, -1, 14,
+          -1, 0, -1, 2, -1, 4, -1, 6, -1, 8, -1, 10, -1, 12, -1, 14
+        );
+    __m256i doubled = _mm256_cvtepu8_epi16(val);
+    __m256i hi = _mm256_srli_epi16(doubled, 4);
+    __m256i lo = _mm256_shuffle_epi8(doubled, ROT2);
+    __m256i bytes = _mm256_or_si256(hi, lo);
+    bytes = _mm256_and_si256(bytes, _mm256_set1_epi8(0b1111));
+    return bytes;
+}
+
+// len is number of src bytes
+void hs_hex_encode_avx2(uint8_t* __restrict__ dest, const uint8_t* __restrict__ src, size_t len) {
+    const __m128i* input128 = (const __m128i*)(src);
+    __m256i* output256 = (__m256i*)(dest);
+
+    size_t tailLen = len % 16;
+    size_t vectLen = (len - tailLen) >> 4;
+    for (size_t i = 0; i < vectLen; i++) {
+      __m128i av = _mm_lddqu_si128(&input128[i]);
+      __m256i nibs = byte2nib(av);
+      __m256i hexed = hex(nibs);
+      _mm256_storeu_si256(&output256[i], hexed);
+    }
+    hs_hex_encode_generic(dest, (vectLen << 5), src, (vectLen << 4), tailLen);
+}
+// len is number of src bytes
+void hs_hex_encode_upper_avx2(uint8_t* __restrict__ dest, const uint8_t* __restrict__ src, size_t len) {
+    const __m128i* input128 = (const __m128i*)(src);
+    __m256i* output256 = (__m256i*)(dest);
+
+    size_t tailLen = len % 16;
+    size_t vectLen = (len - tailLen) >> 4;
+    for (size_t i = 0; i < vectLen; i++) {
+      __m128i av = _mm_lddqu_si128(&input128[i]);
+      __m256i nibs = byte2nib(av);
+      __m256i hexed = hex_upper(nibs);
+      _mm256_storeu_si256(&output256[i], hexed);
+    }
+    hs_hex_encode_upper_generic(dest, (vectLen << 5), src, (vectLen << 4), tailLen);
+}
+#endif
+
+void hs_hex_encode(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length){
+#if (__AVX2__)
+    hs_hex_encode_avx2(output+output_off, input+input_off, input_length);
+#else
+    hs_hex_encode_generic(output, output_off, input, input_off, input_length);
+#endif
+}
+
+void hs_hex_encode_upper(uint8_t* output, HsInt output_off, const uint8_t* input, HsInt input_off, HsInt input_length){
+#if (__AVX2__)
+    hs_hex_encode_upper_avx2(output+output_off, input+input_off, input_length);
+#else
+    hs_hex_encode_upper_generic(output, output_off, input, input_off, input_length);
+#endif
 }
 
 /*

@@ -275,8 +275,8 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
 
-  cc-options:         -std=c11 -Wall
-  cxx-options:        -std=c++11 -Wall
+  cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast
+  cxx-options:        -std=c++11
 
   if arch(x86_64)
     if flag(use-avx512)

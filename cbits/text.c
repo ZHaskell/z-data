@@ -191,8 +191,8 @@ HsInt decode_json_string(char *dest, const char *src, HsInt srcoff, HsInt srclen
     uint32_t temp_hex = 0;
     uint32_t unidata;
     // ECMA 404 require codepoints beyond Basic Multilingual Plane encoded as surrogate pair
-    uint32_t h_surrogate;
-    uint32_t l_surrogate;
+    uint32_t h_surrogate = 0;
+    uint32_t l_surrogate = 0;
 
 // read current byte to cur_byte and guard input end
 #define DISPATCH(label) {\

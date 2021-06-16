@@ -112,9 +112,9 @@ int = intWith defaultIFormat
 --
 intWith :: (Integral a, Bounded a) => IFormat -> a -> Builder ()
 intWith = hs_intWith
-{-# INLINE[1] intWith #-}
-{-# RULES "intWith'/Int8"    intWith = c_intWith  :: IFormat -> Int8    -> Builder () #-}
+{-# INLINE [1] intWith #-}
 {-# RULES "intWith'/Int"     intWith = c_intWith  :: IFormat -> Int     -> Builder () #-}
+{-# RULES "intWith'/Int8"    intWith = c_intWith  :: IFormat -> Int8    -> Builder () #-}
 {-# RULES "intWith'/Int16"   intWith = c_intWith  :: IFormat -> Int16   -> Builder () #-}
 {-# RULES "intWith'/Int32"   intWith = c_intWith  :: IFormat -> Int32   -> Builder () #-}
 {-# RULES "intWith'/Int64"   intWith = c_intWith  :: IFormat -> Int64   -> Builder () #-}
@@ -137,19 +137,13 @@ intWith = hs_intWith
 -- We use rewrite rules to rewrite most of the integral types formatting to this function.
 c_intWith :: (Integral a, Bits a) => IFormat -> a -> Builder ()
 {-# INLINE c_intWith #-}
-c_intWith (IFormat{..}) x
-    | x < 0 =
-        let !x' = (fromIntegral (complement x) :: Word64) + 1
-        in ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec x' (-1) width pad mba# i))
-    | posSign =
-        ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec (fromIntegral x) 1 width pad mba# i))
-    | otherwise =
-        ensureN width' (\ (MutablePrimArray mba#) i ->
-            (c_int_dec (fromIntegral x) 0 width pad mba# i))
+c_intWith (IFormat{..}) = \ x ->
+    ensureN (max 21 width) (\ (MutablePrimArray mba#) i ->
+        if x < 0
+        then let !x' = (fromIntegral (complement x) :: Word64) + 1
+             in (c_int_dec x' (-1) width pad mba# i)
+        else c_int_dec (fromIntegral x) (if posSign then 1 else 0) width pad mba# i)
   where
-    width' = max 21 width
     pad = case padding of NoPadding          -> 0
                           RightSpacePadding  -> 1
                           LeftSpacePadding   -> 2
