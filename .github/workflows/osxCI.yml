@@ -2,12 +2,12 @@ on: [push, pull_request]
 name: osx-ci
 jobs:
   build:
-    runs-on:  ${{ matrix.os }}
     strategy:
       matrix:
         os: ['macos-10.15', 'macos-11']
         ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.4']
+    runs-on:  ${{ matrix.os }}
     name: Haskell GHC ${{ matrix.ghc }} sample
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
