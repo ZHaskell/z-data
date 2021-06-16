@@ -21,8 +21,8 @@ jobs:
             sysctl -n machdep.cpu.features
             sysctl -n machdep.cpu.leaf7_features
 
-      - name: remove llvm
-        run: brew remove llvm
+      - name: remove xcode devtools
+        run: sudo rm -rf /Library/Developer/CommandLineTools/SDKs
 
       - uses: actions/checkout@v2
         with:
