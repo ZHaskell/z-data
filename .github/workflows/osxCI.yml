@@ -17,9 +17,6 @@ jobs:
             sysctl -n machdep.cpu.features
             sysctl -n machdep.cpu.leaf7_features
 
-      - name: Reset XCode path
-        run: sudo xcode-select --reset
-
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
