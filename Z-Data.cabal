@@ -275,8 +275,10 @@ library
   default-language:   Haskell2010
   build-tool-depends: hsc2hs:hsc2hs -any
 
-  cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast
+  cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast -Wno-nullability-completeness
   cxx-options:        -std=c++11
+  if os(osx)
+    cxx-options:        -stdlib=libc++
 
   if arch(x86_64)
     if flag(use-avx512)
@@ -291,18 +293,13 @@ library
         cxx-options:    -msse4.2
 
   if os(windows)
-    extra-libraries: stdc++
     cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
     cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
   else
     if os(osx)
-      extra-libraries:
-          c++
-          pthread
+      extra-libraries: pthread
     else
-      extra-libraries:
-          stdc++
-          pthread
+      extra-libraries: pthread
 
   if flag(integer-simple)
     cpp-options:   -DINTEGER_SIMPLE
