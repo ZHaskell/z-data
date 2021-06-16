@@ -21,6 +21,10 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+
       - name: Setup Haskell
         uses: haskell/actions/setup@v1
         id: setup-haskell-cabal # <--- give it a name for later cache usage
