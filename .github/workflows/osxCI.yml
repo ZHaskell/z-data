@@ -21,6 +21,9 @@ jobs:
             sysctl -n machdep.cpu.features
             sysctl -n machdep.cpu.leaf7_features
 
+      - name: remove llvm
+        run: brew remove llvm
+
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
