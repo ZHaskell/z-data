@@ -639,8 +639,11 @@ doFmt :: FFormat
       -> Builder ()
 {-# INLINABLE doFmt #-}
 doFmt format decs (is, e) = case format of
-    Generic -> doFmt (if e < 0 || e > 7 then Exponent else Fixed) decs (is,e)
-    Exponent -> case decs of
+    Generic -> if e < 0 || e > 7 then doFmtExponent else doFmtFixed
+    Exponent -> doFmtExponent
+    _ -> doFmtFixed
+  where
+    doFmtExponent = case decs of
         Nothing -> case is of
             [0]     -> "0.0e0"
             [i]     -> encodeDigit i >> ".0e" >> int (e-1)
@@ -677,7 +680,7 @@ doFmt format decs (is, e) = case format of
                     encodeDigits ds'
                     encodePrim LETTER_e
                     int (e-1+ei)
-    Fixed -> case decs of
+    doFmtFixed = case decs of
         Nothing
             | e <= 0    -> do
                 "0."
@@ -697,7 +700,7 @@ doFmt format decs (is, e) = case format of
                         d:ds' = if ei > 0 then is' else 0:is'
                     encodeDigit d
                     (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
-  where
+
     encodeDigit = word8 . i2wDec
 
     encodeDigits = mapM_ encodeDigit
