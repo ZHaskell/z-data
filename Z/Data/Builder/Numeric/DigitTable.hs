@@ -16,7 +16,7 @@ module Z.Data.Builder.Numeric.DigitTable where
 import           Data.Primitive.Ptr
 import           GHC.Word
 
-decDigitTable :: Ptr Word8
+decDigitTable :: Ptr Word16
 decDigitTable = Ptr "0001020304050607080910111213141516171819\
                      \2021222324252627282930313233343536373839\
                      \4041424344454647484950515253545556575859\

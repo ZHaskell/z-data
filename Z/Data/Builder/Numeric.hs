@@ -112,7 +112,7 @@ int = intWith defaultIFormat
 --
 intWith :: (Integral a, Bounded a) => IFormat -> a -> Builder ()
 intWith = hs_intWith
-{-# INLINE[0] intWith #-}
+{-# INLINE[1] intWith #-}
 {-# RULES "intWith'/Int8"    intWith = c_intWith  :: IFormat -> Int8    -> Builder () #-}
 {-# RULES "intWith'/Int"     intWith = c_intWith  :: IFormat -> Int     -> Builder () #-}
 {-# RULES "intWith'/Int16"   intWith = c_intWith  :: IFormat -> Int16   -> Builder () #-}
@@ -123,6 +123,14 @@ intWith = hs_intWith
 {-# RULES "intWith'/Word16"  intWith = c_intWith  :: IFormat -> Word16  -> Builder () #-}
 {-# RULES "intWith'/Word32"  intWith = c_intWith  :: IFormat -> Word32  -> Builder () #-}
 {-# RULES "intWith'/Word64"  intWith = c_intWith  :: IFormat -> Word64  -> Builder () #-}
+{-# RULES "intWith'/CShort"  intWith = c_intWith  :: IFormat -> CShort  -> Builder () #-}
+{-# RULES "intWith'/CUShort" intWith = c_intWith  :: IFormat -> CUShort -> Builder () #-}
+{-# RULES "intWith'/CInt"    intWith = c_intWith  :: IFormat -> CInt    -> Builder () #-}
+{-# RULES "intWith'/CUInt"   intWith = c_intWith  :: IFormat -> CUInt   -> Builder () #-}
+{-# RULES "intWith'/CLong"   intWith = c_intWith  :: IFormat -> CLong   -> Builder () #-}
+{-# RULES "intWith'/CULong"  intWith = c_intWith  :: IFormat -> CULong  -> Builder () #-}
+{-# RULES "intWith'/CLLong"  intWith = c_intWith  :: IFormat -> CLLong  -> Builder () #-}
+{-# RULES "intWith'/CULLong" intWith = c_intWith  :: IFormat -> CULLong -> Builder () #-}
 
 -- | Internal formatting backed by C FFI, it must be used with type smaller than 'Word64'.
 --
@@ -338,9 +346,8 @@ writePositiveDec marr off0 ds = go (off0 + ds - 1)
         | v < 10    = writePrimArray marr off (i2wDec v)
         | otherwise = write2 off v
     write2 off i0 = do
-        let i = fromIntegral i0; j = i + i
-        writePrimArray marr off $ indexOffPtr decDigitTable (j + 1)
-        writePrimArray marr (off - 1) $ indexOffPtr decDigitTable j
+        let i = fromIntegral i0;
+        writePrimWord8ArrayAs marr (off-1) $ indexOffPtr decDigitTable i
 
 
 --------------------------------------------------------------------------------

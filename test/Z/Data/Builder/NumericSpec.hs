@@ -8,6 +8,7 @@ import           Data.Word
 import           Data.Int
 import           GHC.Float
 import           Text.Printf                 (printf)
+import           Foreign.C.Types
 import qualified Z.Data.Builder.Numeric as B
 import qualified Z.Data.Builder.Base    as B
 import qualified Z.Data.Text as T
@@ -43,6 +44,22 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
             i === (read . T.unpack . B.buildText $ B.int @Word8 i)
         prop "int roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int8 i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CShort i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CUShort i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CInt i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CUInt i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CLong i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CULong i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CLLong i)
+        prop "int roundtrip" $ \ i ->
+            i === (read . T.unpack . B.buildText $ B.int @CULLong i)
 
     describe "int roundtrip" $ do
         let f = B.defaultIFormat{B.width = 100, B.padding = B.ZeroPadding}
