@@ -7,23 +7,23 @@ import           System.Environment
 import qualified System.Environment as System
 
 main = do
-#ifdef darwin_HOST_OS
     mainArgs <- getArgs
     if head mainArgs == "build"
-    then defaultMainWithHooksArgs simpleUserHooks {
-            preBuild = \ a b -> getSysroot a b >> preBuild simpleUserHooks a b
-#if __GLASGOW_HASKELL__ < 810
-        } mainArgs
+#ifdef darwin_HOST_OS
+    then defaultMainWithHooksArgs simpleUserHooks
+            { preBuild = \ a b -> getSysroot a b >> preBuild simpleUserHooks a b }
 #else
-        } $ if cabalVersion <= mkVersion [3,2,0]
-            then ("--ghc-options":"-optcxx-std=c++11":mainArgs)
-            else mainArgs
+    then defaultMainWithHooksArgs simpleUserHooks
 #endif
+
+#if __GLASGOW_HASKELL__ < 810
+            mainArgs
+#else
+            (if cabalVersion <= mkVersion [3,2,0] then ("--ghc-options":"-optcxx-std=c++11":mainArgs) else mainArgs)
+#endif
+
     else defaultMain
 
-#else
-    defaultMain
-#endif
 
 getSysroot :: Args -> BuildFlags -> IO ()
 getSysroot _ flags = do
@@ -36,4 +36,4 @@ getSysroot _ flags = do
     cflags <- lookupEnv "CFLAGS" >>= return . maybe "" id
     setEnv "CFLAGS" $ "-isysroot " ++ sysroot' ++ " -isystem " ++ system ++ (' ' : cflags)
     cxxflags <- lookupEnv "CXXFLAGS" >>= return . maybe "" id
-    setEnv "CXXFLAGS" $ "-isysroot " ++ sysroot' ++ " -isystem " ++ system ++ (' ' : cxxflags)
+    setEnv "CXXFLAGS" $ "-isysroot " ++ sysroot' ++ " -cxx-isystem " ++ system ++ (' ' : cxxflags)
