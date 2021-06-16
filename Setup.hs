@@ -4,6 +4,7 @@ import           Distribution.Simple.Setup
 import           Distribution.Simple.Utils
 import           Distribution.Simple.Program
 import           System.Environment
+import qualified System.Environment as System
 
 main = do
 #ifdef darwin_HOST_OS
@@ -28,9 +29,11 @@ getSysroot :: Args -> BuildFlags -> IO ()
 getSysroot _ flags = do
     let verbosity = fromFlag $ buildVerbosity flags
     sysroot <- getProgramInvocationOutput verbosity (simpleProgramInvocation "xcrun" ["--show-sdk-path"])
-    let sysroot' = head (lines sysroot) ++ "/usr/include"
-    notice verbosity ("Use sysroot include at: " ++ sysroot')
+    let sysroot' = head (lines sysroot)
+        system = sysroot' ++ "/../../usr/include"
+    notice verbosity ("Use sysroot at: " ++ sysroot')
+    notice verbosity ("Use system include at: " ++ system)
     cflags <- lookupEnv "CFLAGS" >>= return . maybe "" id
-    setEnv "CFLAGS" $ "-isystem " ++ sysroot' ++ (' ' : cflags)
+    setEnv "CFLAGS" $ "-isysroot " ++ sysroot' ++ " -isystem " ++ system ++ (' ' : cflags)
     cxxflags <- lookupEnv "CXXFLAGS" >>= return . maybe "" id
-    setEnv "CXXFLAGS" $ "-isystem " ++ sysroot' ++ (' ' : cxxflags)
+    setEnv "CXXFLAGS" $ "-isysroot " ++ sysroot' ++ " -isystem " ++ system ++ (' ' : cxxflags)
