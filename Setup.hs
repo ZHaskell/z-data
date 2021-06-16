@@ -17,7 +17,7 @@ main = do
     if head mainArgs == "build"
     then do
         let mainArgs' =
-#ifdef darwin_HOST_OS && __GLASGOW_HASKELL__ >= 810
+#if defined(darwin_HOST_OS) && __GLASGOW_HASKELL__ >= 810
                 "--ghc-options":("-optcxx-cxx-isystem"++ system):
                 "--ghc-options":("-optcxx-isystem"++ system):mainArgs
 #else
