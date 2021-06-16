@@ -23,7 +23,7 @@ jobs:
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
+        timeout-minutes: 50
 
       - name: Setup Haskell
         uses: haskell/actions/setup@v1
