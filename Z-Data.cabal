@@ -297,9 +297,13 @@ library
     cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
   else
     if os(osx)
-      extra-libraries: pthread
+      extra-libraries:
+          c++
+          pthread
     else
-      extra-libraries: pthread
+      extra-libraries:
+          stdc++
+          pthread
 
   if flag(integer-simple)
     cpp-options:   -DINTEGER_SIMPLE
