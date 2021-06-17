@@ -293,6 +293,7 @@ library
         cxx-options:    -msse4.2
 
   if os(windows)
+    extra-libraries: stdc++
     cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
     cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
   else
