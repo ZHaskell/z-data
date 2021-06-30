@@ -15,6 +15,7 @@ bug-reports:        https://github.com/ZHaskell/z-data/issues
 extra-source-files:
   AUTHORS
   cbits/bytes.c
+  cbits/compute_float_64.c
   cbits/dtoa.c
   cbits/text.c
   cbits/text_width.c
@@ -224,6 +225,7 @@ library
 
   c-sources:
     cbits/bytes.c
+    cbits/compute_float_64.c
     cbits/dtoa.c
     cbits/text.c
     cbits/text_width.c

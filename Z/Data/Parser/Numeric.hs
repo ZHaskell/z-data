@@ -32,19 +32,27 @@ module Z.Data.Parser.Numeric
   , hexLoop
   , decLoop
   , decLoopIntegerFast
+  , sciToDouble
   ) where
 
 import           Control.Applicative
 import           Control.Monad
 import           Data.Bits
 import           Data.Int
-import qualified Data.Scientific          as Sci
+import qualified Data.Scientific        as Sci
 import           Data.Word
+#ifdef INTEGER_GMP
+import           GHC.Integer.GMP.Internals
+#endif
+import           GHC.Exts
+import           GHC.Float              (expt)
 import           Z.Data.ASCII
 import           Z.Data.Parser.Base     (Parser, (<?>))
 import qualified Z.Data.Parser.Base     as P
 import qualified Z.Data.Vector.Base     as V
 import qualified Z.Data.Vector.Extra    as V
+import           Z.Foreign
+import           System.IO.Unsafe
 
 #define WORD64_SAFE_DIGITS_LEN 19
 #define INT64_SAFE_DIGITS_LEN 18
@@ -276,7 +284,7 @@ rational = "Z.Data.Parser.Numeric.rational" <?> scientificallyInternal realToFra
 --
 double :: Parser Double
 {-# INLINE double #-}
-double = "Z.Data.Parser.Numeric.double" <?> scientificallyInternal Sci.toRealFloat
+double = "Z.Data.Parser.Numeric.double" <?> scientificallyInternal sciToDouble
 
 -- | Parse a rational number and round to 'Float'.
 --
@@ -321,7 +329,7 @@ scientificallyInternal h = do
                 else
                     let i = decLoopIntegerFast intPart
                         f = decLoopIntegerFast fracPart
-                    in i * 10 ^ flen + f
+                    in i * (expt 10 flen) + f
         parseE base flen) <|> (parseE (decLoopIntegerFast intPart) 0)
 
     pure $! if sign /= MINUS then h sci else h (negate sci)
@@ -380,7 +388,25 @@ rational' = "Z.Data.Parser.Numeric.rational'" <?> scientificallyInternal' realTo
 -- reference: https://tools.ietf.org/html/rfc8259#section-6
 double' :: Parser Double
 {-# INLINE double' #-}
-double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' Sci.toRealFloat
+double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' sciToDouble
+
+-- | Faster scientific to double conversion using <https://github.com/lemire/fast_double_parser/>.
+sciToDouble :: Sci.Scientific -> Double
+sciToDouble sci = case c of
+#ifdef INTEGER_GMP
+    (S# i#) -> unsafeDupablePerformIO $ do
+        let i = (I# i#)
+            s = if i >= 0 then 0 else 1
+            i' = fromIntegral $ if i >= 0 then i else (0-i)
+        (success, r) <- allocPrimUnsafe @Word8 (compute_float_64 (fromIntegral e) i' s)
+        if success == 0
+        then return $! Sci.toRealFloat sci
+        else return r
+#endif
+    _ -> Sci.toRealFloat sci
+  where
+    e = Sci.base10Exponent sci
+    c = Sci.coefficient sci
 
 -- | Parse a rational number and round to 'Float' using stricter grammer.
 --
@@ -425,7 +451,7 @@ scientificallyInternal' h = do
                     else
                         let i = decLoopIntegerFast intPart
                             f = decLoopIntegerFast fracPart
-                        in i * 10 ^ flen + f
+                        in i * (expt 10 flen) + f
             parseE base flen
         _ -> parseE (decLoopIntegerFast intPart) 0
     pure $! if sign /= MINUS then h sci else h (negate sci)
@@ -437,3 +463,9 @@ scientificallyInternal' h = do
             Just ec | ec == LETTER_e || ec == LETTER_E -> P.skipWord8 *> int
             _ -> pure 0
         pure $! Sci.scientific c (e' - e)
+
+foreign import ccall unsafe compute_float_64 :: Int64   -- ^ power of 10
+                                             -> Word64  -- ^ base
+                                             -> Word8   -- ^ negative
+                                             -> MBA# Word8      -- ^ success?
+                                             -> IO Double       -- ^ result

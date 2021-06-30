@@ -20,18 +20,19 @@ module Z.Data.Parser.Time
     , zonedTime
     ) where
 
-import Control.Applicative ((<|>))
-import Z.Data.Parser.Base       (Parser)
-import qualified Z.Data.Parser.Base       as P
-import qualified Z.Data.Parser.Numeric    as P
-import Z.Data.ASCII
-import Data.Fixed (Pico, Fixed(..))
-import Data.Int (Int64)
-import Data.Maybe (fromMaybe)
-import Data.Time.Calendar (Day, fromGregorianValid)
-import Data.Time.Clock (UTCTime(..))
-import qualified Z.Data.Vector  as V
-import Data.Time.LocalTime      hiding (utc)
+import           Control.Applicative   ((<|>))
+import           Data.Fixed            (Fixed (..), Pico)
+import           Data.Int              (Int64)
+import           Data.Maybe            (fromMaybe)
+import           Data.Time.Calendar    (Day, fromGregorianValid)
+import           Data.Time.Clock       (UTCTime (..))
+import           Data.Time.LocalTime   hiding (utc)
+import           GHC.Float             (expt)
+import           Z.Data.ASCII
+import           Z.Data.Parser.Base    (Parser)
+import qualified Z.Data.Parser.Base    as P
+import qualified Z.Data.Parser.Numeric as P
+import qualified Z.Data.Vector         as V
 
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
 day :: Parser Day
