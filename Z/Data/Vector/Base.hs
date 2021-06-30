@@ -745,7 +745,7 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
 -- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
 replicateMVec :: (Applicative f, Vec v a) => Int -> f a -> f (v a)
 {-# INLINE [1] replicateMVec #-}
-{-# RULES "replicateMVec/PrimMonad" forall n (x :: IO a). replicateMVec n x = replicatePMVec n x #-}
+{-# RULES "replicateMVec/PrimMonad" forall n (x :: PrimMonad m => m a). replicateMVec n x = replicatePMVec n x #-}
 replicateMVec n f = packN n <$> replicateM n f
 
 -- | A version of 'replicateM' which works on 'PrimMonad' and 'Vec'.
