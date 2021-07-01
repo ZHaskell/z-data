@@ -353,7 +353,9 @@ decodePrim = do
     n = getUnalignedSize (unalignedSize @a)
 
 #define DECODE_HOST(f, type) \
-    f :: Parser type; {-# INLINE f #-}; f = decodePrim
+    f :: Parser type; {-# INLINE f #-}; f = decodePrim; \
+    -- ^ Decode type in host endian order.
+
 DECODE_HOST(decodeWord  , Word   )
 DECODE_HOST(decodeWord64, Word64 )
 DECODE_HOST(decodeWord32, Word32 )
@@ -389,7 +391,9 @@ decodePrimLE = do
     n = getUnalignedSize (unalignedSize @(LE a))
 
 #define DECODE_LE(f, type) \
-    f :: Parser type; {-# INLINE f #-}; f = decodePrimLE
+    f :: Parser type; {-# INLINE f #-}; f = decodePrimLE; \
+    -- ^ Decode type in little endian order.
+
 DECODE_LE(decodeWordLE  , Word   )
 DECODE_LE(decodeWord64LE, Word64 )
 DECODE_LE(decodeWord32LE, Word32 )
@@ -423,7 +427,9 @@ decodePrimBE = do
     n = getUnalignedSize (unalignedSize @(BE a))
 
 #define DECODE_BE(f, type) \
-    f :: Parser type; {-# INLINE f #-}; f = decodePrimBE
+    f :: Parser type; {-# INLINE f #-}; f = decodePrimBE; \
+    -- ^ Decode type in big endian order.
+
 DECODE_BE(decodeWordBE  , Word   )
 DECODE_BE(decodeWord64BE, Word64 )
 DECODE_BE(decodeWord32BE, Word32 )
