@@ -27,7 +27,6 @@ import           Data.Maybe            (fromMaybe)
 import           Data.Time.Calendar    (Day, fromGregorianValid)
 import           Data.Time.Clock       (UTCTime (..))
 import           Data.Time.LocalTime   hiding (utc)
-import           GHC.Float             (expt)
 import           Z.Data.ASCII
 import           Z.Data.Parser.Base    (Parser)
 import qualified Z.Data.Parser.Base    as P
@@ -41,7 +40,7 @@ day = "date must be of form [+,-]YYYY-MM-DD" P.<?> do
     y <- (P.integer <* P.word8 HYPHEN)
     m <- (twoDigits <* P.word8 HYPHEN)
     d <- twoDigits
-    maybe (P.fail' "invalid date") return (fromGregorianValid (absOrNeg y) m d)
+    maybe (P.fail' "invalid date") return $! fromGregorianValid (absOrNeg y) m d
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int

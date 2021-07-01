@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 0.9.0.0  -- 2021-07-01
+
+* Add `decodeXXX/deocodeXXXLE/deodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Parser`.
+* Rename `replicateMVec/traveseVec/traveseVec_` tp `replicateM/travese/travese_`, fix related `PrimMonad` rules not firing issue.
+* Add a faster `sciToDouble` based on https://github.com/lemire/fast_double_parser, improve `double/double'` parser.
+
 ## 0.8.8.0  -- 2021-06-13
 
 * Add `withCPtrForever` and `addCPtrDep` to `Z.Foreign.CPtr` module.

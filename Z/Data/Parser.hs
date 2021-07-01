@@ -68,9 +68,16 @@ module Z.Data.Parser
   , zonedTime
     -- * Misc
   , fail', failWithInput, unsafeLiftIO
+    -- * Specialized primitive parser
+  , decodeWord  , decodeWord64, decodeWord32, decodeWord16, decodeWord8
+  , decodeInt   , decodeInt64 , decodeInt32 , decodeInt16 , decodeInt8 , decodeDouble, decodeFloat
+  , decodeWordLE  , decodeWord64LE , decodeWord32LE , decodeWord16LE
+  , decodeIntLE   , decodeInt64LE , decodeInt32LE , decodeInt16LE , decodeDoubleLE , decodeFloatLE
+  , decodeWordBE  , decodeWord64BE , decodeWord32BE , decodeWord16BE
+  , decodeIntBE   , decodeInt64BE , decodeInt32BE , decodeInt16BE , decodeDoubleBE , decodeFloatBE
   ) where
 
 import           Z.Data.Parser.Base
 import           Z.Data.Parser.Numeric
 import           Z.Data.Parser.Time
-import           Prelude hiding (take, takeWhile)
+import           Prelude hiding (take, takeWhile, decodeFloat)

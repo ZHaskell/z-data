@@ -74,7 +74,7 @@ hex :: forall a.(Integral a, FiniteBits a) => Parser a
 hex = "Z.Data.Parser.Numeric.hex" <?> do
     bs <- P.takeWhile1 isHexDigit
     if V.length bs <= finiteBitSize (undefined :: a) `unsafeShiftR` 2
-    then return (hexLoop 0 bs)
+    then return $! hexLoop 0 bs
     else P.fail' "hex numeric number overflow"
 
 -- | Same with 'hex', but only take as many as (bit_size/4) bytes.
@@ -134,12 +134,12 @@ uint = "Z.Data.Parser.Numeric.uint" <?> do
     then do
         let w64 = decLoop @Word64 0 bs
         if w64 <= fromIntegral (maxBound :: a)
-        then return (fromIntegral w64)
+        then return $! fromIntegral w64
         else P.fail' "decimal numeric value overflow"
     else do
         let w64 = decLoop @Integer 0 bs
         if w64 <= fromIntegral (maxBound :: a)
-        then return (fromIntegral w64)
+        then return $! fromIntegral w64
         else P.fail' "decimal numeric value overflow"
 
 -- | Decode digits sequence within an array.
@@ -195,12 +195,12 @@ int = "Z.Data.Parser.Numeric.int" <?> do
         then do
             let w64 = decLoop @Word64 0 bs
             if w64 <= fromIntegral (maxBound :: a)
-            then return (fromIntegral w64)
+            then return $! fromIntegral w64
             else P.fail' "decimal numeric value overflow"
         else do
             let w64 = decLoop @Integer 0 bs
             if w64 <= fromIntegral (maxBound :: a)
-            then return (fromIntegral w64)
+            then return $! fromIntegral w64
             else P.fail' "decimal numeric value overflow"
     loopNe = do
         bs <- P.takeWhile1 isDigit
@@ -208,12 +208,12 @@ int = "Z.Data.Parser.Numeric.int" <?> do
         then do
             let i64 = negate (decLoop @Int64 0 bs)
             if i64 >= fromIntegral (minBound :: a)
-            then return (fromIntegral i64)
+            then return $! fromIntegral i64
             else P.fail' "decimal numeric value overflow"
         else do
             let i64 = negate (decLoop @Integer 0 bs)
             if i64 >= fromIntegral (minBound :: a)
-            then return (fromIntegral i64)
+            then return $! fromIntegral i64
             else P.fail' "decimal numeric value overflow"
 
 -- | Same with 'int', but sliently cast if overflow happens.
@@ -337,7 +337,8 @@ scientificallyInternal h = do
     {-# INLINE parseE #-}
     parseE c e =
         (do _ <- P.satisfy (\w -> w ==  LETTER_e || w == LETTER_E)
-            Sci.scientific c . subtract e <$> int) <|> pure (Sci.scientific c (negate e))
+            e' <- int
+            pure $! Sci.scientific c (e' - e)) <|> (pure $! Sci.scientific c (negate e))
 
 --------------------------------------------------------------------------------
 
@@ -401,7 +402,7 @@ sciToDouble sci = case c of
         (success, r) <- allocPrimUnsafe @Word8 (compute_float_64 (fromIntegral e) i' s)
         if success == 0
         then return $! Sci.toRealFloat sci
-        else return r
+        else return $! r
 #endif
     _ -> Sci.toRealFloat sci
   where

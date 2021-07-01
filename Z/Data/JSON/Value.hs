@@ -104,7 +104,7 @@ instance Arbitrary Value where
                 3 -> do
                     c <- arbitrary
                     e <- arbitrary
-                    pure . Number $ scientific c e
+                    pure . Number $! scientific c e
                 4 -> Bool <$> arbitrary
                 _ -> pure Null
 

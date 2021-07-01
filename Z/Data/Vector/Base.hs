@@ -40,7 +40,7 @@ module Z.Data.Vector.Base (
   , null
   , length
   , append
-  , map, map', imap', traverseVec, traverseWithIndex, traverseVec_, traverseWithIndex_
+  , map, map', imap', traverse, traverseWithIndex, traverse_, traverseWithIndex_
   , foldl', ifoldl', foldl1', foldl1Maybe'
   , foldr', ifoldr', foldr1', foldr1Maybe'
     -- ** Special folds
@@ -56,7 +56,7 @@ module Z.Data.Vector.Base (
   , mapAccumR
   -- ** Generating and unfolding vector
   , replicate
-  , replicateMVec
+  , replicateM
   , cycleN
   , unfoldr
   , unfoldrN
@@ -72,6 +72,8 @@ module Z.Data.Vector.Base (
   , errorEmptyVector
   , errorOutRange
   , castVector
+  , replicatePM
+  , traverseWithIndexPM
   -- * C FFI
   , c_strcmp
   , c_memchr
@@ -84,7 +86,8 @@ module Z.Data.Vector.Base (
 
 import           Control.DeepSeq
 import           Control.Exception
-import           Control.Monad
+import           Control.Monad                  hiding (replicateM)
+import qualified Control.Monad                  as M (replicateM)
 import           Control.Monad.ST
 import           Control.Monad.Primitive
 import           Data.Bits
@@ -313,7 +316,7 @@ instance F.Foldable Vector where
 
 instance T.Traversable Vector where
     {-# INLINE traverse #-}
-    traverse = traverseVec
+    traverse = traverse
 
 instance Arbitrary a => Arbitrary (Vector a) where
     arbitrary = do
@@ -344,15 +347,17 @@ instance Hashable1 Vector where
 --
 -- There're rules to optimize the intermedia list away when @f@ is an instance of 'PrimMoand',
 -- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
-traverseVec :: (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
-{-# INLINE [1] traverseVec #-}
-{-# RULES "traverseVec/PrimMonad" forall (f :: PrimMonad m => a -> m b). traverseVec f = traverseWithIndexPM (const f) #-}
-traverseVec f v = packN (length v) <$> T.traverse f (unpack v)
+traverse :: (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
+{-# INLINE [1] traverse #-}
+{-# RULES "traverse/IO" forall (f :: a -> IO b). traverse f = traverseWithIndexPM (const f) #-}
+{-# RULES "traverse/ST" forall (f :: a -> ST s b). traverse f = traverseWithIndexPM (const f) #-}
+traverse f v = packN (length v) <$> T.traverse f (unpack v)
 
 -- | Traverse vector and gather result in another vector.
 traverseWithIndex :: (Vec v a, Vec u b, Applicative f) => (Int -> a -> f b) -> v a -> f (u b)
 {-# INLINE [1] traverseWithIndex #-}
-{-# RULES "traverseWithIndex/PrimMonad" forall (f :: PrimMonad m => Int -> a -> m b). traverseWithIndex f = traverseWithIndexPM f #-}
+{-# RULES "traverseWithIndex/IO" forall (f :: Int -> a -> IO b). traverseWithIndex f = traverseWithIndexPM f #-}
+{-# RULES "traverseWithIndex/ST" forall (f :: Int -> a -> ST s b). traverseWithIndex f = traverseWithIndexPM f #-}
 traverseWithIndex f v = packN (length v) <$> zipWithM f [0..] (unpack v)
 
 traverseWithIndexPM :: forall m v u a b. (PrimMonad m, Vec v a, Vec u b) => (Int -> a -> m b) -> v a -> m (u b)
@@ -373,9 +378,9 @@ traverseWithIndexPM f (Vec arr s l)
             go marr (i+1)
 
 -- | Traverse vector without gathering result.
-traverseVec_ :: (Vec v a, Applicative f) => (a -> f b) -> v a -> f ()
-{-# INLINE traverseVec_ #-}
-traverseVec_ f (Vec arr s l) = go s
+traverse_ :: (Vec v a, Applicative f) => (a -> f b) -> v a -> f ()
+{-# INLINE traverse_ #-}
+traverse_ f (Vec arr s l) = go s
   where
     end = s + l
     go !i
@@ -743,15 +748,16 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
 --
 -- There're rules to optimize the intermedia list away when m is an instance of 'PrimMoand',
 -- such as 'IO', 'ST' or 'Z.Data.Parser.Parser'.
-replicateMVec :: (Applicative f, Vec v a) => Int -> f a -> f (v a)
-{-# INLINE [1] replicateMVec #-}
-{-# RULES "replicateMVec/PrimMonad" forall n (x :: PrimMonad m => m a). replicateMVec n x = replicatePMVec n x #-}
-replicateMVec n f = packN n <$> replicateM n f
+replicateM :: (Applicative f, Vec v a) => Int -> f a -> f (v a)
+{-# INLINE [1] replicateM #-}
+{-# RULES "replicateM/IO" forall n (x :: IO a). replicateM n x = replicatePM n x #-}
+{-# RULES "replicateM/ST" forall n (x :: ST s a). replicateM n x = replicatePM n x #-}
+replicateM n f = packN n <$> M.replicateM n f
 
 -- | A version of 'replicateM' which works on 'PrimMonad' and 'Vec'.
-replicatePMVec :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
-{-# INLINE replicatePMVec #-}
-replicatePMVec n f = do
+replicatePM :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
+{-# INLINE replicatePM #-}
+replicatePM n f = do
     marr <- newArr n
     ba <- go marr 0
     (return $! fromArr ba 0 n)

@@ -34,6 +34,13 @@ module Z.Data.Parser.Base
   , text
     -- * Error reporting
   , fail', failWithInput, unsafeLiftIO
+    -- * Specialized primitive parser
+  , decodeWord  , decodeWord64, decodeWord32, decodeWord16, decodeWord8
+  , decodeInt   , decodeInt64 , decodeInt32 , decodeInt16 , decodeInt8 , decodeDouble, decodeFloat
+  , decodeWordLE  , decodeWord64LE , decodeWord32LE , decodeWord16LE
+  , decodeIntLE   , decodeInt64LE , decodeInt32LE , decodeInt16LE , decodeDoubleLE , decodeFloatLE
+  , decodeWordBE  , decodeWord64BE , decodeWord32BE , decodeWord16BE
+  , decodeIntBE   , decodeInt64BE , decodeInt32BE , decodeInt16BE , decodeDoubleBE , decodeFloatBE
   ) where
 
 import           Control.Applicative
@@ -47,7 +54,7 @@ import           Data.Word
 import           Data.Bits                          ((.&.))
 import           GHC.Types
 import           GHC.Exts                           (State#, runRW#, unsafeCoerce#)
-import           Prelude                            hiding (take, takeWhile)
+import           Prelude                            hiding (take, takeWhile, decodeFloat)
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
 import qualified Z.Data.Text                        as T
@@ -136,9 +143,13 @@ instance Monad Parser where
 instance PrimMonad Parser where
     type PrimState Parser = ParserState
     {-# INLINE primitive #-}
-    primitive = \ io -> Parser $ \ _ k st inp ->
+    primitive io = Parser (\ _ k st inp ->
         let !(# st', r #) = io st
-        in k st' r inp
+        in k st' r inp)
+
+{-# RULES "replicateM/Parser" forall n (x :: Parser a). V.replicateM n x = V.replicatePM n x #-}
+{-# RULES "traverse/Parser" forall (f :: a -> Parser b). V.traverse f = V.traverseWithIndexPM (const f) #-}
+{-# RULES "traverseWithIndex/Parser" forall (f :: Int -> a -> Parser b). V.traverseWithIndex f = V.traverseWithIndexPM f #-}
 
 -- | Unsafely lifted an `IO` action into 'Parser'.
 --
@@ -262,31 +273,29 @@ match p = do
 --
 -- Since this parser is used in many other parsers, an extra error param is provide
 -- to attach custom error info.
-ensureN :: Int -> ParseError -> Parser ()
+ensureN :: Int -> T.Text -> Parser ()
 {-# INLINE ensureN #-}
 ensureN n0 err = Parser $ \ kf k s inp -> do
     let l = V.length inp
-    if l >= n0
+    if n0 <= l
     then k s () inp
-    else Partial (ensureNPartial l inp kf k s)
+    else Partial (ensureNPartial err (n0-l) inp kf k s)
   where
-    {-# INLINABLE ensureNPartial #-}
-    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
-                   -> (State# ParserState -> () -> ParseStep ParseError r)
-                   -> State# ParserState -> ParseStep ParseError r
-    ensureNPartial l0 inp0 kf k s0 =
-        let go acc !l s = \ inp -> do
-                let l' = V.length inp
-                if l' == 0
-                then kf err (V.concat (reverse (inp:acc)))
-                else do
-                    let l'' = l + l'
-                    if l'' < n0
-                    then Partial (go (inp:acc) l'' s)
-                    else
-                        let !inp' = V.concat (reverse (inp:acc))
-                        in k s () inp'
-        in go [inp0] l0 s0
+
+ensureNPartial :: forall r. T.Text -> Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
+               -> (State# ParserState -> () -> ParseStep ParseError r)
+               -> State# ParserState -> ParseStep ParseError r
+{-# INLINE ensureNPartial #-}
+ensureNPartial err !l0 inp0 kf k s0 =
+    let go acc !l s = \ inp -> do
+            let l' = V.length inp
+            if l' == 0
+            then kf [err] (V.concat (reverse (inp:acc)))
+            else do
+                if l <= l'
+                then let !inp' = V.concat (reverse (inp:acc)) in k s () inp'
+                else Partial (go (inp:acc) (l - l') s)
+    in go [inp0] l0 s0
 
 -- | Get current input chunk, draw new chunk if neccessary. 'V.null' means EOF.
 --
@@ -336,12 +345,28 @@ decodePrim :: forall a. (Unaligned a) => Parser a
 {-# SPECIALIZE INLINE decodePrim :: Parser Double #-}
 {-# SPECIALIZE INLINE decodePrim :: Parser Float #-}
 decodePrim = do
-    ensureN n ["Z.Data.Parser.Base.decodePrim: not enough bytes"]
+    ensureN n "Z.Data.Parser.Base.decodePrim: not enough bytes"
     Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
         in k s r (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @a)
+
+#define DECODE_HOST(f, type) \
+    {-| Decode type in host order. -}; \
+    f :: Parser type; {-# INLINE f #-}; f = decodePrim
+DECODE_HOST(decodeWord  , Word   )
+DECODE_HOST(decodeWord64, Word64 )
+DECODE_HOST(decodeWord32, Word32 )
+DECODE_HOST(decodeWord16, Word16 )
+DECODE_HOST(decodeWord8 , Word8  )
+DECODE_HOST(decodeInt   , Int    )
+DECODE_HOST(decodeInt64 , Int64  )
+DECODE_HOST(decodeInt32 , Int32  )
+DECODE_HOST(decodeInt16 , Int16  )
+DECODE_HOST(decodeInt8  , Int8   )
+DECODE_HOST(decodeDouble, Double )
+DECODE_HOST(decodeFloat , Float  )
 
 -- | Decode a primitive type in little endian.
 decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
@@ -357,12 +382,26 @@ decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Double #-}
 {-# SPECIALIZE INLINE decodePrimLE :: Parser Float #-}
 decodePrimLE = do
-    ensureN n ["Z.Data.Parser.Base.decodePrimLE: not enough bytes"]
+    ensureN n "Z.Data.Parser.Base.decodePrimLE: not enough bytes"
     Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
         in k s (getLE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @(LE a))
+
+#define DECODE_LE(f, type) \
+    {-| Decode type in little endian order. -}; \
+    f :: Parser type; {-# INLINE f #-}; f = decodePrimLE
+DECODE_LE(decodeWordLE  , Word   )
+DECODE_LE(decodeWord64LE, Word64 )
+DECODE_LE(decodeWord32LE, Word32 )
+DECODE_LE(decodeWord16LE, Word16 )
+DECODE_LE(decodeIntLE   , Int    )
+DECODE_LE(decodeInt64LE , Int64  )
+DECODE_LE(decodeInt32LE , Int32  )
+DECODE_LE(decodeInt16LE , Int16  )
+DECODE_LE(decodeDoubleLE, Double )
+DECODE_LE(decodeFloatLE , Float  )
 
 -- | Decode a primitive type in big endian.
 decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
@@ -378,12 +417,26 @@ decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Double #-}
 {-# SPECIALIZE INLINE decodePrimBE :: Parser Float #-}
 decodePrimBE = do
-    ensureN n ["Z.Data.Parser.Base.decodePrimBE: not enough bytes"]
+    ensureN n "Z.Data.Parser.Base.decodePrimBE: not enough bytes"
     Parser (\ _ k s (V.PrimVector ba i len) ->
         let !r = indexPrimWord8ArrayAs ba i
         in k s (getBE r) (V.PrimVector ba (i+n) (len-n)))
   where
     n = getUnalignedSize (unalignedSize @(BE a))
+
+#define DECODE_BE(f, type) \
+    {-| Decode type in big endian order. -}; \
+    f :: Parser type; {-# INLINE f #-}; f = decodePrimBE
+DECODE_BE(decodeWordBE  , Word   )
+DECODE_BE(decodeWord64BE, Word64 )
+DECODE_BE(decodeWord32BE, Word32 )
+DECODE_BE(decodeWord16BE, Word16 )
+DECODE_BE(decodeIntBE   , Int    )
+DECODE_BE(decodeInt64BE , Int64  )
+DECODE_BE(decodeInt32BE , Int32  )
+DECODE_BE(decodeInt16BE , Int16  )
+DECODE_BE(decodeDoubleBE, Double )
+DECODE_BE(decodeFloatBE , Float  )
 
 -- | A stateful scanner.  The predicate consumes and transforms a
 -- state argument, and each transformed state is passed to successive
@@ -479,7 +532,7 @@ peek =
 satisfy :: (Word8 -> Bool) -> Parser Word8
 {-# INLINE satisfy #-}
 satisfy p = do
-    ensureN 1 ["Z.Data.Parser.Base.satisfy: not enough bytes"]
+    ensureN 1 "Z.Data.Parser.Base.satisfy: not enough bytes"
     Parser $ \ kf k s inp ->
         let w = V.unsafeHead inp
         in if p w
@@ -494,7 +547,7 @@ satisfy p = do
 satisfyWith :: (Word8 -> a) -> (a -> Bool) -> Parser a
 {-# INLINE satisfyWith #-}
 satisfyWith f p = do
-    ensureN 1 ["Z.Data.Parser.Base.satisfyWith: not enough bytes"]
+    ensureN 1 "Z.Data.Parser.Base.satisfyWith: not enough bytes"
     Parser $ \ kf k s inp ->
         let a = f (V.unsafeHead inp)
         in if p a
@@ -506,7 +559,7 @@ satisfyWith f p = do
 word8 :: Word8 -> Parser ()
 {-# INLINE word8 #-}
 word8 w' = do
-    ensureN 1 ["Z.Data.Parser.Base.word8: not enough bytes"]
+    ensureN 1 "Z.Data.Parser.Base.word8: not enough bytes"
     Parser (\ kf k s inp ->
         let w = V.unsafeHead inp
         in if w == w'
@@ -579,7 +632,7 @@ anyCharUTF8 = do
         else k st (Left 1) inp
     case r of
         Left d -> do
-            ensureN d ["Z.Data.Parser.Base.anyCharUTF8: not enough bytes"]
+            ensureN d "Z.Data.Parser.Base.anyCharUTF8: not enough bytes"
             anyCharUTF8
         Right c -> return c
 
@@ -676,7 +729,7 @@ take :: Int -> Parser V.Bytes
 {-# INLINE take #-}
 take n = do
     -- we use unsafe slice, guard negative n here
-    ensureN n' ["Z.Data.Parser.Base.take: not enough bytes"]
+    ensureN n' "Z.Data.Parser.Base.take: not enough bytes"
     Parser (\ _ k s inp ->
         let !r = V.unsafeTake n' inp
             !inp' = V.unsafeDrop n' inp
@@ -788,7 +841,7 @@ bytes :: V.Bytes -> Parser ()
 {-# INLINE bytes #-}
 bytes bs = do
     let n = V.length bs
-    ensureN n ["Z.Data.Parser.Base.bytes: not enough bytes"]
+    ensureN n "Z.Data.Parser.Base.bytes: not enough bytes"
     Parser (\ kf k s inp ->
         if bs == V.unsafeTake n inp
         then k s () $! V.unsafeDrop n inp
@@ -806,7 +859,7 @@ bytesCI :: V.Bytes -> Parser ()
 bytesCI bs = do
     let n = V.length bs
     -- casefold an ASCII string should not change it's length
-    ensureN n ["Z.Data.Parser.Base.bytesCI: not enough bytes"]
+    ensureN n "Z.Data.Parser.Base.bytesCI: not enough bytes"
     Parser (\ kf k s inp ->
         if bs' == CI.foldCase (V.unsafeTake n inp)
         then k s () $! V.unsafeDrop n inp
