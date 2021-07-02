@@ -131,6 +131,7 @@ flag use-avx512
 library
   exposed-modules:
     Z.Data.Array
+    Z.Data.Array.Buffer
     Z.Data.Array.Cast
     Z.Data.Array.Checked
     Z.Data.Array.QQ
@@ -154,8 +155,6 @@ library
     Z.Data.Parser.Numeric
     Z.Data.Parser.Time
     Z.Data.PrimRef
-    Z.Data.PrimRef.PrimIORef
-    Z.Data.PrimRef.PrimSTRef
     Z.Data.Text
     Z.Data.Text.Base
     Z.Data.Text.Extra
