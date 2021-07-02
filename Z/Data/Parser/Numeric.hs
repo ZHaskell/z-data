@@ -391,11 +391,16 @@ double' :: Parser Double
 {-# INLINE double' #-}
 double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' sciToDouble
 
+#define FASTFLOAT_SMALLEST_POWER -325
+#define FASTFLOAT_LARGEST_POWER 308
+
 -- | Faster scientific to double conversion using <https://github.com/lemire/fast_double_parser/>.
+--
+-- See @cbits/compute_float_64.c@.
 sciToDouble :: Sci.Scientific -> Double
 sciToDouble sci = case c of
 #ifdef INTEGER_GMP
-    (S# i#) -> unsafeDupablePerformIO $ do
+    (S# i#) | (e >= FASTFLOAT_SMALLEST_POWER && e <= FASTFLOAT_LARGEST_POWER) -> unsafeDupablePerformIO $ do
         let i = (I# i#)
             s = if i >= 0 then 0 else 1
             i' = fromIntegral $ if i >= 0 then i else (0-i)
