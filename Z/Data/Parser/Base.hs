@@ -30,7 +30,7 @@ module Z.Data.Parser.Base
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
   , skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
+  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, takeUTF8,  bytes, bytesCI
   , text
     -- * Error reporting
   , fail', failWithInput, unsafeLiftIO
@@ -196,14 +196,16 @@ failWithInput f = Parser (\ kf _ _ inp -> kf [f inp] inp)
 -- | Parse the complete input, without resupplying
 parse' :: Parser a -> V.Bytes -> Either ParseError a
 {-# INLINE parse' #-}
-parse' (Parser p) inp = snd $ finishParsing (runRW# (\ s ->
-        unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp)))
+parse' p = snd . parse p
 
 -- | Parse the complete input, without resupplying, return the rest bytes
 parse :: Parser a -> V.Bytes -> (V.Bytes, Either ParseError a)
 {-# INLINE parse #-}
-parse (Parser p) inp = finishParsing (runRW# ( \ s ->
-    unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp)))
+parse (Parser p) inp =
+    case (runRW# ( \ s -> unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp))) of
+        Success a rest    -> (rest, Right a)
+        Failure errs rest -> (rest, Left errs)
+        Partial f         -> finishParsing (f V.empty)
 
 -- | Parse an input chunk
 parseChunk :: Parser a -> V.Bytes -> Result ParseError a
@@ -728,6 +730,7 @@ skipSpaces :: Parser ()
 {-# INLINE skipSpaces #-}
 skipSpaces = skipWhile isSpace
 
+-- | Take N bytes.
 take :: Int -> Parser V.Bytes
 {-# INLINE take #-}
 take n = do
@@ -819,6 +822,14 @@ takeRemaining = Parser (\ _ k s inp -> Partial (takeRemainingPartial k s inp))
                 then let !r = V.concat (reverse acc) in k s r inp
                 else let acc' = inp : acc in Partial (go acc' s)
         in go [want] s0
+
+-- | Take N bytes and validate as UTF8, failed if not UTF8 encoded.
+takeUTF8 :: Int -> Parser T.Text
+{-# INLINE takeUTF8 #-}
+takeUTF8 n = do
+    bs <- take n
+    case T.validateMaybe bs of Just t -> pure t
+                               _ -> fail' $ "Z.Data.Parser.Base.takeUTF8: illegal UTF8 bytes: " <> T.toText bs
 
 -- | Similar to 'take', but requires the predicate to succeed on next N bytes
 -- of input, and take N bytes(no matter if N+1 byte satisfy predicate or not).

@@ -36,11 +36,10 @@ import qualified Z.Data.Vector         as V
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
 day :: Parser Day
 day = "date must be of form [+,-]YYYY-MM-DD" P.<?> do
-    absOrNeg <- negate <$ P.word8 MINUS <|> id <$ P.word8 PLUS <|> pure id
     y <- (P.integer <* P.word8 HYPHEN)
     m <- (twoDigits <* P.word8 HYPHEN)
     d <- twoDigits
-    maybe (P.fail' "invalid date") return $! fromGregorianValid (absOrNeg y) m d
+    maybe (P.fail' "invalid date") return $! fromGregorianValid y m d
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
