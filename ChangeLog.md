@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 1.0.0.0  -- 2021-07-05
+
+* Simplify `Z.Data.PrimRef` to use `PrimMonad`.
+
 ## 0.9.0.0  -- 2021-07-01
 
 * Add `decodeXXX/deocodeXXXLE/deodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Parser`.

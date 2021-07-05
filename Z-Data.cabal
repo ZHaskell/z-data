@@ -131,7 +131,6 @@ flag use-avx512
 library
   exposed-modules:
     Z.Data.Array
-    Z.Data.Array.Buffer
     Z.Data.Array.Cast
     Z.Data.Array.Checked
     Z.Data.Array.QQ
