@@ -214,7 +214,7 @@ w2iDec w = fromIntegral w - 48
 --
 -- A fast version to decode 'Integer' using machine word as much as possible.
 decLoopIntegerFast :: V.Bytes -> Integer
-{-# INLINABLE decLoopIntegerFast #-}
+{-# INLINE decLoopIntegerFast #-}
 decLoopIntegerFast bs
     | V.length bs <= WORD64_SAFE_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
     | otherwise                            = decLoop @Integer 0 bs

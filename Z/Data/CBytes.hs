@@ -191,7 +191,7 @@ instance CoArbitrary CBytes where
 
 -- | Poke 'CBytes' until a \\NUL terminator(or to the end of the array if there's none).
 peekMBACBytes :: MBA# Word8 -> Int -> IO CBytes
-{-# INLINABLE peekMBACBytes #-}
+{-# INLINE peekMBACBytes #-}
 peekMBACBytes mba# i = do
     b <- getSizeofMutableByteArray (MutableByteArray mba#)
     let rest = b-i
@@ -206,13 +206,14 @@ peekMBACBytes mba# i = do
 
 -- | Poke 'CBytes' with \\NUL terminator.
 pokeMBACBytes :: MBA# Word8 -> Int -> CBytes -> IO ()
-{-# INLINABLE pokeMBACBytes #-}
+{-# INLINE pokeMBACBytes #-}
 pokeMBACBytes mba# i (CBytes pa) = do
         let l = sizeofPrimArray pa
         copyPrimArray (MutablePrimArray mba# :: MutablePrimArray RealWorld Word8) i pa 0 l
 
+-- | Index a 'CBytes' until a \\NUL terminator(or to the end of the array if there's none).
 indexBACBytes :: BA# Word8 -> Int -> CBytes
-{-# INLINABLE indexBACBytes #-}
+{-# INLINE indexBACBytes #-}
 indexBACBytes ba# i = runST (do
     let b = sizeofByteArray (ByteArray ba#)
         rest = b-i
@@ -277,7 +278,7 @@ empty = CBytes (V.singleton 0)
 
 -- | Singleton 'CBytes'.
 singleton :: Word8 -> CBytes
-{-# INLINABLE singleton #-}
+{-# INLINE singleton #-}
 singleton w = runST (do
     buf <- newPrimArray 2
     writePrimArray buf 0 w
@@ -321,7 +322,7 @@ concat bss = case pre 0 0 bss of
 -- Note: 'intercalate' will force the entire 'CBytes' list.
 --
 intercalate :: CBytes -> [CBytes] -> CBytes
-{-# INLINABLE intercalate #-}
+{-# INLINE intercalate #-}
 intercalate s = concat . List.intersperse s
 
 -- | /O(n)/ An efficient way to join 'CByte' s with a byte.
@@ -369,7 +370,7 @@ instance IsString CBytes where
  #-}
 
 packAddr :: Addr# -> CBytes
-{-# INLINABLE packAddr #-}
+{-# INLINE packAddr #-}
 packAddr addr0# = go addr0#
   where
     len = (fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#) + 1
