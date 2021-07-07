@@ -64,8 +64,16 @@ module Z.Data.Builder
   , utcTime
   , localTime
   , zonedTime
+    -- * Specialized primitive parser
+  , encodeWord  , encodeWord64, encodeWord32, encodeWord16, encodeWord8
+  , encodeInt   , encodeInt64 , encodeInt32 , encodeInt16 , encodeInt8 , encodeDouble, encodeFloat
+  , encodeWordLE  , encodeWord64LE , encodeWord32LE , encodeWord16LE
+  , encodeIntLE   , encodeInt64LE , encodeInt32LE , encodeInt16LE , encodeDoubleLE , encodeFloatLE
+  , encodeWordBE  , encodeWord64BE , encodeWord32BE , encodeWord16BE
+  , encodeIntBE   , encodeInt64BE , encodeInt32BE , encodeInt16BE , encodeDoubleBE , encodeFloatBE
   ) where
 
 import           Z.Data.Builder.Base
 import           Z.Data.Builder.Numeric
 import           Z.Data.Builder.Time
+import           Prelude                        ()

@@ -18,6 +18,8 @@ module Z.Data.Builder.Time
   , utcTime
   , localTime
   , zonedTime
+  -- * internal
+  , twoDigits
   ) where
 
 import Control.Monad
@@ -103,7 +105,7 @@ dayTime :: Day -> TimeOfDay64 -> Builder ()
 dayTime d t = day d >> B.word8 LETTER_T >> timeOfDay64 t
 
 timeOfDay64 :: TimeOfDay64 -> Builder ()
-{-# INLINE timeOfDay64 #-}
+{-# INLINABLE timeOfDay64 #-}
 timeOfDay64 (!h, !m, !s) = do
     B.encodePrim (hh, hl, COLON, mh, ml, COLON, sh, sl)
     when (frac /= 0) $ do
@@ -138,4 +140,3 @@ twoDigits :: Int -> (Word8, Word8)
 {-# INLINE twoDigits #-}
 twoDigits a = (i2wDec hi, i2wDec lo)
   where (hi,lo) = a `quotRem` 10
-

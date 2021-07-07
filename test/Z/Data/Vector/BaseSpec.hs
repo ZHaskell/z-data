@@ -154,6 +154,14 @@ spec = describe "vector-base" $ do
         prop "vector concat === List.concat" $ \ xss ->
             (V.concat . List.map (V.pack @V.PrimVector @Word8) $ xss) === (V.pack . List.concat $ xss)
 
+    describe "vector concatR == List.concat . List.reverse" $ do
+        prop "vector concatR === List.concat" $ \ xss ->
+            (V.concatR . List.map (V.pack @V.Vector @Integer) $ xss)  === (V.pack . List.concat . List.reverse $ xss)
+        prop "vector concatR === List.concat" $ \ xss ->
+            (V.concatR . List.map (V.pack @V.PrimVector @Int) $ xss) === (V.pack . List.concat . List.reverse $ xss)
+        prop "vector concatR === List.concat" $ \ xss ->
+            (V.concatR . List.map (V.pack @V.PrimVector @Word8) $ xss) === (V.pack . List.concat . List.reverse $ xss)
+
     describe "vector concatMap == List.concatMap" $ do
         prop "vector concatMap === List.concatMap" $ \ xss (Fun _ f) ->
             (V.concatMap (V.pack @V.Vector @Integer . f) . V.pack $ xss)  === (V.pack . List.concatMap f $ xss)

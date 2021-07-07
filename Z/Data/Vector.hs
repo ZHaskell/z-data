@@ -81,10 +81,11 @@ module Z.Data.Vector (
   , length
   , append
   , map, map', imap', traverse, traverseWithIndex, traverse_, traverseWithIndex_
+  , mapM, mapM_, forM, forM_
   , foldl', ifoldl', foldl1', foldl1Maybe'
   , foldr', ifoldr', foldr1', foldr1Maybe'
     -- ** Special folds
-  , concat, concatMap
+  , concat, concatR, concatMap
   , maximum, minimum, maximumMaybe, minimumMaybe
   , sum
   , count

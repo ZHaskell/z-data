@@ -70,7 +70,17 @@ import           System.IO.Unsafe
 -- >>> parse' hex "7FF" == Left ["Z.Data.Parser.Numeric.hex","hex numeric number overflow"]
 --
 hex :: forall a.(Integral a, FiniteBits a) => Parser a
-{-# INLINE hex #-}
+{-# INLINABLE hex #-}
+{-# SPECIALIZE INLINE hex :: Parser Int #-}
+{-# SPECIALIZE INLINE hex :: Parser Int8 #-}
+{-# SPECIALIZE INLINE hex :: Parser Int16 #-}
+{-# SPECIALIZE INLINE hex :: Parser Int32 #-}
+{-# SPECIALIZE INLINE hex :: Parser Int64 #-}
+{-# SPECIALIZE INLINE hex :: Parser Word #-}
+{-# SPECIALIZE INLINE hex :: Parser Word8 #-}
+{-# SPECIALIZE INLINE hex :: Parser Word16 #-}
+{-# SPECIALIZE INLINE hex :: Parser Word32 #-}
+{-# SPECIALIZE INLINE hex :: Parser Word64 #-}
 hex = "Z.Data.Parser.Numeric.hex" <?> do
     bs <- P.takeWhile1 isHexDigit
     if V.length bs <= finiteBitSize (undefined :: a) `unsafeShiftR` 2
@@ -84,7 +94,17 @@ hex = "Z.Data.Parser.Numeric.hex" <?> do
 -- >>> parse' hex "7Ft" == Right (127 :: Int8)
 -- >>> parse' hex "7FF" == Right (127 :: Int8)
 hex' :: forall a.(Integral a, FiniteBits a) => Parser a
-{-# INLINE hex' #-}
+{-# INLINABLE hex' #-}
+{-# SPECIALIZE INLINE hex' :: Parser Int #-}
+{-# SPECIALIZE INLINE hex' :: Parser Int8 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Int16 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Int32 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Int64 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Word #-}
+{-# SPECIALIZE INLINE hex' :: Parser Word8 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Word16 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Word32 #-}
+{-# SPECIALIZE INLINE hex' :: Parser Word64 #-}
 hex' = "Z.Data.Parser.Numeric.hex'" <?> do
     hexLoop 0 <$>
         P.takeN isHexDigit (finiteBitSize (undefined :: a) `unsafeShiftR` 2)
@@ -97,7 +117,17 @@ hex' = "Z.Data.Parser.Numeric.hex'" <?> do
 -- >>> parse' hex "7Ft" == Right (127 :: Int8)
 -- >>> parse' hex "7FF" == Right (-1 :: Int8)
 hex_ :: (Integral a, Bits a) => Parser a
-{-# INLINE hex_ #-}
+{-# INLINABLE hex_ #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Int #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Int8 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Int16 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Int32 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Int64 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Word #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Word8 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Word16 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Word32 #-}
+{-# SPECIALIZE INLINE hex_ :: Parser Word64 #-}
 hex_ = "Z.Data.Parser.Numeric.hex_" <?> hexLoop 0 <$> P.takeWhile1 isHexDigit
 
 -- | decode hex digits sequence within an array.
@@ -120,14 +150,34 @@ w2iHex w
 
 -- | Same with 'uint', but sliently cast in case of overflow.
 uint_ :: forall a. (Integral a, Bounded a) => Parser a
-{-# INLINE uint_ #-}
+{-# INLINABLE uint_ #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Int #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Int8 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Int16 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Int32 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Int64 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Word #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Word8 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Word16 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Word32 #-}
+{-# SPECIALIZE INLINE uint_ :: Parser Word64 #-}
 uint_ = "Z.Data.Parser.Numeric.uint_" <?> decLoop 0 <$> P.takeWhile1 isDigit
 
 -- | Parse and decode an unsigned decimal number.
 --
 -- Will fail in case of overflow.
 uint :: forall a. (Integral a, Bounded a) => Parser a
-{-# INLINE uint #-}
+{-# INLINABLE uint #-}
+{-# SPECIALIZE INLINE uint :: Parser Int #-}
+{-# SPECIALIZE INLINE uint :: Parser Int8 #-}
+{-# SPECIALIZE INLINE uint :: Parser Int16 #-}
+{-# SPECIALIZE INLINE uint :: Parser Int32 #-}
+{-# SPECIALIZE INLINE uint :: Parser Int64 #-}
+{-# SPECIALIZE INLINE uint :: Parser Word #-}
+{-# SPECIALIZE INLINE uint :: Parser Word8 #-}
+{-# SPECIALIZE INLINE uint :: Parser Word16 #-}
+{-# SPECIALIZE INLINE uint :: Parser Word32 #-}
+{-# SPECIALIZE INLINE uint :: Parser Word64 #-}
 uint = "Z.Data.Parser.Numeric.uint" <?> do
     bs <- P.takeWhile1 isDigit
     if V.length bs <= WORD64_SAFE_DIGITS_LEN
@@ -164,7 +214,7 @@ w2iDec w = fromIntegral w - 48
 --
 -- A fast version to decode 'Integer' using machine word as much as possible.
 decLoopIntegerFast :: V.Bytes -> Integer
-{-# INLINE decLoopIntegerFast #-}
+{-# INLINABLE decLoopIntegerFast #-}
 decLoopIntegerFast bs
     | V.length bs <= WORD64_SAFE_DIGITS_LEN = fromIntegral (decLoop @Word64 0 bs)
     | otherwise                            = decLoop @Integer 0 bs
@@ -173,6 +223,7 @@ decLoopIntegerFast bs
 -- | Take a single decimal digit and return as 'Int'.
 --
 digit :: Parser Int
+{-# INLINE digit #-}
 digit = do
     d <- P.satisfy isDigit
     return $! w2iDec d
@@ -182,7 +233,17 @@ digit = do
 --
 -- This parser will fail if overflow happens.
 int :: forall a. (Integral a, Bounded a) => Parser a
-{-# INLINE int #-}
+{-# INLINABLE int #-}
+{-# SPECIALIZE INLINE int :: Parser Int #-}
+{-# SPECIALIZE INLINE int :: Parser Int8 #-}
+{-# SPECIALIZE INLINE int :: Parser Int16 #-}
+{-# SPECIALIZE INLINE int :: Parser Int32 #-}
+{-# SPECIALIZE INLINE int :: Parser Int64 #-}
+{-# SPECIALIZE INLINE int :: Parser Word #-}
+{-# SPECIALIZE INLINE int :: Parser Word8 #-}
+{-# SPECIALIZE INLINE int :: Parser Word16 #-}
+{-# SPECIALIZE INLINE int :: Parser Word32 #-}
+{-# SPECIALIZE INLINE int :: Parser Word64 #-}
 int = "Z.Data.Parser.Numeric.int" <?> do
     w <- P.peek
     if w == MINUS
@@ -218,7 +279,17 @@ int = "Z.Data.Parser.Numeric.int" <?> do
 
 -- | Same with 'int', but sliently cast if overflow happens.
 int_ :: (Integral a, Bounded a) => Parser a
-{-# INLINE int_ #-}
+{-# INLINABLE int_ #-}
+{-# SPECIALIZE INLINE int_ :: Parser Int #-}
+{-# SPECIALIZE INLINE int_ :: Parser Int8 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Int16 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Int32 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Int64 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Word #-}
+{-# SPECIALIZE INLINE int_ :: Parser Word8 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Word16 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Word32 #-}
+{-# SPECIALIZE INLINE int_ :: Parser Word64 #-}
 int_ = "Z.Data.Parser.Numeric.int_" <?> do
     w <- P.peek
     if w == MINUS
@@ -230,7 +301,7 @@ int_ = "Z.Data.Parser.Numeric.int_" <?> do
 -- | Parser specifically optimized for 'Integer'.
 --
 integer :: Parser Integer
-{-# INLINE integer #-}
+{-# INLINABLE integer #-}
 integer =  "Z.Data.Parser.Numeric.integer" <?> do
     w <- P.peek
     if w == MINUS
@@ -253,7 +324,7 @@ integer =  "Z.Data.Parser.Numeric.integer" <?> do
 -- instead.
 --
 rational :: (Fractional a) => Parser a
-{-# INLINE rational #-}
+{-# INLINABLE rational #-}
 rational = "Z.Data.Parser.Numeric.rational" <?> scientificallyInternal realToFrac
 
 -- | Parse a rational number and round to 'Double'.
@@ -283,14 +354,14 @@ rational = "Z.Data.Parser.Numeric.rational" <?> scientificallyInternal realToFra
 -- \"Infinity\".
 --
 double :: Parser Double
-{-# INLINE double #-}
+{-# INLINABLE double #-}
 double = "Z.Data.Parser.Numeric.double" <?> scientificallyInternal sciToDouble
 
 -- | Parse a rational number and round to 'Float'.
 --
 -- Single precision version of 'double'.
 float :: Parser Float
-{-# INLINE float #-}
+{-# INLINABLE float #-}
 float = "Z.Data.Parser.Numeric.float" <?> scientificallyInternal Sci.toRealFloat
 
 -- | Parse a scientific number.
@@ -298,19 +369,19 @@ float = "Z.Data.Parser.Numeric.float" <?> scientificallyInternal Sci.toRealFloat
 -- The syntax accepted by this parser is the same as for 'double'.
 --
 scientific :: Parser Sci.Scientific
-{-# INLINE scientific #-}
+{-# INLINABLE scientific #-}
 scientific = "Z.Data.Parser.Numeric.scientific" <?> scientificallyInternal id
 
 -- | Parse a scientific number and convert to result using a user supply function.
 --
 -- The syntax accepted by this parser is the same as for 'double'.
 scientifically :: (Sci.Scientific -> a) -> Parser a
-{-# INLINE scientifically #-}
+{-# INLINABLE scientifically #-}
 scientifically h = "Z.Data.Parser.Numeric.scientifically" <?> scientificallyInternal h
 
 -- | Strip message version.
 scientificallyInternal :: (Sci.Scientific -> a) -> Parser a
-{-# INLINE scientificallyInternal #-}
+{-# INLINABLE scientificallyInternal #-}
 scientificallyInternal h = do
     !sign <- P.peek
     when (sign == PLUS || sign == MINUS) (P.skipWord8)
@@ -355,7 +426,7 @@ scientificallyInternal h = do
 -- instead.
 --
 rational' :: (Fractional a) => Parser a
-{-# INLINE rational' #-}
+{-# INLINABLE rational' #-}
 rational' = "Z.Data.Parser.Numeric.rational'" <?> scientificallyInternal' realToFrac
 
 -- | More strict number parsing(rfc8259).
@@ -388,7 +459,7 @@ rational' = "Z.Data.Parser.Numeric.rational'" <?> scientificallyInternal' realTo
 -- \"Infinity\".
 -- reference: https://tools.ietf.org/html/rfc8259#section-6
 double' :: Parser Double
-{-# INLINE double' #-}
+{-# INLINABLE double' #-}
 double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' sciToDouble
 
 #define FASTFLOAT_SMALLEST_POWER -325
@@ -398,6 +469,7 @@ double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' sciToDoubl
 --
 -- See @cbits/compute_float_64.c@.
 sciToDouble :: Sci.Scientific -> Double
+{-# INLINABLE sciToDouble #-}
 sciToDouble sci = case c of
 #ifdef INTEGER_GMP
     (S# i#) | (e >= FASTFLOAT_SMALLEST_POWER && e <= FASTFLOAT_LARGEST_POWER) -> unsafeDupablePerformIO $ do
@@ -418,26 +490,26 @@ sciToDouble sci = case c of
 --
 -- Single precision version of 'double''.
 float' :: Parser Float
-{-# INLINE float' #-}
+{-# INLINABLE float' #-}
 float' = "Z.Data.Parser.Numeric.float'" <?> scientificallyInternal' Sci.toRealFloat
 
 -- | Parse a scientific number.
 --
 -- The syntax accepted by this parser is the same as for 'double''.
 scientific' :: Parser Sci.Scientific
-{-# INLINE scientific' #-}
+{-# INLINABLE scientific' #-}
 scientific' = "Z.Data.Parser.Numeric.scientific'" <?> scientificallyInternal' id
 
 -- | Parse a scientific number and convert to result using a user supply function.
 --
 -- The syntax accepted by this parser is the same as for 'double''.
 scientifically' :: (Sci.Scientific -> a) -> P.Parser a
-{-# INLINE scientifically' #-}
+{-# INLINABLE scientifically' #-}
 scientifically' h = "Z.Data.Parser.Numeric.scientifically'" <?> scientificallyInternal' h
 
 -- | Strip message version of scientifically'.
 scientificallyInternal' :: (Sci.Scientific -> a) -> P.Parser a
-{-# INLINE scientificallyInternal' #-}
+{-# INLINABLE scientificallyInternal' #-}
 scientificallyInternal' h = do
     !sign <- P.peek
     when (sign == MINUS) (P.skipWord8) -- no leading plus is allowed

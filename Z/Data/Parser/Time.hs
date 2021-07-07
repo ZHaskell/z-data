@@ -35,6 +35,7 @@ import qualified Z.Data.Vector         as V
 
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
 day :: Parser Day
+{-# INLINE day #-}
 day = "date must be of form [+,-]YYYY-MM-DD" P.<?> do
     y <- (P.integer <* P.word8 HYPHEN)
     m <- (twoDigits <* P.word8 HYPHEN)
@@ -43,6 +44,7 @@ day = "date must be of form [+,-]YYYY-MM-DD" P.<?> do
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
+{-# INLINE twoDigits #-}
 twoDigits = do
     a <- P.digit
     b <- P.digit
@@ -50,6 +52,7 @@ twoDigits = do
 
 -- | Parse a time of the form @HH:MM[:SS[.SSS]]@.
 timeOfDay :: Parser TimeOfDay
+{-# INLINE timeOfDay #-}
 timeOfDay = do
     h <- twoDigits
     m <- P.char8 ':' *> twoDigits
@@ -61,6 +64,7 @@ timeOfDay = do
 
 -- | Parse a count of seconds, with the integer part being two digits -- long.
 seconds :: Parser Pico
+{-# INLINE seconds #-}
 seconds = do
     real <- twoDigits
     mw <- P.peekMaybe
@@ -80,6 +84,7 @@ seconds = do
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
 timeZone :: Parser (Maybe TimeZone)
+{-# INLINE timeZone #-}
 timeZone = do
     P.skipWhile (== SPACE)
     w <- P.satisfy $ \ w -> w == LETTER_Z || w == PLUS || w == MINUS
@@ -108,11 +113,13 @@ timeZone = do
 -- The space may be replaced with a @T@.  The number of seconds is optional
 -- and may be followed by a fractional component.
 localTime :: Parser LocalTime
+{-# INLINE localTime #-}
 localTime = LocalTime <$> day <* daySep <*> timeOfDay
   where daySep = P.satisfy (\ w -> w == LETTER_T || w == SPACE)
 
 -- | Behaves as 'zonedTime', but converts any time zone offset into a -- UTC time.
 utcTime :: Parser UTCTime
+{-# INLINE utcTime #-}
 utcTime = do
     lt@(LocalTime d t) <- localTime
     mtz <- timeZone
@@ -135,7 +142,9 @@ utcTime = do
 -- two digits are hours, the @:@ is optional and the second two digits
 -- (also optional) are minutes.
 zonedTime :: Parser ZonedTime
+{-# INLINE zonedTime #-}
 zonedTime = ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 
 utc :: TimeZone
+{-# INLINE utc #-}
 utc = TimeZone 0 False ""

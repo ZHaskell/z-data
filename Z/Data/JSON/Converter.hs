@@ -47,6 +47,7 @@ instance Show ConvertError where
     show = T.toString
 
 instance T.Print ConvertError where
+    {-# INLINABLE toUTF8BuilderP #-}
     toUTF8BuilderP _ (ConvertError [] msg) = T.toUTF8Builder msg
     toUTF8BuilderP _ (ConvertError paths msg) = do
         mapM_ renderPath (reverse paths)

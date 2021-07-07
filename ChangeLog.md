@@ -2,11 +2,15 @@
 
 ## 1.0.0.0  -- 2021-07-05
 
+* Clean up various `RULES` and `INLINE` pragmas, improve building time a little.
 * Simplify `Z.Data.PrimRef` to use `PrimMonad`.
+* Add `encodeXXX/encodeXXXLE/encodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Builder`.
+* Add `check-array-bound` build flag to enable bound check in `Z.Data.Array` module, `Z.Data.Array.Checked` is removed.
+* Add `concatR` to `Z.Data.Vector` and `Z.Data.Text`, which is useful to concat the result of an accumulator style recursive function.
 
 ## 0.9.0.0  -- 2021-07-01
 
-* Add `decodeXXX/deocodeXXXLE/deodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Parser`.
+* Add `decodeXXX/deocodeXXXLE/decodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Parser`.
 * Rename `replicateMVec/traveseVec/traveseVec_` tp `replicateM/travese/travese_`, fix related `PrimMonad` rules not firing issue.
 * Add a faster `sciToDouble` based on https://github.com/lemire/fast_double_parser, improve `double/double'` parser.
 

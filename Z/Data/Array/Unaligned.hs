@@ -128,7 +128,7 @@ indexPrimWord8ArrayAs (PrimArray ba#) (I# i#) = indexWord8ArrayAs# ba# i#
 
 -- | Encode PrimArray elements in big endian.
 primArrayToBE :: forall a. (Prim a, Unaligned (BE a)) => PrimArray a -> Int -> Int -> PrimArray Word8
-{-# INLINE primArrayToBE #-}
+{-# INLINABLE primArrayToBE #-}
 primArrayToBE parr off len = unsafeDupablePerformIO $ do
     buf <- newPrimArray siz
     go buf off 0
@@ -143,7 +143,7 @@ primArrayToBE parr off len = unsafeDupablePerformIO $ do
 
 -- | Decode PrimArray elements in big endian.
 primArrayFromBE :: forall a. (Prim a, Unaligned (BE a)) => PrimArray Word8 -> Int -> Int -> PrimArray a
-{-# INLINE primArrayFromBE #-}
+{-# INLINABLE primArrayFromBE #-}
 primArrayFromBE parr off len = unsafeDupablePerformIO $ do
     buf <- newPrimArray siz
     go buf off 0
@@ -185,7 +185,6 @@ newtype LE a = LE { getLE :: a } deriving (Show, Eq)
 -- | big endianess wrapper
 --
 newtype BE a = BE { getBE :: a } deriving (Show, Eq)
-
 
 #define USE_HOST_IMPL(END) \
     {-# INLINE writeWord8ArrayAs# #-}; \

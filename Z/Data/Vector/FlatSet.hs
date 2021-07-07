@@ -91,27 +91,27 @@ map' f (FlatSet vs) = packVector (V.map' f vs :: V.Vector v)
 
 -- | /O(1)/ empty flat set.
 empty :: FlatSet v
-{-# INLINE empty #-}
+{-# NOINLINE empty #-}
 empty = FlatSet V.empty
 
 -- | /O(N*logN)/ Pack list of values, on duplication prefer left one.
 pack :: Ord v => [v] -> FlatSet v
-{-# INLINE pack #-}
+{-# INLINABLE pack #-}
 pack vs = FlatSet (V.mergeDupAdjacentLeft (==) (V.mergeSort (V.pack vs)))
 
 -- | /O(N*logN)/ Pack list of values with suggested size, on duplication prefer left one.
 packN :: Ord v => Int -> [v] -> FlatSet v
-{-# INLINE packN #-}
+{-# INLINABLE packN #-}
 packN n vs = FlatSet (V.mergeDupAdjacentLeft (==) (V.mergeSort (V.packN n vs)))
 
 -- | /O(N*logN)/ Pack list of values, on duplication prefer right one.
 packR :: Ord v => [v] -> FlatSet v
-{-# INLINE packR #-}
+{-# INLINABLE packR #-}
 packR vs = FlatSet (V.mergeDupAdjacentRight (==) (V.mergeSort (V.pack vs)))
 
 -- | /O(N*logN)/ Pack list of values with suggested size, on duplication prefer right one.
 packRN :: Ord v => Int -> [v] -> FlatSet v
-{-# INLINE packRN #-}
+{-# INLINABLE packRN #-}
 packRN n vs = FlatSet (V.mergeDupAdjacentRight (==) (V.mergeSort (V.packN n vs)))
 
 -- | /O(N)/ Unpack a set of values to a list s in ascending order.
@@ -130,22 +130,22 @@ unpackR = V.unpackR . sortedValues
 
 -- | /O(N*logN)/ Pack vector of values, on duplication prefer left one.
 packVector :: Ord v => V.Vector v -> FlatSet v
-{-# INLINE packVector #-}
+{-# INLINABLE packVector #-}
 packVector vs = FlatSet (V.mergeDupAdjacentLeft (==) (V.mergeSort vs))
 
 -- | /O(N*logN)/ Pack vector of values, on duplication prefer right one.
 packVectorR :: Ord v => V.Vector v -> FlatSet v
-{-# INLINE packVectorR #-}
+{-# INLINABLE packVectorR #-}
 packVectorR vs = FlatSet (V.mergeDupAdjacentRight (==) (V.mergeSort vs))
 
 -- | /O(logN)/ Binary search on flat set.
 elem :: Ord v => v -> FlatSet v -> Bool
-{-# INLINE elem #-}
+{-# INLINABLE elem #-}
 elem v (FlatSet vec) = case binarySearch vec v of Left _ -> False
                                                   _      -> True
 -- | /O(N)/ Insert new value into set.
 insert :: Ord v => v -> FlatSet v -> FlatSet v
-{-# INLINE insert #-}
+{-# INLINABLE insert #-}
 insert v m@(FlatSet vec) =
     case binarySearch vec v of
         Left i -> FlatSet (V.unsafeInsertIndex vec i v)
@@ -153,7 +153,7 @@ insert v m@(FlatSet vec) =
 
 -- | /O(N)/ Delete a value from set.
 delete :: Ord v => v -> FlatSet v -> FlatSet v
-{-# INLINE delete #-}
+{-# INLINABLE delete #-}
 delete v m@(FlatSet vec) =
     case binarySearch vec v of
         Left _ -> m

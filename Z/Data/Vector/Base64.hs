@@ -45,12 +45,12 @@ base64Encode (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
 
 -- | Return the encoded length of a given input length, always a multipler of 4.
 base64EncodeLength :: Int -> Int
-{-# INLINABLE base64EncodeLength #-}
+{-# INLINE base64EncodeLength #-}
 base64EncodeLength n = ((n+2) `quot` 3) `unsafeShiftL` 2
 
 -- | 'B.Builder' version of 'base64Encode'.
 base64EncodeBuilder :: V.Bytes -> B.Builder ()
-{-# INLINABLE base64EncodeBuilder #-}
+{-# INLINE base64EncodeBuilder #-}
 base64EncodeBuilder (V.PrimVector arr s l) =
     B.writeN (base64EncodeLength l) (\ (MutablePrimArray mba#) i -> do
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -94,7 +94,7 @@ base64Decode' ba = case base64Decode ba of
 -- | Return the upper bound of decoded length of a given input length
 -- , return -1 if illegal(not a multipler of 4).
 base64DecodeLength :: Int -> Int
-{-# INLINABLE base64DecodeLength #-}
+{-# INLINE base64DecodeLength #-}
 base64DecodeLength n | n .&. 3 == 1 = -1
                      | otherwise = (n `unsafeShiftR` 2) * 3 + 2
 

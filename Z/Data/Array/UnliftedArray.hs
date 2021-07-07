@@ -54,18 +54,18 @@ class PrimUnlifted a where
     indexUnliftedArray# :: ArrayArray# -> Int# -> a
 
 instance PrimUnlifted (PrimArray a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (PrimArray x) = writeByteArrayArray# a i x
     readUnliftedArray# a i s0 = case readByteArrayArray# a i s0 of
         (# s1, x #) -> (# s1, PrimArray x #)
     indexUnliftedArray# a i = PrimArray (indexByteArrayArray# a i)
 
 instance PrimUnlifted ByteArray where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (ByteArray x) = writeByteArrayArray# a i x
     readUnliftedArray# a i s0 = case readByteArrayArray# a i s0 of
         (# s1, x #) -> (# s1, ByteArray x #)
@@ -78,9 +78,9 @@ instance PrimUnlifted ByteArray where
 -- This also uses unsafeCoerce# to relax the constraints on the
 -- state token. The primitives in GHC.Prim are too restrictive.
 instance PrimUnlifted (MutableByteArray s) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (MutableByteArray x) =
         writeMutableByteArrayArray# a i (unsafeCoerce# x)
     readUnliftedArray# a i s0 = case readMutableByteArrayArray# a i s0 of
@@ -90,9 +90,9 @@ instance PrimUnlifted (MutableByteArray s) where
 -- See the note on the PrimUnlifted instance for MutableByteArray.
 -- The same uses of unsafeCoerce# happen here.
 instance PrimUnlifted (MutablePrimArray s a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (MutablePrimArray x) =
         writeMutableByteArrayArray# a i (unsafeCoerce# x)
     readUnliftedArray# a i s0 = case readMutableByteArrayArray# a i s0 of
@@ -100,9 +100,9 @@ instance PrimUnlifted (MutablePrimArray s a) where
     indexUnliftedArray# a i = MutablePrimArray (unsafeCoerce# (indexByteArrayArray# a i))
 
 instance PrimUnlifted (MVar a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (MVar x) =
         writeArrayArrayArray# a i (unsafeCoerce# x)
     readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
@@ -110,9 +110,9 @@ instance PrimUnlifted (MVar a) where
     indexUnliftedArray# a i = MVar (unsafeCoerce# (indexArrayArrayArray# a i))
 
 instance PrimUnlifted (TVar a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (TVar x) =
         writeArrayArrayArray# a i (unsafeCoerce# x)
     readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
@@ -120,9 +120,9 @@ instance PrimUnlifted (TVar a) where
     indexUnliftedArray# a i = TVar (unsafeCoerce# (indexArrayArrayArray# a i))
 
 instance PrimUnlifted (STRef s a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (STRef x) =
         writeArrayArrayArray# a i (unsafeCoerce# x)
     readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
@@ -131,9 +131,9 @@ instance PrimUnlifted (STRef s a) where
         STRef (unsafeCoerce# (indexArrayArrayArray# a i))
 
 instance PrimUnlifted (IORef a) where
-    {-# inline writeUnliftedArray# #-}
-    {-# inline readUnliftedArray# #-}
-    {-# inline indexUnliftedArray# #-}
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
     writeUnliftedArray# a i (IORef v) = writeUnliftedArray# a i v
     readUnliftedArray# a i s0 = case readUnliftedArray# a i s0 of
         (# s1, v #) -> (# s1, IORef v #)
@@ -157,7 +157,7 @@ unsafeNewUnliftedArray
     :: (PrimMonad m)
     => Int -- ^ size
     -> m (MutableUnliftedArray (PrimState m) a)
-{-# inline unsafeNewUnliftedArray #-}
+{-# INLINE unsafeNewUnliftedArray #-}
 unsafeNewUnliftedArray (I# i#) = primitive $ \s -> case newArrayArray# i# s of
     (# s', maa# #) -> (# s', MutableUnliftedArray maa# #)
 
@@ -172,7 +172,7 @@ newUnliftedArray len v = do
     mua <- unsafeNewUnliftedArray len
     setUnliftedArray mua 0 len v
     pure mua
-{-# inline newUnliftedArray #-}
+{-# INLINE newUnliftedArray #-}
 
 setUnliftedArray
     :: (PrimMonad m, PrimUnlifted a)
@@ -181,7 +181,7 @@ setUnliftedArray
     -> Int -- ^ length
     -> a -- ^ value to fill with
     -> m ()
-{-# inline setUnliftedArray #-}
+{-# INLINE setUnliftedArray #-}
 setUnliftedArray mua off len v = loop (len + off - 1)
   where
     loop i
@@ -190,12 +190,12 @@ setUnliftedArray mua off len v = loop (len + off - 1)
 
 -- | Yields the length of an 'UnliftedArray'.
 sizeofUnliftedArray :: UnliftedArray e -> Int
-{-# inline sizeofUnliftedArray #-}
+{-# INLINE sizeofUnliftedArray #-}
 sizeofUnliftedArray (UnliftedArray aa#) = I# (sizeofArrayArray# aa#)
 
 -- | Yields the length of a 'MutableUnliftedArray'.
 sizeofMutableUnliftedArray :: MutableUnliftedArray s e -> Int
-{-# inline sizeofMutableUnliftedArray #-}
+{-# INLINE sizeofMutableUnliftedArray #-}
 sizeofMutableUnliftedArray (MutableUnliftedArray maa#)
     = I# (sizeofMutableArrayArray# maa#)
 
@@ -204,7 +204,7 @@ writeUnliftedArray :: (PrimMonad m, PrimUnlifted a)
     -> Int
     -> a
     -> m ()
-{-# inline writeUnliftedArray #-}
+{-# INLINE writeUnliftedArray #-}
 writeUnliftedArray (MutableUnliftedArray arr) (I# ix) a =
     primitive_ (writeUnliftedArray# arr ix a)
 
@@ -212,7 +212,7 @@ readUnliftedArray :: (PrimMonad m, PrimUnlifted a)
     => MutableUnliftedArray (PrimState m) a
     -> Int
     -> m a
-{-# inline readUnliftedArray #-}
+{-# INLINE readUnliftedArray #-}
 readUnliftedArray (MutableUnliftedArray arr) (I# ix) =
     primitive (readUnliftedArray# arr ix)
 
@@ -220,7 +220,7 @@ indexUnliftedArray :: PrimUnlifted a
     => UnliftedArray a
     -> Int
     -> a
-{-# inline indexUnliftedArray #-}
+{-# INLINE indexUnliftedArray #-}
 indexUnliftedArray (UnliftedArray arr) (I# ix) =
     indexUnliftedArray# arr ix
 
@@ -234,7 +234,7 @@ unsafeFreezeUnliftedArray
 unsafeFreezeUnliftedArray (MutableUnliftedArray maa#)
     = primitive $ \s -> case unsafeFreezeArrayArray# maa# s of
         (# s', aa# #) -> (# s', UnliftedArray aa# #)
-{-# inline unsafeFreezeUnliftedArray #-}
+{-# INLINE unsafeFreezeUnliftedArray #-}
 
 -- | Determines whether two 'MutableUnliftedArray' values are the same. This is
 -- object/pointer identity, not based on the contents.
@@ -244,7 +244,7 @@ sameMutableUnliftedArray
     -> Bool
 sameMutableUnliftedArray (MutableUnliftedArray maa1#) (MutableUnliftedArray maa2#)
     = isTrue# (sameMutableArrayArray# maa1# maa2#)
-{-# inline sameMutableUnliftedArray #-}
+{-# INLINE sameMutableUnliftedArray #-}
 
 -- | Copies the contents of an immutable array into a mutable array.
 copyUnliftedArray
@@ -255,7 +255,7 @@ copyUnliftedArray
     -> Int -- ^ offset into source
     -> Int -- ^ number of elements to copy
     -> m ()
-{-# inline copyUnliftedArray #-}
+{-# INLINE copyUnliftedArray #-}
 copyUnliftedArray
     (MutableUnliftedArray dst) (I# doff)
     (UnliftedArray src) (I# soff) (I# ln) =
@@ -271,7 +271,7 @@ copyMutableUnliftedArray
     -> Int -- ^ offset into source
     -> Int -- ^ number of elements to copy
     -> m ()
-{-# inline copyMutableUnliftedArray #-}
+{-# INLINE copyMutableUnliftedArray #-}
 copyMutableUnliftedArray
     (MutableUnliftedArray dst) (I# doff)
     (MutableUnliftedArray src) (I# soff) (I# ln) =
@@ -291,7 +291,7 @@ freezeUnliftedArray src off len = do
     dst <- unsafeNewUnliftedArray len
     copyMutableUnliftedArray dst 0 src off len
     unsafeFreezeUnliftedArray dst
-{-# inline freezeUnliftedArray #-}
+{-# INLINE freezeUnliftedArray #-}
 
 
 -- | Thaws a portion of an 'UnliftedArray', yielding a 'MutableUnliftedArray'.
@@ -303,7 +303,7 @@ thawUnliftedArray
     -> Int -- ^ offset
     -> Int -- ^ length
     -> m (MutableUnliftedArray (PrimState m) a)
-{-# inline thawUnliftedArray #-}
+{-# INLINE thawUnliftedArray #-}
 thawUnliftedArray src off len = do
     dst <- unsafeNewUnliftedArray len
     copyUnliftedArray dst 0 src off len
@@ -315,7 +315,7 @@ cloneUnliftedArray
     -> Int -- ^ offset
     -> Int -- ^ length
     -> UnliftedArray a
-{-# inline cloneUnliftedArray #-}
+{-# INLINE cloneUnliftedArray #-}
 cloneUnliftedArray src off len = unsafeDupablePerformIO $ do
     dst <- unsafeNewUnliftedArray len
     copyUnliftedArray dst 0 src off len
@@ -329,7 +329,7 @@ cloneMutableUnliftedArray
     -> Int -- ^ offset
     -> Int -- ^ length
     -> m (MutableUnliftedArray (PrimState m) a)
-{-# inline cloneMutableUnliftedArray #-}
+{-# INLINE cloneMutableUnliftedArray #-}
 cloneMutableUnliftedArray src off len = do
     dst <- unsafeNewUnliftedArray len
     copyMutableUnliftedArray dst 0 src off len

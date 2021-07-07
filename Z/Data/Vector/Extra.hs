@@ -227,7 +227,9 @@ splitAt z (Vec arr s l) = let !v1 = fromArr arr s z'
 -- returns the longest prefix (possibly empty) of @vs@ of elements that
 -- satisfy @p@.
 takeWhile :: Vec v a => (a -> Bool) -> v a -> v a
-{-# INLINE takeWhile #-}
+{-# INLINE [1] takeWhile #-}
+{-# RULES "takeWhile/breakEq1" forall w. takeWhile (w `neWord8`) = fst . break (w `eqWord8`) #-}
+{-# RULES "takeWhile/breakEq2" forall w. takeWhile (`neWord8` w) = fst . break (`eqWord8` w) #-}
 takeWhile f v@(Vec arr s _) =
     case findIndex (not . f) v of
         0  -> empty
@@ -237,7 +239,9 @@ takeWhile f v@(Vec arr s _) =
 -- returns the longest suffix (possibly empty) of @vs@ of elements that
 -- satisfy @p@.
 takeWhileR :: Vec v a => (a -> Bool) -> v a -> v a
-{-# INLINE takeWhileR #-}
+{-# INLINE [1] takeWhileR #-}
+{-# RULES "takeWhileR/breakREq1" forall w. takeWhileR (w `neWord8`) = snd . breakR (w `eqWord8`) #-}
+{-# RULES "takeWhileR/breakREq2" forall w. takeWhileR (`neWord8` w) = snd . breakR (`eqWord8` w) #-}
 takeWhileR f v@(Vec arr s l) =
     case findIndexR (not . f) v of
         -1 -> v
@@ -246,7 +250,9 @@ takeWhileR f v@(Vec arr s l) =
 -- | /O(n)/ Applied to a predicate @p@ and a vector @vs@,
 -- returns the suffix (possibly empty) remaining after 'takeWhile' @p vs@.
 dropWhile :: Vec v a => (a -> Bool) -> v a -> v a
-{-# INLINE dropWhile #-}
+{-# INLINE [1] dropWhile #-}
+{-# RULES "dropWhile/breakEq1" forall w. dropWhile (w `neWord8`) = snd . break (w `eqWord8`) #-}
+{-# RULES "dropWhile/breakEq2" forall w. dropWhile (`neWord8` w) = snd . break (`eqWord8` w) #-}
 dropWhile f v@(Vec arr s l) =
     case findIndex (not . f) v of
         i | i == l     -> empty
@@ -255,7 +261,9 @@ dropWhile f v@(Vec arr s l) =
 -- | /O(n)/ Applied to a predicate @p@ and a vector @vs@,
 -- returns the prefix (possibly empty) remaining before 'takeWhileR' @p vs@.
 dropWhileR :: Vec v a => (a -> Bool) -> v a -> v a
-{-# INLINE dropWhileR #-}
+{-# INLINE [1] dropWhileR #-}
+{-# RULES "dropWhileR/breakEq1" forall w. dropWhileR (w `neWord8`) = fst . breakR (w `eqWord8`) #-}
+{-# RULES "dropWhileR/breakEq2" forall w. dropWhileR (`neWord8` w) = fst . breakR (`eqWord8` w) #-}
 dropWhileR f v@(Vec arr s _) =
     case findIndexR (not . f) v of
         -1 -> empty
@@ -283,11 +291,11 @@ break f vs@(Vec arr s l) =
 -- @span (/=x)@ will be rewritten using a @memchr@.
 span :: Vec v a => (a -> Bool) -> v a -> (v a, v a)
 {-# INLINE [1] span #-}
-span f = break (not . f)
 {-# RULES "spanNEq/breakEq1" forall w. span (w `neWord8`) = break (w `eqWord8`) #-}
 {-# RULES "spanNEq/breakEq2" forall w. span (`neWord8` w) = break (`eqWord8` w) #-}
+span f = break (not . f)
 
--- | 'breakR' behaves like 'break' but from the end of the vector.
+-- | 'breakR' behaves like 'break' but apply predictor from the end of the vector.
 --
 -- @breakR p == spanR (not.p)@
 breakR :: Vec v a => (a -> Bool) -> v a -> (v a, v a)
@@ -300,7 +308,9 @@ breakR f vs@(Vec arr s l) =
 
 -- | 'spanR' behaves like 'span' but from the end of the vector.
 spanR :: Vec v a => (a -> Bool) -> v a -> (v a, v a)
-{-# INLINE spanR #-}
+{-# INLINE [1]  spanR #-}
+{-# RULES "spanNEq/breakREq1" forall w. spanR (w `neWord8`) = breakR (w `eqWord8`) #-}
+{-# RULES "spanNEq/breakREq2" forall w. spanR (`neWord8` w) = breakR (`eqWord8` w) #-}
 spanR f = breakR (not . f)
 
 -- | Break a vector on a subvector, returning a pair of the part of the
@@ -309,7 +319,7 @@ spanR f = breakR (not . f)
 -- > break "wor" "hello, world" = ("hello, ", "world")
 --
 breakOn :: (Vec v a, Eq a) => v a -> v a -> (v a, v a)
-{-# INLINE breakOn #-}
+{-# INLINABLE breakOn #-}
 breakOn needle = \ haystack@(Vec arr s l) ->
     case search haystack False of
         (i:_) -> let !v1 = Vec arr s i
@@ -320,11 +330,11 @@ breakOn needle = \ haystack@(Vec arr s l) ->
 
 
 group :: (Vec v a, Eq a) => v a -> [v a]
-{-# INLINE group #-}
+{-# INLINABLE group #-}
 group = groupBy (==)
 
 groupBy :: forall v a. Vec v a =>  (a -> a -> Bool) -> v a -> [v a]
-{-# INLINE groupBy #-}
+{-# INLINABLE groupBy #-}
 groupBy f (Vec arr s l)
     | l == 0    = []
     | otherwise = Vec arr s n : groupBy f (Vec arr (s+n) (l-n))
@@ -339,7 +349,7 @@ groupBy f (Vec arr s l)
 stripPrefix :: (Vec v a, Eq (v a))
             => v a      -- ^ the prefix to be tested
             -> v a -> Maybe (v a)
-{-# INLINE stripPrefix #-}
+{-# INLINABLE stripPrefix #-}
 stripPrefix v1@(Vec _ _ l1) v2@(Vec arr s l2)
    | v1 `isPrefixOf` v2 = Just (Vec arr (s+l1) (l2-l1))
    | otherwise = Nothing
@@ -348,7 +358,7 @@ stripPrefix v1@(Vec _ _ l1) v2@(Vec arr s l2)
 isPrefixOf :: forall v a. (Vec v a, Eq (v a))
            => v a       -- ^ the prefix to be tested
            -> v a -> Bool
-{-# INLINE isPrefixOf #-}
+{-# INLINABLE isPrefixOf #-}
 isPrefixOf (Vec arrA sA lA) (Vec arrB sB lB)
     | lA == 0 = True
     | lA > lB = False
@@ -364,7 +374,7 @@ isPrefixOf (Vec arrA sA lA) (Vec arrB sB lB)
 -- >>> commonPrefix "veeble" "fetzer"
 -- ("","veeble","fetzer")
 commonPrefix :: (Vec v a, Eq a) => v a -> v a -> (v a, v a, v a)
-{-# INLINE commonPrefix #-}
+{-# INLINABLE commonPrefix #-}
 commonPrefix vA@(Vec arrA sA lA) vB@(Vec arrB sB lB) = go sA sB
   where
     !endA = sA + lA
@@ -380,7 +390,7 @@ commonPrefix vA@(Vec arrA sA lA) vB@(Vec arrB sB lB) = go sA sB
 
 -- | O(n) The 'stripSuffix' function takes two vectors and returns Just the remainder of the second iff the first is its suffix, and otherwise Nothing.
 stripSuffix :: (Vec v a, Eq (v a)) => v a -> v a -> Maybe (v a)
-{-# INLINE stripSuffix #-}
+{-# INLINABLE stripSuffix #-}
 stripSuffix v1@(Vec _ _ l1) v2@(Vec arr s l2)
    | v1 `isSuffixOf` v2 = Just (Vec arr s (l2-l1))
    | otherwise = Nothing
@@ -388,7 +398,7 @@ stripSuffix v1@(Vec _ _ l1) v2@(Vec arr s l2)
 -- | /O(n)/ The 'isSuffixOf' function takes two vectors and returns 'True'
 -- if the first is a suffix of the second.
 isSuffixOf :: forall v a. (Vec v a, Eq (v a)) => v a -> v a -> Bool
-{-# INLINE isSuffixOf #-}
+{-# INLINABLE isSuffixOf #-}
 isSuffixOf (Vec arrA sA lA) (Vec arrB sB lB)
     | lA == 0 = True
     | lA > lB = False
@@ -398,7 +408,7 @@ isSuffixOf (Vec arrA sA lA) (Vec arrB sB lB)
 --
 -- @needle `isInfixOf` haystack === null haystack || indices needle haystake /= []@.
 isInfixOf :: (Vec v a, Eq a) => v a -> v a -> Bool
-{-# INLINE isInfixOf #-}
+{-# INLINABLE isInfixOf #-}
 isInfixOf needle = \ haystack -> null haystack || search haystack False /= []
   where search = indices needle
 
@@ -417,7 +427,7 @@ isInfixOf needle = \ haystack -> null haystack || search haystack False /= []
 -- NOTE, this function behavior different with bytestring's. see
 -- <https://github.com/haskell/bytestring/issues/56 #56>.
 split :: (Vec v a, Eq a) => a -> v a -> [v a]
-{-# INLINE split #-}
+{-# INLINABLE split #-}
 split x = splitWith (==x)
 
 -- | /O(m+n)/ Break haystack into pieces separated by needle.
@@ -441,7 +451,7 @@ split x = splitWith (==x)
 -- > intercalate s . splitOn s         == id
 -- > splitOn (singleton c)             == split (==c)
 splitOn :: (Vec v a, Eq a) => v a -> v a -> [v a]
-{-# INLINE splitOn #-}
+{-# INLINABLE splitOn #-}
 splitOn needle = splitBySearch
   where
     splitBySearch haystack@(Vec arr s l) = go s (search haystack False)
@@ -464,7 +474,7 @@ splitOn needle = splitBySearch
 -- NOTE, this function behavior different with bytestring's. see
 -- <https://github.com/haskell/bytestring/issues/56 #56>.
 splitWith :: Vec v a => (a -> Bool) -> v a -> [v a]
-{-# INLINE splitWith #-}
+{-# INLINABLE splitWith #-}
 splitWith f = go
   where
     go v@(Vec _ _ l)
@@ -477,7 +487,7 @@ splitWith f = go
 
 -- | /O(n)/ Breaks a 'Bytes' up into a list of words, delimited by ascii space.
 words ::  Bytes -> [Bytes]
-{-# INLINE words #-}
+{-# INLINABLE words #-}
 words (Vec arr s l) = go s s
   where
     !end = s + l
@@ -498,7 +508,7 @@ words (Vec arr s l) = go s s
 --
 --  Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 lines ::  Bytes -> [Bytes]
-{-# INLINE lines #-}
+{-# INLINABLE lines #-}
 lines v
     | null v = []
     | otherwise = case elemIndex 10 v of
@@ -507,19 +517,19 @@ lines v
 
 -- | /O(n)/ Joins words with ascii space.
 unwords :: [Bytes] -> Bytes
-{-# INLINE unwords #-}
+{-# INLINABLE unwords #-}
 unwords = intercalateElem 32
 
 -- | /O(n)/ Joins lines with ascii @\n@.
 --
 -- NOTE: This functions is different from 'Prelude.unlines', it DOES NOT add a trailing @\n@.
 unlines :: [Bytes] -> Bytes
-{-# INLINE unlines #-}
+{-# INLINABLE unlines #-}
 unlines = intercalateElem 10
 
 -- | Add padding to the left so that the whole vector's length is at least n.
 padLeft :: Vec v a => Int -> a -> v a -> v a
-{-# INLINE padLeft #-}
+{-# INLINABLE padLeft #-}
 padLeft n x v@(Vec arr s l) | n <= l = v
                             | otherwise = create n (\ marr -> do
                                     setArr marr 0 (n-l) x
@@ -527,7 +537,7 @@ padLeft n x v@(Vec arr s l) | n <= l = v
 
 -- | Add padding to the right so that the whole vector's length is at least n.
 padRight :: Vec v a => Int -> a -> v a -> v a
-{-# INLINE padRight #-}
+{-# INLINABLE padRight #-}
 padRight n x v@(Vec arr s l) | n <= l = v
                              | otherwise = create n (\ marr -> do
                                     copyArr marr 0 arr s l
@@ -539,7 +549,7 @@ padRight n x v@(Vec arr s l) | n <= l = v
 -- | /O(n)/ 'reverse' @vs@ efficiently returns the elements of @xs@ in reverse order.
 --
 reverse :: forall v a. (Vec v a) => v a -> v a
-{-# INLINE reverse #-}
+{-# INLINABLE reverse #-}
 reverse (Vec arr s l) = create l (go s (l-1))
   where
     go :: Int -> Int -> MArr (IArray v) s a -> ST s ()
@@ -560,7 +570,7 @@ reverse (Vec arr s l) = create l (go s (l-1))
 -- Lists.
 --
 intersperse :: forall v a. Vec v a => a -> v a -> v a
-{-# INLINE[1] intersperse #-}
+{-# INLINE [1] intersperse #-}
 {-# RULES "intersperse/Bytes" intersperse = intersperseBytes #-}
 intersperse x v@(Vec arr s l) | l <= 1 = v
                               | otherwise = create (2*l-1) (go s 0)
@@ -589,7 +599,7 @@ intersperse x v@(Vec arr s l) | l <= 1 = v
 
 -- | /O(n)/ Special 'intersperse' for 'Bytes' using SIMD
 intersperseBytes :: Word8 -> Bytes -> Bytes
-{-# INLINE intersperseBytes #-}
+{-# INLINABLE intersperseBytes #-}
 intersperseBytes c v@(PrimVector (PrimArray ba#) offset l)
     | l <= 1 = v
     | otherwise = unsafeDupablePerformIO $ do
@@ -606,13 +616,13 @@ intersperseBytes c v@(PrimVector (PrimArray ba#) offset l)
 -- Note: 'intercalate' will force the entire vector list.
 --
 intercalate :: Vec v a => v a -> [v a] -> v a
-{-# INLINE intercalate #-}
+{-# INLINABLE intercalate #-}
 intercalate s = concat . List.intersperse s
 
 -- | /O(n)/ An efficient way to join vector with an element.
 --
 intercalateElem :: forall v a. Vec v a => a -> [v a] -> v a
-{-# INLINE intercalateElem #-}
+{-# INLINABLE intercalateElem #-}
 intercalateElem _ [] = empty
 intercalateElem _ [v] = v
 intercalateElem w vs = create (len vs 0) (go 0 vs)
@@ -633,7 +643,7 @@ intercalateElem w vs = create (len vs 0) (go 0 vs)
 -- vector argument.
 --
 transpose :: Vec v a => [v a] -> [v a]
-{-# INLINE transpose #-}
+{-# INLINABLE transpose #-}
 transpose vs =
     List.map (packN n) . List.transpose . List.map unpack $ vs
   where n = List.length vs
@@ -647,7 +657,7 @@ transpose vs =
 -- a vector of corresponding sums, the result will be evaluated strictly.
 zipWith' :: forall v a u b w c. (Vec v a, Vec u b, Vec w c)
          => (a -> b -> c) -> v a -> u b -> w c
-{-# INLINE zipWith' #-}
+{-# INLINABLE zipWith' #-}
 zipWith' f (Vec arrA sA lA) (Vec arrB sB lB) = create len (go 0)
   where
     !len = min lA lB
@@ -664,7 +674,7 @@ zipWith' f (Vec arrA sA lA) (Vec arrB sB lB) = create len (go 0)
 -- The results inside tuple will be evaluated strictly.
 unzipWith' :: forall v a u b w c. (Vec v a, Vec u b, Vec w c)
            => (a -> (b, c)) -> v a -> (u b, w c)
-{-# INLINE unzipWith' #-}
+{-# INLINABLE unzipWith' #-}
 unzipWith' f (Vec arr s l) = createN2 l l (go 0)
   where
     go :: forall s. Int -> MArr (IArray u) s b -> MArr (IArray w) s c -> ST s (Int, Int)
@@ -689,7 +699,7 @@ unzipWith' f (Vec arr s l) = createN2 l l (go 0)
 -- > lastM (scanl' f z xs) == Just (foldl f z xs).
 --
 scanl' :: forall v u a b. (Vec v a, Vec u b) => (b -> a -> b) -> b -> v a -> u b
-{-# INLINE scanl' #-}
+{-# INLINABLE scanl' #-}
 scanl' f z (Vec arr s l) =
     create (l+1) (\ marr -> writeArr marr 0 z >> go z s 1 marr)
   where
@@ -708,7 +718,7 @@ scanl' f z (Vec arr s l) =
 -- > scanl1' f [] == []
 --
 scanl1' :: forall v a. Vec v a => (a -> a -> a) -> v a -> v a
-{-# INLINE scanl1' #-}
+{-# INLINABLE scanl1' #-}
 scanl1' f (Vec arr s l)
     | l <= 0    = empty
     | otherwise = case indexArr' arr s of
@@ -717,7 +727,7 @@ scanl1' f (Vec arr s l)
 -- | scanr' is the right-to-left dual of scanl'.
 --
 scanr' :: forall v u a b. (Vec v a, Vec u b) => (a -> b -> b) -> b -> v a -> u b
-{-# INLINE scanr' #-}
+{-# INLINABLE scanr' #-}
 scanr' f z (Vec arr s l) =
     create (l+1) (\ marr -> writeArr marr l z >> go z (s+l-1) (l-1) marr)
   where
@@ -732,7 +742,7 @@ scanr' f z (Vec arr s l) =
 
 -- | 'scanr1'' is a variant of 'scanr' that has no starting value argument.
 scanr1' :: forall v a. Vec v a => (a -> a -> a) -> v a -> v a
-{-# INLINE scanr1' #-}
+{-# INLINABLE scanr1' #-}
 scanr1' f (Vec arr s l)
     | l <= 0    = empty
     | otherwise = case indexArr' arr (s+l-1) of
@@ -743,7 +753,7 @@ scanr1' f (Vec arr s l)
 
 -- | @x' = rangeCut x min max@ limit @x'@ 's range to @min@ ~ @max@.
 rangeCut :: Int -> Int -> Int -> Int
-{-# INLINE rangeCut #-}
+{-# INLINABLE rangeCut #-}
 rangeCut !r !min' !max' | r < min' = min'
                         | r > max' = max'
                         | otherwise = r

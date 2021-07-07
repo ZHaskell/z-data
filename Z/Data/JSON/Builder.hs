@@ -37,12 +37,12 @@ import           Z.Data.JSON.Value              (Value(..))
 --
 -- Don't use chars which need escaped in label.
 kv :: T.Text -> B.Builder () -> B.Builder ()
-{-# INLINE kv #-}
+{-# INLINABLE kv #-}
 l `kv` b = B.quotes (B.text l) >> B.colon >> b
 
 -- | Use @:@ as separator to connect a label(escape the label and add quotes) with field builders.
 kv' :: T.Text -> B.Builder () -> B.Builder ()
-{-# INLINE kv' #-}
+{-# INLINABLE kv' #-}
 l `kv'` b = string l >> B.colon >> b
 
 -- | Encode a 'Value', you can use this function with 'toValue' to get 'encodeJSON' with a small overhead.
@@ -57,19 +57,19 @@ value (Bool False) = "false"
 value _ = "null"
 
 array :: V.Vector Value -> B.Builder ()
-{-# INLINE array #-}
+{-# INLINABLE array #-}
 array = B.square . B.intercalateVec B.comma value
 
 array' :: (a -> B.Builder ()) -> V.Vector a -> B.Builder ()
-{-# INLINE array' #-}
+{-# INLINABLE array' #-}
 array' f = B.square . B.intercalateVec B.comma f
 
 object :: V.Vector (T.Text, Value) -> B.Builder ()
-{-# INLINE object #-}
+{-# INLINABLE object #-}
 object = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` value v)
 
 object' :: (a -> B.Builder ()) -> V.Vector (T.Text, a) -> B.Builder ()
-{-# INLINE object' #-}
+{-# INLINABLE object' #-}
 object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 
 -- | Escape text into JSON string and add double quotes, escaping rules:
@@ -87,7 +87,7 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 -- @
 --
 string :: T.Text -> B.Builder ()
-{-# INLINE string #-}
+{-# INLINABLE string #-}
 string = T.escapeTextJSON
 
 --------------------------------------------------------------------------------
@@ -132,6 +132,7 @@ string = T.escapeTextJSON
 -- @
 --
 prettyValue :: Value -> B.Builder ()
+{-# INLINABLE prettyValue #-}
 prettyValue = prettyValue' 4 0
 
 
@@ -149,7 +150,7 @@ prettyValue' _ !ind (Bool False) = B.word8N ind SPACE >> "false"
 prettyValue' _ !ind _            = B.word8N ind SPACE >> "null"
 
 arrayPretty :: Int -> Int -> V.Vector Value -> B.Builder ()
-{-# INLINE arrayPretty #-}
+{-# INLINABLE arrayPretty #-}
 arrayPretty idpl ind vs
     | V.null vs = B.word8N ind SPACE >> B.square (return ())
     | otherwise = do
@@ -166,7 +167,7 @@ arrayPretty idpl ind vs
     ind' = ind + idpl
 
 objectPretty :: Int -> Int -> V.Vector (T.Text, Value) -> B.Builder ()
-{-# INLINE objectPretty #-}
+{-# INLINABLE objectPretty #-}
 objectPretty idpl ind kvs
     | V.null kvs = B.word8N ind SPACE >> B.curly (return ())
     | otherwise = do

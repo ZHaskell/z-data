@@ -44,6 +44,7 @@ module Z.Data.Parser.Base
   ) where
 
 import           Control.Applicative
+import           Control.Exception                  (assert)
 import           Control.Monad
 import           Control.Monad.Primitive
 import qualified Control.Monad.Fail                 as Fail
@@ -117,20 +118,28 @@ data ParserState
 
 -- It seems eta-expand all params to ensure parsers are saturated is helpful
 instance Functor Parser where
-    fmap f (Parser pa) = Parser (\ kf k s inp -> pa kf (\ s' -> k s' . f) s inp)
+    fmap = fmapParser
     {-# INLINE fmap #-}
     a <$ Parser pb = Parser (\ kf k s inp -> pb kf (\ s' _ -> k s' a) s inp)
     {-# INLINE (<$) #-}
 
+fmapParser :: (a -> b) -> Parser a -> Parser b
+{-# INLINE fmapParser #-}
+fmapParser f (Parser pa) = Parser (\ kf k s inp -> pa kf (\ s' -> k s' . f) s inp)
+
 instance Applicative Parser where
     pure x = Parser (\ _ k s inp -> k s x inp)
     {-# INLINE pure #-}
-    Parser pf <*> Parser pa = Parser (\ kf k s inp -> pf kf (\ s' f -> pa kf (\ s'' -> k s'' . f) s') s inp)
+    (<*>) = apParser
     {-# INLINE (<*>) #-}
     Parser pa *> Parser pb = Parser (\ kf k s inp -> pa kf (\ s' _ -> pb kf k s') s inp)
     {-# INLINE (*>) #-}
     Parser pa <* Parser pb = Parser (\ kf k s inp -> pa kf (\ s' x -> pb kf (\ s'' _ -> k s'' x) s') s inp)
     {-# INLINE (<*) #-}
+
+apParser :: Parser (a -> b) -> Parser a -> Parser b
+{-# INLINE apParser #-}
+apParser (Parser pf) (Parser pa) = Parser (\ kf k s inp -> pf kf (\ s' f -> pa kf (\ s'' -> k s'' . f) s') s inp)
 
 instance Monad Parser where
     return = pure
@@ -178,7 +187,7 @@ instance Alternative Parser where
         (r, bss) <- runAndKeepTrack f
         case r of
             Success x inp   -> Parser (\ _ k s _ -> k s x inp)
-            Failure _ _     -> let !bs = V.concat (reverse bss)
+            Failure _ _     -> let !bs = V.concatR bss
                                in Parser (\ kf k s _ -> runParser g kf k s bs)
             _               -> error "Z.Data.Parser.Base: impossible"
     {-# INLINE (<|>) #-}
@@ -201,7 +210,7 @@ parse' p = snd . parse p
 -- | Parse the complete input, without resupplying, return the rest bytes
 parse :: Parser a -> V.Bytes -> (V.Bytes, Either ParseError a)
 {-# INLINE parse #-}
-parse (Parser p) inp =
+parse (Parser p) = \ inp ->
     case (runRW# ( \ s -> unsafeCoerce# (p Failure (\ _ r -> Success r) (unsafeCoerce# s) inp))) of
         Success a rest    -> (rest, Right a)
         Failure errs rest -> (rest, Left errs)
@@ -215,7 +224,7 @@ parseChunk (Parser p) = runRW# (\ s ->
 
 -- | Finish parsing and fetch result, feed empty bytes if it's 'Partial' result.
 finishParsing :: Result ParseError a -> (V.Bytes, Either ParseError a)
-{-# INLINABLE finishParsing #-}
+{-# INLINE finishParsing #-}
 finishParsing r = case r of
     Success a rest    -> (rest, Right a)
     Failure errs rest -> (rest, Left errs)
@@ -229,7 +238,7 @@ type ParseChunks m err x = m V.Bytes -> V.Bytes -> m (V.Bytes, Either err x)
 -- that can supply more input if needed.
 --
 parseChunks :: Monad m => (V.Bytes -> Result e a) -> ParseChunks m e a
-{-# INLINABLE parseChunks #-}
+{-# INLINE parseChunks #-}
 parseChunks pc m inp = go (pc inp)
   where
     go r = case r of
@@ -265,7 +274,7 @@ match p = do
     (r, bss) <- runAndKeepTrack p
     Parser (\ _ k s _ ->
         case r of
-            Success r' inp'  -> let !consumed = V.dropR (V.length inp') (V.concat (reverse bss))
+            Success r' inp'  -> let !consumed = V.dropR (V.length inp') (V.concatR bss)
                                 in k s (consumed , r') inp'
             Failure err inp' -> Failure err inp'
             Partial _        -> error "Z.Data.Parser.Base.match: impossible")
@@ -281,23 +290,60 @@ ensureN n0 err = Parser $ \ kf k s inp -> do
     let l = V.length inp
     if n0 <= l
     then k s () inp
-    else Partial (ensureNPartial err (n0-l) inp kf k s)
+    else Partial (ensureNPartial (n0-l) inp kf k s)
   where
+    ensureNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
+                   -> (State# ParserState -> () -> ParseStep ParseError r)
+                   -> State# ParserState -> ParseStep ParseError r
+    ensureNPartial !l0 inp0 kf k s0 =
+        let go acc !l s = \ inp -> do
+                let l' = V.length inp
+                if l' == 0
+                then kf [err] (V.concatR (inp:acc))
+                else do
+                    if l <= l'
+                    then let !inp' = V.concatR (inp:acc) in k s () inp'
+                    else Partial (go (inp:acc) (l - l') s)
+        in go [inp0] l0 s0
 
-ensureNPartial :: forall r. T.Text -> Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
-               -> (State# ParserState -> () -> ParseStep ParseError r)
-               -> State# ParserState -> ParseStep ParseError r
-{-# INLINE ensureNPartial #-}
-ensureNPartial err !l0 inp0 kf k s0 =
-    let go acc !l s = \ inp -> do
-            let l' = V.length inp
-            if l' == 0
-            then kf [err] (V.concat (reverse (inp:acc)))
-            else do
-                if l <= l'
-                then let !inp' = V.concat (reverse (inp:acc)) in k s () inp'
-                else Partial (go (inp:acc) (l - l') s)
-    in go [inp0] l0 s0
+-- | Ensure that there are at least @n@ bytes available. If not, the
+-- computation will escape with 'Partial'.
+--
+-- Since this parser is used in many other parsers, an extra error param is provide
+-- to attach custom error info.
+readN :: forall a. Int -> T.Text -> (V.Bytes -> a) -> Parser a
+{-# INLINE readN #-}
+readN n0 err f = Parser $ \ kf k s inp -> do
+    let l = V.length inp
+    if n0 <= l
+    then let !r = f inp
+             !inp' = V.unsafeDrop n0 inp
+             in k s r inp'
+    else Partial (readNPartial (n0-l) inp kf k s)
+  where
+    readNPartial :: forall r. Int -> V.PrimVector Word8 -> (ParseError -> ParseStep ParseError r)
+                   -> (State# ParserState -> a -> ParseStep ParseError r)
+                   -> State# ParserState -> ParseStep ParseError r
+    readNPartial !l0 inp0 kf k s0 =
+        let go acc !l s = \ inp -> do
+                let l' = V.length inp
+                if l' == 0
+                then kf [err] (V.concatR (inp:acc))
+                else do
+                    if l <= l'
+                    then let !inp' = V.concatR (inp:acc)
+                             !r  = f inp'
+                             !inp'' = V.unsafeDrop n0 inp'
+                         in k s r inp''
+                    else Partial (go (inp:acc) (l - l') s)
+        in go [inp0] l0 s0
+
+{- These rules are bascially what inliner do so no need to mess up with them
+{-# RULES "readN/fmap"
+    forall n f g e. fmapParser f (readN n e g)  = readN n e (f . g) #-}
+{-# RULES "readN/merge"
+    forall n1 n2 e1 e2 f1 f2. apParser (readN n1 e1 f1) (readN n2 e2 f2) = readN (n1 + n2) (T.concat [e1, ", ", e2]) (\ inp -> f1 inp $! f2 (V.unsafeDrop n1 inp)) #-}
+-}
 
 -- | Get current input chunk, draw new chunk if neccessary. 'V.null' means EOF.
 --
@@ -334,23 +380,8 @@ atEnd = Parser $ \ _ k s inp ->
 -- | Decode a primitive type in host byte order.
 decodePrim :: forall a. (Unaligned a) => Parser a
 {-# INLINE decodePrim #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Word   #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Word64 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Word32 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Word16 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Word8  #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Int   #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Int64 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Int32 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Int16 #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Int8  #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Double #-}
-{-# SPECIALIZE INLINE decodePrim :: Parser Float #-}
 decodePrim = do
-    ensureN n "Z.Data.Parser.Base.decodePrim: not enough bytes"
-    Parser (\ _ k s (V.PrimVector ba i len) ->
-        let !r = indexPrimWord8ArrayAs ba i
-        in k s r (V.PrimVector ba (i+n) (len-n)))
+    readN n "Z.Data.Parser.Base.decodePrim: not enough bytes" (\ (V.PrimVector ba i _) -> indexPrimWord8ArrayAs ba i)
   where
     n = getUnalignedSize (unalignedSize @a)
 
@@ -374,21 +405,8 @@ DECODE_HOST(decodeFloat , Float  )
 -- | Decode a primitive type in little endian.
 decodePrimLE :: forall a. (Unaligned (LE a)) => Parser a
 {-# INLINE decodePrimLE #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Word   #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Word64 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Word32 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Word16 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Int   #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Int64 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Int32 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Int16 #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Double #-}
-{-# SPECIALIZE INLINE decodePrimLE :: Parser Float #-}
 decodePrimLE = do
-    ensureN n "Z.Data.Parser.Base.decodePrimLE: not enough bytes"
-    Parser (\ _ k s (V.PrimVector ba i len) ->
-        let !r = indexPrimWord8ArrayAs ba i
-        in k s (getLE r) (V.PrimVector ba (i+n) (len-n)))
+    readN n "Z.Data.Parser.Base.decodePrimLE: not enough bytes" (\ (V.PrimVector ba i _) -> getLE (indexPrimWord8ArrayAs ba i))
   where
     n = getUnalignedSize (unalignedSize @(LE a))
 
@@ -410,21 +428,8 @@ DECODE_LE(decodeFloatLE , Float  )
 -- | Decode a primitive type in big endian.
 decodePrimBE :: forall a. (Unaligned (BE a)) => Parser a
 {-# INLINE decodePrimBE #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Word   #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Word64 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Word32 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Word16 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Int   #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Int64 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Int32 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Int16 #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Double #-}
-{-# SPECIALIZE INLINE decodePrimBE :: Parser Float #-}
 decodePrimBE = do
-    ensureN n "Z.Data.Parser.Base.decodePrimBE: not enough bytes"
-    Parser (\ _ k s (V.PrimVector ba i len) ->
-        let !r = indexPrimWord8ArrayAs ba i
-        in k s (getBE r) (V.PrimVector ba (i+n) (len-n)))
+    readN n "Z.Data.Parser.Base.decodePrimBE: not enough bytes" (\ (V.PrimVector ba i _) -> getBE (indexPrimWord8ArrayAs ba i))
   where
     n = getUnalignedSize (unalignedSize @(BE a))
 
@@ -483,19 +488,19 @@ scanChunks s0 consume = Parser (\ _ k st inp ->
         Left s' -> Partial (scanChunksPartial s' k st inp))
   where
     -- we want to inline consume if possible
-    {-# INLINABLE scanChunksPartial #-}
+    {-# INLINE scanChunksPartial #-}
     scanChunksPartial :: forall r. s -> (State# ParserState -> (V.PrimVector Word8, s) -> ParseStep ParseError r)
                       -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     scanChunksPartial s0' k st0 inp0 =
         let go s acc st = \ inp ->
                 if V.null inp
-                then k st (V.concat (reverse acc), s) inp
+                then k st (V.concatR acc, s) inp
                 else case consume s inp of
                         Left s' -> do
                             let acc' = inp : acc
                             Partial (go s' acc' st)
                         Right (want,rest,s') ->
-                            let !r = V.concat (reverse (want:acc)) in k st (r, s') rest
+                            let !r = V.concatR (want:acc) in k st (r, s') rest
         in go s0' [inp0] st0
 
 --------------------------------------------------------------------------------
@@ -622,7 +627,7 @@ anyChar7 = do
 --
 -- Don't use this method as UTF8 decoder, it's slower than 'T.validate'.
 anyCharUTF8 :: Parser Char
-{-# INLINABLE anyCharUTF8 #-}
+{-# INLINE anyCharUTF8 #-}
 anyCharUTF8 = do
     r <- Parser $ \ kf k st inp@(V.PrimVector arr s l) -> do
         if l > 0
@@ -665,27 +670,25 @@ endOfLine = do
 --
 skip :: Int -> Parser ()
 {-# INLINE skip #-}
-skip n =
+skip n = assert (n > 0) $
     Parser (\ kf k s inp ->
         let l = V.length inp
-            !n' = max n 0
-        in if l >= n'
-            then k s () $! V.unsafeDrop n' inp
-            else Partial (skipPartial (n'-l) kf k s))
-
-skipPartial :: Int -> (ParseError -> ParseStep ParseError r)
-            -> (State# ParserState -> () -> ParseStep ParseError r)
-            -> State# ParserState -> ParseStep ParseError r
-{-# INLINABLE skipPartial #-}
-skipPartial n kf k s0 =
-    let go !n' s = \ inp ->
-            let l = V.length inp
-            in if l >= n'
-                then k s () $! V.unsafeDrop n' inp
-                else if l == 0
-                    then kf ["Z.Data.Parser.Base.skip: not enough bytes"] inp
-                    else Partial (go (n'-l) s)
-    in go n s0
+        in if l >= n
+            then k s () $! V.unsafeDrop n inp
+            else Partial (skipPartial (n-l) kf k s))
+  where
+    skipPartial :: Int -> (ParseError -> ParseStep ParseError r)
+                -> (State# ParserState -> () -> ParseStep ParseError r)
+                -> State# ParserState -> ParseStep ParseError r
+    skipPartial n0 kf k s0 =
+        let go !n' s = \ inp ->
+                let l = V.length inp
+                in if l >= n'
+                    then k s () $! V.unsafeDrop n' inp
+                    else if l == 0
+                        then kf ["Z.Data.Parser.Base.skip: not enough bytes"] inp
+                        else Partial (go (n'-l) s)
+        in go n0 s0
 
 -- | Skip a byte.
 --
@@ -706,13 +709,11 @@ skipWhile :: (Word8 -> Bool) -> Parser ()
 {-# INLINE skipWhile #-}
 skipWhile p =
     Parser (\ _ k s inp ->
-        let rest = V.dropWhile p inp
+        let !rest = V.dropWhile p inp
         in if V.null rest
             then Partial (skipWhilePartial k s)
             else k s () rest)
   where
-    -- we want to inline p if possible
-    {-# INLINABLE skipWhilePartial #-}
     skipWhilePartial :: forall r. (State# ParserState -> () -> ParseStep ParseError r)
                      -> State# ParserState -> ParseStep ParseError r
     skipWhilePartial k s0 =
@@ -733,14 +734,7 @@ skipSpaces = skipWhile isSpace
 -- | Take N bytes.
 take :: Int -> Parser V.Bytes
 {-# INLINE take #-}
-take n = do
-    -- we use unsafe slice, guard negative n here
-    ensureN n' "Z.Data.Parser.Base.take: not enough bytes"
-    Parser (\ _ k s inp ->
-        let !r = V.unsafeTake n' inp
-            !inp' = V.unsafeDrop n' inp
-        in k s r inp')
-  where !n' = max 0 n
+take n = assert (n > 0) $ readN n "Z.Data.Parser.Base.take: not enough bytes" (V.unsafeTake n)
 
 -- | Consume input as long as the predicate returns 'False' or reach the end of input,
 -- and return the consumed input.
@@ -748,24 +742,23 @@ take n = do
 takeTill :: (Word8 -> Bool) -> Parser V.Bytes
 {-# INLINE takeTill #-}
 takeTill p = Parser (\ _ k s inp ->
-    let (want, rest) = V.break p inp
+    let (!want, !rest) = V.break p inp
     in if V.null rest
         then Partial (takeTillPartial k s want)
         else k s want rest)
   where
-    {-# INLINABLE takeTillPartial #-}
     takeTillPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
                     -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeTillPartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k s r inp
+                then let !r = V.concatR acc in k s r inp
                 else
-                    let (want', rest) = V.break p inp
+                    let (!want', !rest) = V.break p inp
                         acc' = want' : acc
                     in if V.null rest
                         then Partial (go acc' s)
-                        else let !r = V.concat (reverse acc') in k s r rest
+                        else let !r = V.concatR acc' in k s r rest
         in go [want] s0
 
 -- | Consume input as long as the predicate returns 'True' or reach the end of input,
@@ -774,25 +767,23 @@ takeTill p = Parser (\ _ k s inp ->
 takeWhile :: (Word8 -> Bool) -> Parser V.Bytes
 {-# INLINE takeWhile #-}
 takeWhile p = Parser (\ _ k s inp ->
-    let (want, rest) = V.span p inp
+    let (!want, !rest) = V.span p inp
     in if V.null rest
         then Partial (takeWhilePartial k s want)
         else k s want rest)
   where
-    -- we want to inline p if possible
-    {-# INLINABLE takeWhilePartial #-}
     takeWhilePartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
                      -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeWhilePartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k s r inp
+                then let !r = V.concatR acc in k s r inp
                 else
-                    let (want', rest) = V.span p inp
+                    let (!want', !rest) = V.span p inp
                         acc' = want' : acc
                     in if V.null rest
                         then Partial (go acc' s)
-                        else let !r = V.concat (reverse acc') in k s r rest
+                        else let !r = V.concatR acc' in k s r rest
         in go [want] s0
 
 -- | Similar to 'takeWhile', but requires the predicate to succeed on at least one byte
@@ -813,13 +804,12 @@ takeRemaining :: Parser V.Bytes
 {-# INLINE takeRemaining #-}
 takeRemaining = Parser (\ _ k s inp -> Partial (takeRemainingPartial k s inp))
   where
-    {-# INLINABLE takeRemainingPartial #-}
     takeRemainingPartial :: forall r. (State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r)
                          -> State# ParserState -> V.PrimVector Word8 -> ParseStep ParseError r
     takeRemainingPartial k s0 want =
         let go acc s = \ inp ->
                 if V.null inp
-                then let !r = V.concat (reverse acc) in k s r inp
+                then let !r = V.concatR acc in k s r inp
                 else let acc' = inp : acc in Partial (go acc' s)
         in go [want] s0
 
@@ -881,7 +871,7 @@ bytesCI bs = do
              "Z.Data.Parser.Base.bytesCI: mismatch bytes, expected "
             , T.toText bs
             , "(case insensitive), meet "
-            , T.toText (V.take n inp)
+            , T.toText (V.unsafeTake n inp)
             ] ] inp)
 
   where

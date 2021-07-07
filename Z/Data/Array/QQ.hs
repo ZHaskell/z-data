@@ -113,7 +113,7 @@ arrASCII = QuasiQuoter
     (error "Cannot use arrASCII as a dec")
 
 word8ArrayFromAddr :: Int -> Addr# -> PrimArray Word8
-{-# INLINE word8ArrayFromAddr #-}
+{-# INLINABLE word8ArrayFromAddr #-}
 word8ArrayFromAddr l addr# = runST $ do
     mba <- newPrimArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
@@ -259,7 +259,7 @@ arrW16 = QuasiQuoter
     (error "Cannot use arrW16 as a dec")
 
 word16ArrayFromAddr :: Int -> Addr# -> PrimArray Word16
-{-# INLINE word16ArrayFromAddr #-}
+{-# INLINABLE word16ArrayFromAddr #-}
 word16ArrayFromAddr l addr# = runST $ do
     mba <- newArr l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
@@ -324,7 +324,7 @@ arrW32 = QuasiQuoter
     (error "Cannot use arrW32 as a dec")
 
 word32ArrayFromAddr :: Int -> Addr# -> PrimArray Word32
-{-# INLINE word32ArrayFromAddr #-}
+{-# INLINABLE word32ArrayFromAddr #-}
 word32ArrayFromAddr l addr# = runST $ do
     mba <- newArr l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
@@ -396,7 +396,7 @@ arrW64 = QuasiQuoter
     (error "Cannot use arrW64 as a dec")
 
 word64ArrayFromAddr :: Int -> Addr# -> PrimArray Word64
-{-# INLINE word64ArrayFromAddr #-}
+{-# INLINABLE word64ArrayFromAddr #-}
 word64ArrayFromAddr l addr# = runST $ do
     mba <- newArr l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l

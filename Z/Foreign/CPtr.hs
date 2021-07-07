@@ -28,7 +28,7 @@ import qualified Z.Data.Text                as T
 import GHC.Ptr
 import GHC.Exts
 import GHC.IO
-import Z.Data.Array
+import Z.Data.Array                         hiding (newPinnedPrimArray)
 import Z.Foreign
 
 -- | Lightweight foreign pointers.

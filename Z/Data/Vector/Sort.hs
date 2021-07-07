@@ -76,7 +76,7 @@ mergeSort :: forall v a. (Vec v a, Ord a) => v a -> v a
 mergeSort = mergeSortBy compare
 
 mergeSortBy :: forall v a. Vec v a => (a -> a -> Ordering) -> v a -> v a
-{-# INLINE mergeSortBy #-}
+{-# INLINABLE mergeSortBy #-}
 mergeSortBy cmp vec@(Vec _ _ l)
     | l <= mergeTileSize = insertSortBy cmp vec
     | otherwise = runST (do
@@ -139,7 +139,7 @@ mergeSortBy cmp vec@(Vec _ _ l)
 
 -- | The mergesort tile size, @mergeTileSize = 8@.
 mergeTileSize :: Int
-{-# INLINE mergeTileSize #-}
+{-# INLINABLE mergeTileSize #-}
 mergeTileSize = 8
 
 -- | /O(n^2)/ Sort vector based on element's 'Ord' instance with simple
@@ -148,11 +148,11 @@ mergeTileSize = 8
 -- This is a stable sort. O(n) extra space are needed,
 -- which will be freezed into result vector.
 insertSort :: (Vec v a, Ord a) => v a -> v a
-{-# INLINE insertSort #-}
+{-# INLINABLE insertSort #-}
 insertSort = insertSortBy compare
 
 insertSortBy :: Vec v a => (a -> a -> Ordering) -> v a -> v a
-{-# INLINE insertSortBy #-}
+{-# INLINABLE insertSortBy #-}
 insertSortBy cmp v@(Vec _ _ l) | l <= 1 = v
                                | otherwise = create l (insertSortToMArr cmp v 0)
 
@@ -162,7 +162,7 @@ insertSortToMArr  :: Vec v a
                   -> Int            -- writing offset in the mutable array
                   -> MArr (IArray v) s a   -- writing mutable array, must have enough space!
                   -> ST s ()
-{-# INLINE insertSortToMArr #-}
+{-# INLINABLE insertSortToMArr #-}
 insertSortToMArr cmp (Vec arr s l) moff marr = go s
   where
     !end = s + l
@@ -457,7 +457,7 @@ radixSortFloat v =  castVector (radixSort (castVector v :: PrimVector RadixFloat
 --
 -- Use this function on a sorted vector will have the same effects as 'nub'.
 mergeDupAdjacent :: forall v a. (Vec v a, Eq a) => v a -> v a
-{-# INLINE mergeDupAdjacent #-}
+{-# INLINABLE mergeDupAdjacent #-}
 mergeDupAdjacent = mergeDupAdjacentBy (==) const
 
 -- | Merge duplicated adjacent element, prefer left element.
@@ -466,14 +466,14 @@ mergeDupAdjacentLeft :: forall v a. Vec v a
                      -> v a
                      -> v a
 mergeDupAdjacentLeft eq = mergeDupAdjacentBy eq const
-{-# INLINE mergeDupAdjacentLeft #-}
+{-# INLINABLE mergeDupAdjacentLeft #-}
 
 -- | Merge duplicated adjacent element, prefer right element.
 mergeDupAdjacentRight :: forall v a. Vec v a
                       => (a -> a -> Bool)  -- ^ equality tester, @\ left right -> eq left right@
                       -> v a
                       -> v a
-{-# INLINE mergeDupAdjacentRight #-}
+{-# INLINABLE mergeDupAdjacentRight #-}
 mergeDupAdjacentRight eq = mergeDupAdjacentBy eq (\ _ x -> x)
 
 -- | Merge duplicated adjacent element, based on a equality tester and a merger function.
