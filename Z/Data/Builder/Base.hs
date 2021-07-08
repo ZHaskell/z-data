@@ -214,12 +214,12 @@ bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
 
 -- | Shortcut to 'buildWith' 'V.defaultInitSize'.
 build :: Builder a -> V.Bytes
-{-# INLINE build #-}
+{-# INLINABLE build #-}
 build = buildWith V.defaultInitSize
 
 -- | Build some bytes and validate if it's UTF8 bytes.
 buildText :: HasCallStack => Builder a -> T.Text
-{-# INLINE buildText #-}
+{-# INLINABLE buildText #-}
 buildText = T.validate . buildWith V.defaultInitSize
 
 -- | Build some bytes assuming it's UTF8 encoding.
@@ -228,7 +228,7 @@ buildText = T.validate . buildWith V.defaultInitSize
 -- Check 'Z.Data.Text.ShowT' for UTF8 encoding builders. This functions is intended to
 -- be used in debug only.
 unsafeBuildText :: Builder a -> T.Text
-{-# INLINE unsafeBuildText #-}
+{-# INLINABLE unsafeBuildText #-}
 unsafeBuildText = T.Text . buildWith V.defaultInitSize
 
 -- | Run Builder with doubling buffer strategy, which is suitable
@@ -257,7 +257,7 @@ buildWith initSiz (Builder b) = unsafePerformIO $ do
 
 -- | Shortcut to 'buildChunksWith' 'V.defaultChunkSize'.
 buildChunks :: Builder a -> [V.Bytes]
-{-# INLINE buildChunks #-}
+{-# INLINABLE buildChunks #-}
 buildChunks = buildChunksWith  V.smallChunkSize V.defaultChunkSize
 
 -- | Run Builder with inserting chunk strategy, which is suitable

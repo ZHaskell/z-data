@@ -19,7 +19,7 @@ module Z.Data.Parser.Base
   , Parser(..)
   , (<?>)
     -- * Running a parser
-  , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
+  , parse, parse', parseChunk, parseChunkList, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, currentChunk, atEnd
@@ -203,7 +203,7 @@ failWithInput f = Parser (\ kf _ _ inp -> kf [f inp] inp)
 
 -- | Parse the complete input, without resupplying
 parse' :: Parser a -> V.Bytes -> Either ParseError a
-{-# INLINE parse' #-}
+{-# INLINABLE parse' #-}
 parse' p = snd . parse p
 
 -- | Parse the complete input, without resupplying, return the rest bytes
@@ -215,6 +215,22 @@ parse (Parser p) = \ inp ->
         Failure errs rest -> (rest, Left errs)
         Partial f         -> finishParsing (f V.empty)
 
+-- | Parse the complete input list, without resupplying, return the rest bytes list.
+--
+-- Parsers in "Z.Data.Parser" will take 'V.empty' as EOF, so please make sure there are no 'V.empty's
+-- mixed into the chunk list.
+parseChunkList :: Parser a -> [V.Bytes] -> ([V.Bytes], Either ParseError a)
+{-# INLINABLE parseChunkList #-}
+parseChunkList p (inp:inps) = go (parseChunk p inp) inps
+    where
+        go r is = case r of
+            Partial f -> case is of
+                (i:is') -> go (f i) is'
+                _ -> let (rest, r') = finishParsing r
+                     in (if V.null rest then [] else [rest], r')
+            Success a rest    -> (if V.null rest then is else rest:is, Right a)
+            Failure errs rest -> (if V.null rest then is else rest:is, Left errs)
+
 -- | Parse an input chunk
 parseChunk :: Parser a -> V.Bytes -> Result ParseError a
 {-# INLINE parseChunk #-}
@@ -223,7 +239,7 @@ parseChunk (Parser p) = runRW# (\ s ->
 
 -- | Finish parsing and fetch result, feed empty bytes if it's 'Partial' result.
 finishParsing :: Result ParseError a -> (V.Bytes, Either ParseError a)
-{-# INLINE finishParsing #-}
+{-# INLINABLE finishParsing #-}
 finishParsing r = case r of
     Success a rest    -> (rest, Right a)
     Failure errs rest -> (rest, Left errs)

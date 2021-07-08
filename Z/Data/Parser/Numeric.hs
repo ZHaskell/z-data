@@ -381,7 +381,7 @@ scientifically h = "Z.Data.Parser.Numeric.scientifically" <?> scientificallyInte
 
 -- | Strip message version.
 scientificallyInternal :: (Sci.Scientific -> a) -> Parser a
-{-# INLINABLE scientificallyInternal #-}
+{-# INLINE scientificallyInternal #-}
 scientificallyInternal h = do
     !sign <- P.peek
     when (sign == PLUS || sign == MINUS) (P.skipWord8)
@@ -406,7 +406,6 @@ scientificallyInternal h = do
     -- retained references are sign and sci, which are already in NF
     pure (if sign /= MINUS then h sci else h (negate sci))
   where
-    {-# INLINE parseE #-}
     parseE c e =
         (do _ <- P.satisfy (\w -> w ==  LETTER_e || w == LETTER_E)
             e' <- int
@@ -510,7 +509,7 @@ scientifically' h = "Z.Data.Parser.Numeric.scientifically'" <?> scientificallyIn
 
 -- | Strip message version of scientifically'.
 scientificallyInternal' :: (Sci.Scientific -> a) -> P.Parser a
-{-# INLINABLE scientificallyInternal' #-}
+{-# INLINE scientificallyInternal' #-}
 scientificallyInternal' h = do
     !sign <- P.peek
     when (sign == MINUS) (P.skipWord8) -- no leading plus is allowed
@@ -537,7 +536,6 @@ scientificallyInternal' h = do
     -- retained references are sign and sci, which are already in NF
     pure (if sign /= MINUS then h sci else h (negate sci))
   where
-    {-# INLINE parseE #-}
     parseE !c !e = do
         me <- P.peekMaybe
         e' <- case me of
