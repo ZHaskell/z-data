@@ -65,7 +65,7 @@ fromGregorianValidInt64 :: Int64 -> Int -> Int -> Maybe Day
 {-# INLINABLE fromGregorianValidInt64 #-}
 fromGregorianValidInt64 year month day_ =
     if (1 <= month && month <= 12) && (1 <= day_ && day_ <= monthLength)
-    then Just . ModifiedJulianDay $! fromIntegral mjd
+    then Just (ModifiedJulianDay $! fromIntegral mjd)
     else Nothing
   where
     isLeap = (rem year 4 == 0) && ((rem year 400 == 0) || not (rem year 100 == 0))
