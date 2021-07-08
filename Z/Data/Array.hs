@@ -92,6 +92,10 @@ import           Data.Primitive.Types
 import           GHC.Stack
 import           Z.Data.Array.Base      (Arr, MArr)
 import qualified Z.Data.Array.Base      as A
+#ifdef CHECK_ARRAY_BOUND
+import           Control.Monad
+import           Control.Monad.ST
+#endif
 
 #ifdef CHECK_ARRAY_BOUND
 check :: HasCallStack => Bool -> a -> a
@@ -187,7 +191,9 @@ indexArr' :: (Arr arr a, HasCallStack)
           => arr a -> Int -> (# a #)
 indexArr' arr i =
 #ifdef CHECK_ARRAY_BOUND
-    check (i>=0 && i<A.sizeofArr arr) (A.indexArr' arr i)
+    if (i>=0 && i<A.sizeofArr arr)
+    then A.indexArr' arr i
+    else throw (IndexOutOfBounds $ show callStack)
 #else
     (A.indexArr' arr i)
 #endif
