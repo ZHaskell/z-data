@@ -50,6 +50,13 @@ module Z.Data.Builder.Base
   , charUTF8, string7, char7, word7, string8, char8, word8, word8N, text
   -- * Builder helpers
   , paren, parenWhen, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
+    -- * Specialized primitive parser
+  , encodeWord  , encodeWord64, encodeWord32, encodeWord16, encodeWord8
+  , encodeInt   , encodeInt64 , encodeInt32 , encodeInt16 , encodeInt8 , encodeDouble, encodeFloat
+  , encodeWordLE  , encodeWord64LE , encodeWord32LE , encodeWord16LE
+  , encodeIntLE   , encodeInt64LE , encodeInt32LE , encodeInt16LE , encodeDoubleLE , encodeFloatLE
+  , encodeWordBE  , encodeWord64BE , encodeWord32BE , encodeWord16BE
+  , encodeIntBE   , encodeInt64BE , encodeInt32BE , encodeInt16BE , encodeDoubleBE , encodeFloatBE
   ) where
 
 import           Control.Monad
@@ -64,10 +71,11 @@ import           GHC.Stack
 import           Data.Primitive.PrimArray
 import           Z.Data.Array.Unaligned
 import           Z.Data.ASCII
-import qualified Z.Data.Text.Base                 as T
-import qualified Z.Data.Text.UTF8Codec            as T
-import qualified Z.Data.Vector.Base               as V
-import qualified Z.Data.Array                     as A
+import qualified Z.Data.Text.Base                   as T
+import qualified Z.Data.Text.UTF8Codec              as T
+import qualified Z.Data.Vector.Base                 as V
+import qualified Z.Data.Array                       as A
+import           Prelude                            hiding (encodeFloat)
 import           System.IO.Unsafe
 import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
 
@@ -206,12 +214,12 @@ bytes bs@(V.PrimVector arr s l) = Builder (\ k buffer@(Buffer buf offset) -> do
 
 -- | Shortcut to 'buildWith' 'V.defaultInitSize'.
 build :: Builder a -> V.Bytes
-{-# INLINE build #-}
+{-# INLINABLE build #-}
 build = buildWith V.defaultInitSize
 
 -- | Build some bytes and validate if it's UTF8 bytes.
 buildText :: HasCallStack => Builder a -> T.Text
-{-# INLINE buildText #-}
+{-# INLINABLE buildText #-}
 buildText = T.validate . buildWith V.defaultInitSize
 
 -- | Build some bytes assuming it's UTF8 encoding.
@@ -220,13 +228,13 @@ buildText = T.validate . buildWith V.defaultInitSize
 -- Check 'Z.Data.Text.ShowT' for UTF8 encoding builders. This functions is intended to
 -- be used in debug only.
 unsafeBuildText :: Builder a -> T.Text
-{-# INLINE unsafeBuildText #-}
+{-# INLINABLE unsafeBuildText #-}
 unsafeBuildText = T.Text . buildWith V.defaultInitSize
 
 -- | Run Builder with doubling buffer strategy, which is suitable
 -- for building short bytes.
 buildWith :: Int -> Builder a -> V.Bytes
-{-# INLINABLE buildWith #-}
+{-# INLINE buildWith #-}
 buildWith initSiz (Builder b) = unsafePerformIO $ do
     buf <- newPrimArray initSiz
     loop =<< b (\ _ -> return . Done) (Buffer buf 0)
@@ -249,7 +257,7 @@ buildWith initSiz (Builder b) = unsafePerformIO $ do
 
 -- | Shortcut to 'buildChunksWith' 'V.defaultChunkSize'.
 buildChunks :: Builder a -> [V.Bytes]
-{-# INLINE buildChunks #-}
+{-# INLINABLE buildChunks #-}
 buildChunks = buildChunksWith  V.smallChunkSize V.defaultChunkSize
 
 -- | Run Builder with inserting chunk strategy, which is suitable
@@ -257,7 +265,7 @@ buildChunks = buildChunksWith  V.smallChunkSize V.defaultChunkSize
 --
 -- Note the building process is lazy, building happens when list chunks are consumed.
 buildChunksWith :: Int -> Int -> Builder a -> [V.Bytes]
-{-# INLINABLE buildChunksWith #-}
+{-# INLINE buildChunksWith #-}
 buildChunksWith initSiz chunkSiz (Builder b) = unsafePerformIO $ do
     buf <- newPrimArray initSiz
     loop =<< b (\ _ -> return . Done) (Buffer buf 0)
@@ -313,10 +321,18 @@ writeN :: Int  -- ^ size bound
 {-# INLINE writeN #-}
 writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
     siz <- getSizeofMutablePrimArray buf
-    if n + offset <= siz
-    then f buf offset >> k () (Buffer buf (offset+n))
+    let n' = n + offset
+    if n' <= siz
+    then f buf offset >> k () (Buffer buf n')
     else return (BufferFull buffer n (\ (Buffer buf' offset') -> do
         f buf' offset' >> k () (Buffer buf' (offset'+n)))))
+
+{- These rules are bascially what inliner do so no need to mess up with them
+{-# RULES
+  "ensureN/merge" forall n1 f1 n2 f2. append (ensureN n1 f1) (ensureN n2 f2) = ensureN (n1 + n2) (\ mba i -> f1 mba i >>= \ i' -> f2 mba i') #-}
+{-# RULES
+  "writeN/merge" forall n1 f1 n2 f2. append (writeN n1 f1) (writeN n2 f2) = writeN (n1 + n2) (\ mba i -> f1 mba i >> f2 mba (i+n1)) #-}
+-}
 
 -- | Write a primitive type in host byte order.
 --
@@ -326,52 +342,67 @@ writeN !n f = Builder (\ k buffer@(Buffer buf offset) -> do
 -- @
 encodePrim :: forall a. Unaligned a => a -> Builder ()
 {-# INLINE encodePrim #-}
-{-# SPECIALIZE INLINE encodePrim :: Word -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Word64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Word32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Word16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Word8 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Int -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Int64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Int32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Int16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Int8 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Double -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrim :: Float -> Builder () #-}
 encodePrim x = do
     writeN n (\ mpa i -> writePrimWord8ArrayAs mpa i x)
   where
     n = getUnalignedSize (unalignedSize @a)
 
+#define ENCODE_HOST(f, type) \
+    f :: type -> Builder (); {-# INLINE f #-}; f = encodePrim; \
+    -- ^ Encode type in host endian order.
+
+ENCODE_HOST(encodeWord  , Word   )
+ENCODE_HOST(encodeWord64, Word64 )
+ENCODE_HOST(encodeWord32, Word32 )
+ENCODE_HOST(encodeWord16, Word16 )
+ENCODE_HOST(encodeWord8 , Word8  )
+ENCODE_HOST(encodeInt   , Int    )
+ENCODE_HOST(encodeInt64 , Int64  )
+ENCODE_HOST(encodeInt32 , Int32  )
+ENCODE_HOST(encodeInt16 , Int16  )
+ENCODE_HOST(encodeInt8  , Int8   )
+ENCODE_HOST(encodeDouble, Double )
+ENCODE_HOST(encodeFloat , Float  )
+
 -- | Write a primitive type with little endianess.
 encodePrimLE :: forall a. Unaligned (LE a) => a -> Builder ()
 {-# INLINE encodePrimLE #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Word -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Word64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Word32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Word16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Int -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Int64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Int32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Int16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Double -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimLE :: Float -> Builder () #-}
 encodePrimLE = encodePrim . LE
+
+#define ENCODE_LE(f, type) \
+    f :: type -> Builder (); {-# INLINE f #-}; f = encodePrimLE; \
+    -- ^ Encode type in little endian order.
+
+ENCODE_LE(encodeWordLE  , Word   )
+ENCODE_LE(encodeWord64LE, Word64 )
+ENCODE_LE(encodeWord32LE, Word32 )
+ENCODE_LE(encodeWord16LE, Word16 )
+ENCODE_LE(encodeIntLE   , Int    )
+ENCODE_LE(encodeInt64LE , Int64  )
+ENCODE_LE(encodeInt32LE , Int32  )
+ENCODE_LE(encodeInt16LE , Int16  )
+ENCODE_LE(encodeDoubleLE, Double )
+ENCODE_LE(encodeFloatLE , Float  )
 
 -- | Write a primitive type with big endianess.
 encodePrimBE :: forall a. Unaligned (BE a) => a -> Builder ()
 {-# INLINE encodePrimBE #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Word -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Word64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Word32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Word16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Int -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Int64 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Int32 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Int16 -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Double -> Builder () #-}
-{-# SPECIALIZE INLINE encodePrimBE :: Float -> Builder () #-}
 encodePrimBE = encodePrim . BE
+
+#define ENCODE_BE(f, type) \
+    f :: type -> Builder (); {-# INLINE f #-}; f = encodePrimBE; \
+    -- ^ Encode type in little endian order.
+
+ENCODE_BE(encodeWordBE  , Word   )
+ENCODE_BE(encodeWord64BE, Word64 )
+ENCODE_BE(encodeWord32BE, Word32 )
+ENCODE_BE(encodeWord16BE, Word16 )
+ENCODE_BE(encodeIntBE   , Int    )
+ENCODE_BE(encodeInt64BE , Int64  )
+ENCODE_BE(encodeInt32BE , Int32  )
+ENCODE_BE(encodeInt16BE , Int16  )
+ENCODE_BE(encodeDoubleBE, Double )
+ENCODE_BE(encodeFloatBE , Float  )
 
 --------------------------------------------------------------------------------
 
@@ -403,7 +434,7 @@ packASCIIAddr addr0# = copy addr0#
         writeN len (\ mba i -> copyPtrToMutablePrimArray mba i (Ptr addr#) len)
 
 packUTF8Addr :: Addr# -> Builder ()
-{-# INLINE packUTF8Addr #-}
+{-# INLINABLE packUTF8Addr #-}
 packUTF8Addr addr0# = validateAndCopy addr0#
   where
     len = fromIntegral . unsafeDupablePerformIO $ V.c_strlen addr0#
@@ -433,8 +464,7 @@ string7 = mapM_ char7
 -- Codepoints beyond @'\x7F'@ will be chopped.
 char7 :: Char -> Builder ()
 {-# INLINE char7 #-}
-char7 chr =
-    writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr .&. 0x7F))
+char7 chr = writeN 1 (\ mpa i -> writePrimWord8ArrayAs mpa i (c2w chr .&. 0x7F))
 
 -- | Turn 'Word8' into 'Builder' with ASCII7 encoding
 --
@@ -475,8 +505,7 @@ word8 = encodePrim
 -- by this builder may not be legal UTF8 encoding bytes.
 word8N :: Int -> Word8 -> Builder ()
 {-# INLINE word8N #-}
-word8N x w8 = do
-    writeN x (\ mpa i -> setPrimArray mpa i x w8)
+word8N x w8 = writeN x (\ mpa i -> setPrimArray mpa i x w8)
 
 -- | Write UTF8 encoded 'Text' using 'Builder'.
 --

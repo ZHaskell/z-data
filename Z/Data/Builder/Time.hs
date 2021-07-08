@@ -18,6 +18,10 @@ module Z.Data.Builder.Time
   , utcTime
   , localTime
   , zonedTime
+  -- * internal
+  , twoDigits
+  , toGregorian'
+  , toGregorianInt64
   ) where
 
 import Control.Monad
@@ -32,22 +36,62 @@ import Z.Data.Builder.Numeric   (i2wDec)
 import Z.Data.ASCII
 
 -- | @YYYY-mm-dd@.
+--
 day :: Day -> Builder ()
 {-# INLINE day #-}
-day dd = encodeYear yr <>
-         B.encodePrim (HYPHEN, mh, ml, HYPHEN, dh, dl)
-  where (yr, m, d)    = toGregorian dd
-        (mh, ml)  = twoDigits m
-        (dh, dl)  = twoDigits d
-        encodeYear y
-            | y >= 1000 = B.integer y
-            | y >= 0    = B.encodePrim (padYear y)
-            | y >= -999 = B.encodePrim (MINUS, padYear y)
-            | otherwise = B.integer y
-        padYear y =
-            let (ab,c) = (fromIntegral y :: Int) `quotRem` 10
-                (a, b)  = ab `quotRem` 10
-            in (DIGIT_0, i2wDec a, i2wDec b, i2wDec c)
+day dd = encodeYear yr <> B.encodePrim (HYPHEN, mh, ml, HYPHEN, dh, dl)
+  where
+    (yr, m, d)    = toGregorian' dd
+    (mh, ml)  = twoDigits m
+    (dh, dl)  = twoDigits d
+    encodeYear y
+        | y >= 1000 = B.integer y
+        | y >= 0    = B.encodePrim (padYear y)
+        | y >= -999 = B.encodePrim (MINUS, padYear y)
+        | otherwise = B.integer y
+    padYear y =
+        let (ab,c) = (fromIntegral y :: Int) `quotRem` 10
+            (a, b)  = ab `quotRem` 10
+        in (DIGIT_0, i2wDec a, i2wDec b, i2wDec c)
+
+-- | Faster 'toGregorian' with 'toGregorianInt64' as the common case path.
+toGregorian' :: Day -> (Integer, Int, Int)
+{-# INLINE toGregorian' #-}
+toGregorian' dd@(ModifiedJulianDay mjd)
+    | -9223372036854775808 <= mjd && mjd <= 9223372036854097232 = toGregorianInt64 (fromIntegral mjd)
+    | otherwise = toGregorian dd
+
+-- | Faster common case for small days (-9223372036854775808 ~ 9223372036854097232).
+--
+toGregorianInt64 :: Int64 -> (Integer, Int, Int)
+{-# INLINABLE toGregorianInt64 #-}
+toGregorianInt64 mjd = year' `seq` month `seq` day_ `seq` (year', month, day_)
+  where
+    a = mjd + 678575
+    quadcent = div a 146097
+    b = mod a 146097
+    cent = min (div b 36524) 3
+    c = b - (cent * 36524)
+    quad = div c 1461
+    d = mod c 1461
+    y = min (div d 365) 3
+    yd = fromIntegral (d - (y * 365) + 1)
+    year = quadcent * 400 + cent * 100 + quad * 4 + y + 1
+    year' = fromIntegral year
+    isLeap = (rem year 4 == 0) && ((rem year 400 == 0) || not (rem year 100 == 0))
+    (month, day_) = findMonthDay (if isLeap then monthListLeap else monthList) yd 1
+
+    findMonthDay :: [Int] -> Int -> Int -> (Int, Int)
+    findMonthDay (n : ns) !yd_ !m | yd_ > n = findMonthDay ns (yd_ - n) (m + 1)
+    findMonthDay _ !yd_ !m                 = (m, yd_)
+
+monthList :: [Int]
+{-# NOINLINE monthList #-}
+monthList = [ 31 , 28 , 31 , 30 , 31 , 30 , 31 , 31 , 30 , 31 , 30 , 31 ]
+
+monthListLeap :: [Int]
+{-# NOINLINE monthListLeap #-}
+monthListLeap = [ 31 , 29 , 31 , 30 , 31 , 30 , 31 , 31 , 30 , 31 , 30 , 31 ]
 
 -- | @HH-MM-SS@.
 timeOfDay :: TimeOfDay -> Builder ()
@@ -103,7 +147,7 @@ dayTime :: Day -> TimeOfDay64 -> Builder ()
 dayTime d t = day d >> B.word8 LETTER_T >> timeOfDay64 t
 
 timeOfDay64 :: TimeOfDay64 -> Builder ()
-{-# INLINE timeOfDay64 #-}
+{-# INLINABLE timeOfDay64 #-}
 timeOfDay64 (!h, !m, !s) = do
     B.encodePrim (hh, hl, COLON, mh, ml, COLON, sh, sl)
     when (frac /= 0) $ do
@@ -138,4 +182,3 @@ twoDigits :: Int -> (Word8, Word8)
 {-# INLINE twoDigits #-}
 twoDigits a = (i2wDec hi, i2wDec lo)
   where (hi,lo) = a `quotRem` 10
-

@@ -206,7 +206,7 @@ trainCase = symbCase '-'
 --------------------------------------------------------------------------------
 
 symbCase :: Char -> String -> T.Text
-{-# INLINE symbCase #-}
+{-# INLINABLE symbCase #-}
 symbCase sym =  T.pack . go . applyFirst toLower
   where
     go []                       = []

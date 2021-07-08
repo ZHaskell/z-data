@@ -113,13 +113,14 @@ arrASCII = QuasiQuoter
     (error "Cannot use arrASCII as a dec")
 
 word8ArrayFromAddr :: Int -> Addr# -> PrimArray Word8
-{-# INLINE word8ArrayFromAddr #-}
+{-# INLINABLE word8ArrayFromAddr #-}
 word8ArrayFromAddr l addr# = runST $ do
     mba <- newPrimArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
     unsafeFreezePrimArray mba
 
 int8ArrayFromAddr :: Int -> Addr# -> PrimArray Int8
+{-# INLINE int8ArrayFromAddr #-}
 int8ArrayFromAddr l addr# = castArray (word8ArrayFromAddr l addr#)
 
 
@@ -266,6 +267,7 @@ word16ArrayFromAddr l addr# = runST $ do
     unsafeFreezePrimArray mba
 
 int16ArrayFromAddr :: Int -> Addr# -> PrimArray Int16
+{-# INLINE int16ArrayFromAddr #-}
 int16ArrayFromAddr l addr# = castArray (word16ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int16)
@@ -331,6 +333,7 @@ word32ArrayFromAddr l addr# = runST $ do
     unsafeFreezePrimArray mba
 
 int32ArrayFromAddr :: Int -> Addr# -> PrimArray Int32
+{-# INLINE int32ArrayFromAddr #-}
 int32ArrayFromAddr l addr# = castArray (word32ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int32)
@@ -396,13 +399,14 @@ arrW64 = QuasiQuoter
     (error "Cannot use arrW64 as a dec")
 
 word64ArrayFromAddr :: Int -> Addr# -> PrimArray Word64
-{-# INLINE word64ArrayFromAddr #-}
+{-# INLINABLE word64ArrayFromAddr #-}
 word64ArrayFromAddr l addr# = runST $ do
     mba <- newArr l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
     unsafeFreezePrimArray mba
 
 int64ArrayFromAddr :: Int -> Addr# -> PrimArray Int64
+{-# INLINE int64ArrayFromAddr #-}
 int64ArrayFromAddr l addr# = castArray (word64ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int64)
@@ -440,6 +444,7 @@ arrI64 = QuasiQuoter
 --------------------------------------------------------------------------------
 
 wordArrayFromAddr :: Int -> Addr# -> PrimArray Word
+{-# INLINE wordArrayFromAddr #-}
 wordArrayFromAddr l addr# =
 #if SIZEOF_HSWORD == 8
     unsafeCoerce# (word64ArrayFromAddr l addr#)
@@ -448,6 +453,7 @@ wordArrayFromAddr l addr# =
 #endif
 
 intArrayFromAddr :: Int -> Addr# -> PrimArray Int
+{-# INLINE intArrayFromAddr #-}
 intArrayFromAddr l addr# =
 #if SIZEOF_HSWORD == 8
     unsafeCoerce# (int64ArrayFromAddr l addr#)

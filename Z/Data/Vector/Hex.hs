@@ -66,7 +66,7 @@ instance JSON.JSON HexBytes where
 -- | Encode 'V.Bytes' using hex(base16) encoding.
 hexEncode :: Bool   -- ^ uppercase?
           -> V.Bytes -> V.Bytes
-{-# INLINE hexEncode #-}
+{-# INLINABLE hexEncode #-}
 hexEncode upper (V.PrimVector arr s l) = fst . unsafeDupablePerformIO $ do
     allocPrimVectorUnsafe (l `unsafeShiftL` 1) $ \ buf# ->
         withPrimArrayUnsafe arr $ \ parr _ ->
@@ -88,7 +88,7 @@ hexEncodeBuilder upper (V.PrimVector arr s l) =
 -- | Text version of 'hexEncode'.
 hexEncodeText :: Bool   -- ^ uppercase?
               -> V.Bytes -> T.Text
-{-# INLINE hexEncodeText #-}
+{-# INLINABLE hexEncodeText #-}
 hexEncodeText upper = T.Text . hexEncode upper
 
 -- | Decode a hex encoding string, return Nothing on illegal bytes or incomplete input.
@@ -134,14 +134,14 @@ instance Exception HexDecodeException
 
 -- | Decode a hex encoding string, throw 'HexDecodeException' on error.
 hexDecode' :: HasCallStack => V.Bytes -> V.Bytes
-{-# INLINABLE hexDecode' #-}
+{-# INLINE hexDecode' #-}
 hexDecode' ba = case hexDecode ba of
     Just r -> r
     _ -> throw (IllegalHexBytes ba callStack)
 
 -- | Decode a hex encoding string, ignore ASCII whitespace(space, tab, newline, vertical tab, form feed, carriage return), throw 'HexDecodeException' on error.
 hexDecodeWS' :: HasCallStack => V.Bytes -> V.Bytes
-{-# INLINABLE hexDecodeWS' #-}
+{-# INLINE hexDecodeWS' #-}
 hexDecodeWS' ba = case hexDecodeWS ba of
     Just r -> r
     _ -> throw (IllegalHexBytes ba callStack)

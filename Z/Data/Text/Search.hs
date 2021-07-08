@@ -34,7 +34,7 @@ import qualified Z.Data.Vector.Base    as V
 
 -- | find all char index matching the predicate.
 findIndices :: (Char -> Bool) -> Text -> [Int]
-{-# INLINE findIndices #-}
+{-# INLINABLE findIndices #-}
 findIndices f (Text (V.PrimVector arr s l)) = go 0 s
   where
     !end = s + l
@@ -45,7 +45,7 @@ findIndices f (Text (V.PrimVector arr s l)) = go 0 s
 
 -- | find all char's byte index matching the predicate.
 findBytesIndices :: (Char -> Bool) -> Text -> [Int]
-{-# INLINE findBytesIndices #-}
+{-# INLINABLE findBytesIndices #-}
 findBytesIndices f (Text (V.PrimVector arr s l)) = go s
   where
     !end = s + l
@@ -59,7 +59,7 @@ findBytesIndices f (Text (V.PrimVector arr s l)) = go s
 find :: (Char -> Bool)
      -> Text
      -> (Int, Maybe Char)  -- ^ (char index, matching char)
-{-# INLINE find #-}
+{-# INLINABLE find #-}
 find f (Text (V.PrimVector arr s l)) = go 0 s
   where
     !end = s + l
@@ -76,7 +76,7 @@ find f (Text (V.PrimVector arr s l)) = go 0 s
 findR :: (Char -> Bool)
       -> Text
       -> (Int, Maybe Char)  -- ^ (char index(counting backwards), matching char)
-{-# INLINE findR #-}
+{-# INLINABLE findR #-}
 findR f (Text (V.PrimVector arr s l)) = go 0 (s+l-1)
   where
     go !i !j | j < s     = (i, Nothing)
@@ -90,17 +90,17 @@ findR f (Text (V.PrimVector arr s l)) = go 0 (s+l-1)
 
 -- | /O(n)/ find the char index.
 findIndex :: (Char -> Bool) -> Text -> Int
-{-# INLINE findIndex #-}
+{-# INLINABLE findIndex #-}
 findIndex f t = case find f t of (i, _) -> i
 
 -- | /O(n)/ find the char index in reverse order.
 findIndexR ::  (Char -> Bool) -> Text -> Int
-{-# INLINE findIndexR #-}
+{-# INLINABLE findIndexR #-}
 findIndexR f t = case findR f t of (i, _) -> i
 
 -- | /O(n)/ find the char's byte slice index.
 findBytesIndex :: (Char -> Bool) -> Text -> Int
-{-# INLINE findBytesIndex #-}
+{-# INLINABLE findBytesIndex #-}
 findBytesIndex f (Text (V.PrimVector arr s l)) = go s
   where
     !end = s + l
@@ -113,7 +113,7 @@ findBytesIndex f (Text (V.PrimVector arr s l)) = go s
 
 -- | /O(n)/ find the char's byte slice index in reverse order(pointing to the right char's first byte).
 findBytesIndexR ::  (Char -> Bool) -> Text -> Int
-{-# INLINE findBytesIndexR #-}
+{-# INLINABLE findBytesIndexR #-}
 findBytesIndexR f (Text (V.PrimVector arr s l)) = go (s+l-1)
   where
     go !j | j < s     = j-s+1
@@ -127,7 +127,7 @@ findBytesIndexR f (Text (V.PrimVector arr s l)) = go (s+l-1)
 -- returns a text containing those chars that satisfy the
 -- predicate.
 filter :: (Char -> Bool) -> Text -> Text
-{-# INLINE filter #-}
+{-# INLINABLE filter #-}
 filter f (Text (V.PrimVector arr s l)) = Text (V.createN l (go s 0))
   where
     !end = s + l
@@ -148,7 +148,7 @@ filter f (Text (V.PrimVector arr s l)) = Text (V.createN l (go s 0))
 --
 -- > partition p txt == (filter p txt, filter (not . p) txt)
 partition :: (Char -> Bool) -> Text -> (Text, Text)
-{-# INLINE partition #-}
+{-# INLINABLE partition #-}
 partition f (Text (V.PrimVector arr s l))
     | l == 0    = (empty, empty)
     | otherwise = let !(bs1, bs2) = V.createN2 l l (go 0 0 s) in (Text bs1, Text bs2)
@@ -168,11 +168,11 @@ partition f (Text (V.PrimVector arr s l))
 
 -- | /O(n)/ 'elem' test if given char is in given text.
 elem :: Char -> Text -> Bool
-{-# INLINE elem #-}
+{-# INLINABLE elem #-}
 elem x t = case find (x==) t of (_,Nothing) -> False
                                 _           -> True
 
 -- | /O(n)/ @not . elem@
 notElem ::  Char -> Text -> Bool
-{-# INLINE notElem #-}
+{-# INLINABLE notElem #-}
 notElem x = not . elem x

@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            0.9.0.0
+version:            1.0.0.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -105,6 +105,13 @@ source-repository head
   type:     git
   location: git://github.com/haskell-Z/z-data.git
 
+flag check-array-bound
+  description:
+    Add bound check to operations in Z.Data.Array module.
+
+  default:     False
+  manual:      True
+
 flag integer-simple
   description:
     Use the [simple integer library](http://hackage.haskell.org/package/integer-simple)
@@ -131,8 +138,8 @@ flag use-avx512
 library
   exposed-modules:
     Z.Data.Array
+    Z.Data.Array.Base
     Z.Data.Array.Cast
-    Z.Data.Array.Checked
     Z.Data.Array.QQ
     Z.Data.Array.Unaligned
     Z.Data.Array.UnliftedArray
@@ -276,6 +283,8 @@ library
   build-tool-depends: hsc2hs:hsc2hs -any
 
   cc-options:         -std=c11 -Wall -Wno-pointer-to-int-cast -Wno-unused-function
+  -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
+  -- we work around this issue using Setup.hs
   cxx-options:        -std=c++11
   if os(osx)
     cxx-options:        -stdlib=libc++
@@ -313,8 +322,9 @@ library
   else
     cpp-options:   -DINTEGER_GMP
     build-depends: integer-gmp >=0.2 && <1.2
-  -- currently it's ignored, see https://github.com/haskell/cabal/pull/6226
-  -- we work around this issue using Setup.hs
+
+  if flag(check-array-bound)
+    cpp-options:   -DCHECK_ARRAY_BOUND
 
   ghc-options:
     -Wall -Wno-unticked-promoted-constructors  -Wno-incomplete-patterns
@@ -412,3 +422,6 @@ test-suite Z-Data-Test
   else
     cpp-options:   -DINTEGER_GMP
     build-depends: integer-gmp >=0.2 && <1.2
+
+  if flag(check-array-bound)
+    cpp-options:   -DCHECK_ARRAY_BOUND

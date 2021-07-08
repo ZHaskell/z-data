@@ -84,6 +84,7 @@ defaultIFormat :: IFormat
 {-# INLINE defaultIFormat #-}
 defaultIFormat = IFormat 0 NoPadding False
 
+-- | Padding format.
 data Padding = NoPadding | RightSpacePadding | LeftSpacePadding | ZeroPadding deriving (Show, Eq, Ord, Enum)
 
 instance Arbitrary Padding where
@@ -147,7 +148,7 @@ c_intWith (IFormat{..}) = \ x ->
     pad = case padding of NoPadding          -> 0
                           RightSpacePadding  -> 1
                           LeftSpacePadding   -> 2
-                          ZeroPadding        -> 3
+                          _                  -> 3
 
 -- | Internal formatting in haskell, it can be used with any bounded integral type.
 --
@@ -463,13 +464,13 @@ countDigits v0
 
 -- | Decimal digit to ASCII digit.
 i2wDec :: (Integral a) => a -> Word8
-{-# INLINE i2wDec #-}
+{-# INLINABLE i2wDec #-}
 {-# SPECIALIZE INLINE i2wDec :: Int -> Word8 #-}
 i2wDec v = DIGIT_0 + fromIntegral v
 
 -- | Hexadecimal digit to ASCII char.
 i2wHex :: (Integral a) => a -> Word8
-{-# INLINE i2wHex #-}
+{-# INLINABLE i2wHex #-}
 {-# SPECIALIZE INLINE i2wHex :: Int -> Word8 #-}
 i2wHex v
     | v <= 9    = DIGIT_0 + fromIntegral v
@@ -477,7 +478,7 @@ i2wHex v
 
 -- | Hexadecimal digit to UPPERCASED ASCII char.
 i2wHexUpper :: (Integral a) => a -> Word8
-{-# INLINE i2wHexUpper #-}
+{-# INLINABLE i2wHexUpper #-}
 {-# SPECIALIZE INLINE i2wHexUpper :: Int -> Word8 #-}
 i2wHexUpper v
     | v <= 9    = DIGIT_0 + fromIntegral v
@@ -502,7 +503,17 @@ i2wHexUpper v
 -- @
 --
 hex :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# INLINE hex #-}
+{-# INLINABLE hex #-}
+{-# SPECIALIZE INLINE hex :: Int -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Int8 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Int16 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Int32 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Int64 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Word -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Word8 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Word16 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Word32 -> Builder () #-}
+{-# SPECIALIZE INLINE hex :: Word64 -> Builder () #-}
 hex w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)
@@ -524,7 +535,17 @@ hex w = writeN hexSiz (go w (hexSiz-2))
 
 -- | The UPPERCASED version of 'hex'.
 hexUpper :: forall a. (FiniteBits a, Integral a) => a -> Builder ()
-{-# INLINE hexUpper #-}
+{-# INLINABLE hexUpper #-}
+{-# SPECIALIZE INLINE hexUpper :: Int -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Int8 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Int16 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Int32 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Int64 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Word -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Word8 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Word16 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Word32 -> Builder () #-}
+{-# SPECIALIZE INLINE hexUpper :: Word64 -> Builder () #-}
 hexUpper w = writeN hexSiz (go w (hexSiz-2))
   where
     bitSiz = finiteBitSize (undefined :: a)
@@ -725,7 +746,7 @@ foreign import ccall unsafe "static grisu3" c_grisu3
 
 -- | Decimal encoding of a 'Double', note grisu only handles strictly positive finite numbers.
 grisu3 :: Double -> ([Int], Int)
-{-# INLINE grisu3 #-}
+{-# INLINABLE grisu3 #-}
 grisu3 d = unsafePerformIO $ do
     (MutableByteArray pBuf) <- newByteArray GRISU3_DOUBLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
@@ -749,7 +770,7 @@ foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
 
 -- | Decimal encoding of a 'Float', note grisu3_sp only handles strictly positive finite numbers.
 grisu3_sp :: Float -> ([Int], Int)
-{-# INLINE grisu3_sp #-}
+{-# INLINABLE grisu3_sp #-}
 grisu3_sp d = unsafePerformIO $ do
     (MutableByteArray pBuf) <- newByteArray GRISU3_SINGLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->

@@ -39,7 +39,7 @@ module Z.Data.Text (
   , map', imap'
   , foldl', ifoldl'
   , foldr', ifoldr'
-  , concat, concatMap
+  , concat, concatR, concatMap
     -- ** Special folds
   , count, all, any
     -- ** Text display width

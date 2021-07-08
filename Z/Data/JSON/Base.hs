@@ -200,7 +200,7 @@ typeMismatch :: T.Text     -- ^ The name of the type you are trying to convert.
              -> T.Text     -- ^ The JSON value type you expecting to meet.
              -> Value      -- ^ The actual value encountered.
              -> Converter a
-{-# INLINE typeMismatch #-}
+{-# INLINABLE typeMismatch #-}
 typeMismatch name expected v =
     fail' $ T.concat ["converting ", name, " failed, expected ", expected, ", encountered ", actual]
   where
@@ -324,7 +324,7 @@ withHashMapR name _ v            = typeMismatch name "Object" v
 withEmbeddedJSON :: T.Text                  -- ^ data type name
                  -> (Value -> Converter a)     -- ^ a inner converter which will get the converted 'Value'.
                  -> Value -> Converter a       -- a converter take a JSON String
-{-# INLINE withEmbeddedJSON #-}
+{-# INLINABLE withEmbeddedJSON #-}
 withEmbeddedJSON _ innerConverter (String txt) = Converter (\ kf k ->
         case decode' (T.getUTF8Bytes txt) of
             Right v -> runConverter (innerConverter v) (\ paths msg -> kf (Embedded:paths) msg) k
@@ -441,6 +441,7 @@ data Settings = Settings
 
 -- | @Settings T.pack T.pack False@
 defaultSettings :: Settings
+{-# INLINE defaultSettings #-}
 defaultSettings = Settings T.pack T.pack False
 
 --------------------------------------------------------------------------------

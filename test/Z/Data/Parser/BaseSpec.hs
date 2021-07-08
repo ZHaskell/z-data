@@ -57,13 +57,13 @@ spec = describe "parsers" . modifyMaxSuccess (*10) . modifyMaxSize (*10)  $ do
                     (w:_) | f w  -> Just (V.pack (L.dropWhile f s), V.pack (L.takeWhile f s))
                     _            -> Nothing
 
-        prop "take" $ \ s n ->
+        prop "take" $ \ s (Positive n) ->
             parse'' (P.take n) s ===
                 if L.length s >= n
                     then Just (V.pack (L.drop n s), V.pack (L.take n s))
                     else Nothing
 
-        prop "skip" $ \ s n ->
+        prop "skip" $ \ s (Positive  n) ->
             parse'' (P.skip n) s ===
                 if L.length s >= n
                     then Just (V.pack (L.drop n s), ())

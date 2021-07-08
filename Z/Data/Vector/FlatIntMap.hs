@@ -126,27 +126,27 @@ imap' f (FlatIntMap vs) = FlatIntMap (V.imap' (\ i -> V.mapIPair' (f i)) vs)
 
 -- | /O(1)/ empty flat map.
 empty :: FlatIntMap v
-{-# INLINE empty #-}
+{-# NOINLINE empty #-}
 empty = FlatIntMap V.empty
 
 -- | /O(N*logN)/ Pack list of key values, on key duplication prefer left one.
 pack :: [V.IPair v] -> FlatIntMap v
-{-# INLINE pack #-}
+{-# INLINABLE pack #-}
 pack kvs = FlatIntMap (V.mergeDupAdjacentLeft ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) (V.pack kvs)))
 
 -- | /O(N*logN)/ Pack list of key values with suggested size, on key duplication prefer left one.
 packN :: Int -> [V.IPair v] -> FlatIntMap v
-{-# INLINE packN #-}
+{-# INLINABLE packN #-}
 packN n kvs = FlatIntMap (V.mergeDupAdjacentLeft ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) (V.packN n kvs)))
 
 -- | /O(N*logN)/ Pack list of key values, on key duplication prefer right one.
 packR :: [V.IPair v] -> FlatIntMap v
-{-# INLINE packR #-}
+{-# INLINABLE packR #-}
 packR kvs = FlatIntMap (V.mergeDupAdjacentRight ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) (V.pack kvs)))
 
 -- | /O(N*logN)/ Pack list of key values with suggested size, on key duplication prefer right one.
 packRN :: Int -> [V.IPair v] -> FlatIntMap v
-{-# INLINE packRN #-}
+{-# INLINABLE packRN #-}
 packRN n kvs = FlatIntMap (V.mergeDupAdjacentRight ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) (V.packN n kvs)))
 
 -- | /O(N)/ Unpack key value pairs to a list sorted by keys in ascending order.
@@ -165,12 +165,12 @@ unpackR = V.unpackR . sortedKeyValues
 
 -- | /O(N*logN)/ Pack vector of key values, on key duplication prefer left one.
 packVector :: V.Vector (V.IPair v) -> FlatIntMap v
-{-# INLINE packVector #-}
+{-# INLINABLE packVector #-}
 packVector kvs = FlatIntMap (V.mergeDupAdjacentLeft ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) kvs))
 
 -- | /O(N*logN)/ Pack vector of key values, on key duplication prefer right one.
 packVectorR :: V.Vector (V.IPair v) -> FlatIntMap v
-{-# INLINE packVectorR #-}
+{-# INLINABLE packVectorR #-}
 packVectorR kvs = FlatIntMap (V.mergeDupAdjacentRight ((==) `on` V.ifst) (V.mergeSortBy (compare `on` V.ifst) kvs))
 
 -- | /O(logN)/ Binary search on flat map.
@@ -193,7 +193,7 @@ lookup k' (FlatIntMap (V.Vector arr s0 l)) = go s0 (s0+l-1)
 
 -- | /O(N)/ Insert new key value into map, replace old one if key exists.
 insert :: Int -> v -> FlatIntMap v -> FlatIntMap v
-{-# INLINE insert #-}
+{-# INLINABLE insert #-}
 insert k v (FlatIntMap vec) =
     case binarySearch vec k of
         Left i -> FlatIntMap (V.unsafeInsertIndex vec i (V.IPair k v))
@@ -201,7 +201,7 @@ insert k v (FlatIntMap vec) =
 
 -- | /O(N)/ Delete a key value pair by key.
 delete :: Int -> FlatIntMap v -> FlatIntMap v
-{-# INLINE delete #-}
+{-# INLINABLE delete #-}
 delete k m@(FlatIntMap vec) =
     case binarySearch vec k of
         Left _  -> m
@@ -211,7 +211,7 @@ delete k m@(FlatIntMap vec) =
 --
 -- The value is evaluated to WHNF before writing into map.
 adjust' :: (v -> v) -> Int -> FlatIntMap v -> FlatIntMap v
-{-# INLINE adjust' #-}
+{-# INLINABLE adjust' #-}
 adjust' f k m@(FlatIntMap vec) =
     case binarySearch vec k of
         Left _  -> m
@@ -318,7 +318,7 @@ foldlWithKey' f a (FlatIntMap vs) = V.foldl' (\ a' (V.IPair k v) -> f a' k v) a 
 -- function also has access to the key associated with a value.
 traverseWithKey :: Applicative t => (Int -> a -> t b) -> FlatIntMap a -> t (FlatIntMap b)
 {-# INLINE traverseWithKey #-}
-traverseWithKey f (FlatIntMap vs) = FlatIntMap <$> traverse (\ (V.IPair k v) -> V.IPair k <$> f k v) vs
+traverseWithKey f (FlatIntMap vs) = FlatIntMap <$> V.traverse (\ (V.IPair k v) -> V.IPair k <$> f k v) vs
 
 --------------------------------------------------------------------------------
 

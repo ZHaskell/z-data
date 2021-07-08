@@ -78,7 +78,7 @@ findIndices f (Vec arr s l) = go s
 
 -- | /O(n)/ Special 'elemIndices' for 'Bytes' using @memchr(3)@
 elemIndicesBytes :: Word8 -> Bytes -> [Int]
-{-# INLINE elemIndicesBytes #-}
+{-# INLINABLE elemIndicesBytes #-}
 elemIndicesBytes w (PrimVector (PrimArray ba#) s l) = go s
   where
     !end = s + l
@@ -91,12 +91,12 @@ elemIndicesBytes w (PrimVector (PrimArray ba#) s l) = go s
 
 -- | @findIndex f v = fst (find f v)@
 findIndex :: Vec v a => (a -> Bool) -> v a -> Int
-{-# INLINE findIndex #-}
+{-# INLINABLE findIndex #-}
 findIndex f v = fst (find f v)
 
 -- | @findIndexR f v = fst (findR f v)@
 findIndexR :: Vec v a => (a -> Bool) -> v a -> Int
-{-# INLINE findIndexR #-}
+{-# INLINABLE findIndexR #-}
 findIndexR f v = fst (findR f v)
 
 -- | /O(n)/ find the first index and element matching the predicate in a vector
@@ -116,7 +116,7 @@ find f (Vec arr s l) = go s
 
 -- | /O(n)/ Special 'findByte' for 'Word8' using @memchr(3)@
 findByte :: Word8 -> Bytes -> (Int, Maybe Word8)
-{-# INLINE findByte #-}
+{-# INLINABLE findByte #-}
 findByte w (PrimVector (PrimArray ba#) s l) =
     case c_memchr ba# s w l of
         -1 -> (l, Nothing)
@@ -138,7 +138,7 @@ findR f (Vec arr s l) = go (s+l-1)
 
 -- | /O(n)/ Special 'findR' for 'Bytes' with @memrchr@.
 findByteR :: Word8 -> Bytes -> (Int, Maybe Word8)
-{-# INLINE findByteR #-}
+{-# INLINABLE findByteR #-}
 findByteR w (PrimVector (PrimArray ba#) s l) =
     case c_memrchr ba# s w l of
         -1 -> (-1, Nothing)
@@ -148,7 +148,7 @@ findByteR w (PrimVector (PrimArray ba#) s l) =
 -- returns a vector containing those elements that satisfy the
 -- predicate.
 filter :: forall v a. Vec v a => (a -> Bool) -> v a -> v a
-{-# INLINE filter #-}
+{-# INLINABLE filter #-}
 filter g (Vec arr s l)
     | l == 0    = empty
     | otherwise = createN l (go g 0 s)
@@ -167,7 +167,7 @@ filter g (Vec arr s l)
 --
 -- > partition p vs == (filter p vs, filter (not . p) vs)
 partition :: forall v a. Vec v a => (a -> Bool) -> v a -> (v a, v a)
-{-# INLINE partition #-}
+{-# INLINABLE partition #-}
 partition g (Vec arr s l)
     | l == 0    = (empty, empty)
     | otherwise = createN2 l l (go g 0 0 s)
@@ -211,7 +211,7 @@ indicesOverlapping :: (Vec v a, Eq a)
         -> v a -- ^ vector to search in (@haystack@)
         -> Bool -- ^ report partial match at the end of haystack
         -> [Int]
-{-# INLINABLE[1] indicesOverlapping #-}
+{-# INLINE [1] indicesOverlapping #-}
 {-# RULES "indicesOverlapping/Bytes" indicesOverlapping = indicesOverlappingBytes #-}
 indicesOverlapping needle@(Vec narr noff nlen) = search
   where
@@ -321,7 +321,7 @@ indicesOverlappingBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = sear
 --
 -- > indicesOverlapping "" "abc" = [0,1,2]
 indices :: (Vec v a, Eq a) => v a -> v a -> Bool -> [Int]
-{-# INLINABLE[1] indices #-}
+{-# INLINE [1] indices #-}
 {-# RULES "indices/Bytes" indices = indicesBytes #-}
 indices needle@(Vec narr noff nlen) = search
   where
@@ -407,7 +407,7 @@ indicesBytes needle@(Vec narr noff nlen) | popCount bloom > 48 = search
 -- is found, check if @next[j] == -1@, if so next search continue with @needle[0]@
 -- and @haystack[i+1]@, otherwise continue with @needle[next[j]]@ and @haystack[i]@.
 kmpNextTable :: (Vec v a, Eq a) => v a -> PrimArray Int
-{-# INLINE kmpNextTable #-}
+{-# INLINABLE kmpNextTable #-}
 kmpNextTable (Vec arr s l) = runST (do
     ma <- newArr (l+1)
     writeArr ma 0 (-1)
@@ -438,7 +438,7 @@ kmpNextTable (Vec arr s l) = runST (do
 -- This's particularly suitable for search UTF-8 bytes since the significant bits
 -- of a beginning byte is usually the same.
 sundayBloom :: Bytes -> Word64
-{-# INLINE sundayBloom #-}
+{-# INLINABLE sundayBloom #-}
 sundayBloom (Vec arr s l) = go 0x00000000 s
   where
     !end = s+l
@@ -452,5 +452,5 @@ sundayBloom (Vec arr s l) = go 0x00000000 s
 -- | O(1) Test if a bloom filter contain a certain 'Word8'.
 --
 elemSundayBloom :: Word64 -> Word8 -> Bool
-{-# INLINE elemSundayBloom #-}
+{-# INLINABLE elemSundayBloom #-}
 elemSundayBloom b w = b .&. (0x01 `unsafeShiftL` (fromIntegral w .&. 0x3f)) /= 0

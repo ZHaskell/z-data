@@ -30,7 +30,7 @@ module Z.Data.Parser
   , Parser
   , (<?>)
     -- * Running a parser
-  , parse, parse', parseChunk, ParseChunks, parseChunks, finishParsing
+  , parse, parse', parseChunk, parseChunkList, ParseChunks, parseChunks, finishParsing
   , runAndKeepTrack, match
     -- * Basic parsers
   , ensureN, endOfInput, atEnd, currentChunk
@@ -41,7 +41,7 @@ module Z.Data.Parser
   , scan, scanChunks, peekMaybe, peek, satisfy, satisfyWith
   , anyWord8, word8, char8, anyChar8, anyCharUTF8, charUTF8, char7, anyChar7
   , skipWord8, endOfLine, skip, skipWhile, skipSpaces
-  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, bytes, bytesCI
+  , take, takeN, takeTill, takeWhile, takeWhile1, takeRemaining, takeUTF8, bytes, bytesCI
   , text
     -- * Numeric parsers
     -- ** Decimal

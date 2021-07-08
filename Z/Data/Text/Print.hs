@@ -137,22 +137,22 @@ class Print a where
 
 -- | Convert data to 'B.Builder'.
 toUTF8Builder :: Print a => a  -> B.Builder ()
-{-# INLINE toUTF8Builder #-}
+{-# INLINABLE toUTF8Builder #-}
 toUTF8Builder = toUTF8BuilderP 0
 
 -- | Convert data to 'V.Bytes' in UTF8 encoding.
 toUTF8Bytes :: Print a => a -> V.Bytes
-{-# INLINE toUTF8Bytes #-}
+{-# INLINABLE toUTF8Bytes #-}
 toUTF8Bytes = B.build . toUTF8BuilderP 0
 
 -- | Convert data to 'Text'.
 toText :: Print a => a -> Text
-{-# INLINE toText #-}
+{-# INLINABLE toText #-}
 toText = Text . toUTF8Bytes
 
 -- | Convert data to 'String', faster 'show' replacement.
 toString :: Print a => a -> String
-{-# INLINE toString #-}
+{-# INLINABLE toString #-}
 toString = T.unpack . toText
 
 class GToText f where
@@ -284,7 +284,7 @@ instance Print Text where
 -- @
 --
 escapeTextJSON :: T.Text -> B.Builder ()
-{-# INLINE escapeTextJSON #-}
+{-# INLINABLE escapeTextJSON #-}
 escapeTextJSON (T.Text (V.PrimVector ba@(PrimArray ba#) s l)) = do
     let !siz = escape_json_string_length ba# s l
     B.writeN siz (\ mba@(MutablePrimArray mba#) i -> do

@@ -41,10 +41,11 @@ module Z.Data.Vector.Base (
   , length
   , append
   , map, map', imap', traverse, traverseWithIndex, traverse_, traverseWithIndex_
+  , mapM, mapM_, forM, forM_
   , foldl', ifoldl', foldl1', foldl1Maybe'
   , foldr', ifoldr', foldr1', foldr1Maybe'
     -- ** Special folds
-  , concat, concatMap
+  , concat, concatR, concatMap
   , maximum, minimum, maximumMaybe, minimumMaybe
   , sum
   , count, countBytes
@@ -86,8 +87,7 @@ module Z.Data.Vector.Base (
 
 import           Control.DeepSeq
 import           Control.Exception
-import           Control.Monad                  hiding (replicateM)
-import qualified Control.Monad                  as M (replicateM)
+import qualified Control.Monad                  as M
 import           Control.Monad.ST
 import           Control.Monad.Primitive
 import           Data.Bits
@@ -101,7 +101,6 @@ import           Data.List.NonEmpty       (NonEmpty ((:|)))
 import           Data.Maybe
 import qualified Data.CaseInsensitive           as CI
 import           Data.Primitive
-import           Data.Primitive.Ptr
 import           Data.Semigroup                 (Semigroup (..))
 import qualified Data.Traversable               as T
 import           Foreign.C
@@ -109,7 +108,7 @@ import           GHC.Exts
 import           GHC.Stack
 import           GHC.CString
 import           GHC.Word
-import           Prelude                        hiding (concat, concatMap,
+import           Prelude                        hiding (concat, concatMap, mapM, mapM_,
                                                 elem, notElem, null, length, map,
                                                 foldl, foldl1, foldr, foldr1,
                                                 maximum, minimum, product, sum,
@@ -220,7 +219,7 @@ instance IsList (Vector a) where
     fromListN = packN
 
 instance Eq a => Eq (Vector a) where
-    {-# INLINABLE (==) #-}
+    {-# INLINE (==) #-}
     v1 == v2 = eqVector v1 v2
 
 eqVector :: Eq a => Vector a -> Vector a -> Bool
@@ -237,7 +236,7 @@ eqVector (Vector baA sA lA) (Vector baB sB lB)
             (indexSmallArray baA i == indexSmallArray baB j) && go (i+1) (j+1)
 
 instance Ord a => Ord (Vector a) where
-    {-# INLINABLE compare #-}
+    {-# INLINE compare #-}
     compare = compareVector
 
 compareVector :: Ord a => Vector a -> Vector a -> Ordering
@@ -358,23 +357,33 @@ traverseWithIndex :: (Vec v a, Vec u b, Applicative f) => (Int -> a -> f b) -> v
 {-# INLINE [1] traverseWithIndex #-}
 {-# RULES "traverseWithIndex/IO" forall (f :: Int -> a -> IO b). traverseWithIndex f = traverseWithIndexPM f #-}
 {-# RULES "traverseWithIndex/ST" forall (f :: Int -> a -> ST s b). traverseWithIndex f = traverseWithIndexPM f #-}
-traverseWithIndex f v = packN (length v) <$> zipWithM f [0..] (unpack v)
+traverseWithIndex f v = packN (length v) <$> M.zipWithM f [0..] (unpack v)
 
+-- | 'PrimMonad' specialzied version of 'traverseWithIndex'.
+--
+-- You can add rules to rewrite 'traverse' and 'traverseWithIndex' to this function in your own 'PrimMonad' instance, e.g.
+--
+-- @
+-- instance PrimMonad YourMonad where ...
+--
+-- {-# RULES "traverse\/YourMonad" forall (f :: a -> YourMonad b). traverse\' f = traverseWithIndexPM (const f) #-}
+-- {-# RULES "traverseWithIndex\/YourMonad" forall (f :: Int -> a -> YourMonad b). traverseWithIndex f = traverseWithIndexPM f #-}
+-- @
+--
 traverseWithIndexPM :: forall m v u a b. (PrimMonad m, Vec v a, Vec u b) => (Int -> a -> m b) -> v a -> m (u b)
 {-# INLINE traverseWithIndexPM #-}
 traverseWithIndexPM f (Vec arr s l)
     | l == 0    = return empty
     | otherwise = do
-        marr <- newArr l
+        !marr <- newArr l
         ba <- go marr 0
         return $! fromArr ba 0 l
   where
     go :: MArr (IArray u) (PrimState m) b -> Int -> m (IArray u b)
-    go !marr !i
+    go marr !i
         | i >= l = unsafeFreezeArr marr
         | otherwise = do
-            x <- indexArrM arr (i+s)
-            writeArr marr i =<< f i x
+            writeArr marr i =<< f i (indexArr arr (i+s))
             go marr (i+1)
 
 -- | Traverse vector without gathering result.
@@ -396,6 +405,27 @@ traverseWithIndex_ f (Vec arr s l) = go s
     go !i
         | i >= end = pure ()
         | otherwise = f (i-s) (indexArr arr i) *> go (i+1)
+
+-- | Alias for 'traverse'.
+mapM ::  (Vec v a, Vec u b, Applicative f) => (a -> f b) -> v a -> f (u b)
+{-# INLINE mapM #-}
+mapM = traverse
+
+-- | Alias for 'traverse_'.
+mapM_ ::  (Vec v a, Applicative f) => (a -> f b) -> v a -> f ()
+{-# INLINE mapM_ #-}
+mapM_ = traverse_
+
+-- | Flipped version of 'traverse'.
+forM ::  (Vec v a, Vec u b, Applicative f) => v a -> (a -> f b) -> f (u b)
+{-# INLINE forM #-}
+forM v f = traverse f v
+
+-- | Flipped version of 'traverse_'.
+forM_ ::  (Vec v a, Applicative f) => v a -> (a -> f b) -> f ()
+{-# INLINE forM_ #-}
+forM_ v f = traverse_ f v
+
 
 --------------------------------------------------------------------------------
 -- | Primitive vector
@@ -577,8 +607,7 @@ create :: Vec v a
        -> (forall s. MArr (IArray v) s a -> ST s ())   -- ^ initialization function
        -> v a
 {-# INLINE create #-}
-create n0 fill = runST (do
-        let n = max 0 n0
+create n fill = assert (n >= 0) $ runST (do
         marr <- newArr n
         fill marr
         ba <- unsafeFreezeArr marr
@@ -593,8 +622,7 @@ create' :: Vec v a
         -- ^ initialization function return a result size and array, the result must start from index 0
         -> v a
 {-# INLINE create' #-}
-create' n0 fill = runST (do
-        let n = max 0 n0
+create' n fill = assert (n >= 0) $ runST (do
         marr <- newArr n
         IPair n' marr' <- fill marr
         shrinkMutableArr marr' n'
@@ -611,8 +639,7 @@ creating :: Vec v a
          -> (forall s. MArr (IArray v) s a -> ST s b)  -- ^ initialization function
          -> (b, v a)
 {-# INLINE creating #-}
-creating n0 fill = runST (do
-        let n = max 0 n0
+creating n fill = assert (n >= 0) $ runST (do
         marr <- newArr n
         b <- fill marr
         ba <- unsafeFreezeArr marr
@@ -629,8 +656,7 @@ creating' :: Vec v a
          -> (forall s. MArr (IArray v) s a -> ST s (b, (IPair (MArr (IArray v) s a))))  -- ^ initialization function
          -> (b, v a)
 {-# INLINE creating' #-}
-creating' n0 fill = runST (do
-        let n = max 0 n0
+creating' n fill = assert (n >= 0) $ runST (do
         marr <- newArr n
         (b, IPair n' marr') <- fill marr
         shrinkMutableArr marr' n'
@@ -690,6 +716,7 @@ createN2 n0 n1 fill = runST (do
 -- | /O(1)/. The empty vector.
 --
 empty :: Vec v a => v a
+{-# NOINLINE empty #-}
 empty = Vec emptyArr 0 0
 
 -- | /O(1)/. Single element vector.
@@ -725,7 +752,7 @@ packN :: forall v a. Vec v a => Int -> [a] -> v a
 {-# INLINE [1] packN #-}
 packN n0 = \ ws0 -> runST (do let n = max 4 n0
                               marr <- newArr n
-                              (IPair i marr') <- foldM go (IPair 0 marr) ws0
+                              (IPair i marr') <- M.foldM go (IPair 0 marr) ws0
                               shrinkMutableArr marr' i
                               ba <- unsafeFreezeArr marr'
                               return $! fromArr ba 0 i)
@@ -754,15 +781,24 @@ replicateM :: (Applicative f, Vec v a) => Int -> f a -> f (v a)
 {-# RULES "replicateM/ST" forall n (x :: ST s a). replicateM n x = replicatePM n x #-}
 replicateM n f = packN n <$> M.replicateM n f
 
--- | A version of 'replicateM' which works on 'PrimMonad' and 'Vec'.
+-- | 'PrimMonad' specialzied version of 'replicateM'.
+--
+-- You can add rules to rewrite 'replicateM' to this function in your own 'PrimMonad' instance, e.g.
+--
+-- @
+-- instance PrimMonad YourMonad where ...
+--
+-- {-# RULES "replicateM\/YourMonad" forall n (f :: YourMonad a). replicateM n f = replicatePM n f #-}
+-- @
+--
 replicatePM :: (PrimMonad m, Vec v a) => Int -> m a -> m (v a)
 {-# INLINE replicatePM #-}
 replicatePM n f = do
-    marr <- newArr n
+    !marr <- newArr n
     ba <- go marr 0
-    (return $! fromArr ba 0 n)
+    return $! fromArr ba 0 n
   where
-    go marr i
+    go marr !i
         | i >= n = unsafeFreezeArr marr
         | otherwise = do
             x <- f
@@ -778,7 +814,7 @@ replicatePM n f = do
 packN' :: forall v a. Vec v a => Int -> [a] -> v a
 {-# INLINE packN' #-}
 packN' n = \ ws0 -> runST (do marr <- newArr n
-                              (IPair i marr') <- foldM go (IPair 0 marr) ws0
+                              (IPair i marr') <- M.foldM go (IPair 0 marr) ws0
                               shrinkMutableArr marr' i
                               ba <- unsafeFreezeArr marr'
                               return $! fromArr ba 0 i)
@@ -806,7 +842,7 @@ packRN :: forall v a. Vec v a => Int -> [a] -> v a
 {-# INLINE packRN #-}
 packRN n0 = \ ws0 -> runST (do let n = max 4 n0
                                marr <- newArr n
-                               (IPair i marr') <- foldM go (IPair (n-1) marr) ws0
+                               (IPair i marr') <- M.foldM go (IPair (n-1) marr) ws0
                                ba <- unsafeFreezeArr marr'
                                let i' = i + 1
                                    n' = sizeofArr ba
@@ -834,7 +870,7 @@ packRN n0 = \ ws0 -> runST (do let n = max 4 n0
 packRN' :: forall v a. Vec v a => Int -> [a] -> v a
 {-# INLINE packRN' #-}
 packRN' n = \ ws0 -> runST (do marr <- newArr n
-                               (IPair i marr') <- foldM go (IPair (n-1) marr) ws0
+                               (IPair i marr') <- M.foldM go (IPair (n-1) marr) ws0
                                ba <- unsafeFreezeArr marr'
                                let i' = i + 1
                                    n' = sizeofArr ba
@@ -1070,24 +1106,42 @@ foldr1Maybe' f (Vec arr s l)
 -- Note: 'concat' have to force the entire list to filter out empty vector and calculate
 -- the length for allocation.
 concat :: forall v a . Vec v a => [v a] -> v a
-{-# INLINE concat #-}
+{-# INLINABLE concat #-}
 concat [v] = v  -- shortcut common case in Parser
-concat vs = case pre 0 0 vs of
+concat vs = case preConcat 0 0 vs of
     (1, _) -> let Just v = List.find (not . null) vs in v -- there must be a not null vector
     (_, l) -> create l (go vs 0)
   where
-    -- pre scan to decide if we really need to copy and calculate total length
-    -- we don't accumulate another result list, since it's rare to got empty
-    pre :: Int -> Int -> [v a] -> (Int, Int)
-    pre !nacc !lacc [] = (nacc, lacc)
-    pre !nacc !lacc (Vec _ _ l:vs')
-        | l <= 0    = pre nacc lacc vs'
-        | otherwise = pre (nacc+1) (l+lacc) vs'
-
     go :: [v a] -> Int -> MArr (IArray v) s a -> ST s ()
     go [] !_ !_                  = return ()
-    go (Vec ba s l:vs') !i !marr = do when (l /= 0) (copyArr marr i ba s l)
+    go (Vec ba s l:vs') !i !marr = do M.when (l /= 0) (copyArr marr i ba s l)
                                       go vs' (i+l) marr
+
+-- | /O(n)/ Concatenate a list of vector in reverse order, e.g. @concat ["hello, world"] == "worldhello"@
+--
+-- Note: 'concatR' have to force the entire list to filter out empty vector and calculate
+-- the length for allocation.
+concatR :: forall v a . Vec v a => [v a] -> v a
+{-# INLINABLE concatR #-}
+concatR [v] = v  -- shortcut common case in Parser
+concatR vs = case preConcat 0 0 vs of
+    (1, _) -> let Just v = List.find (not . null) vs in v -- there must be a not null vector
+    (_, l) -> create l (go vs l)
+  where
+    go :: [v a] -> Int -> MArr (IArray v) s a -> ST s ()
+    go [] !_ !_                  = return ()
+    go (Vec ba s l:vs') !i !marr = do M.when (l /= 0) (copyArr marr (i-l) ba s l)
+                                      go vs' (i-l) marr
+
+-- pre scan to decide if we really need to copy and calculate total length
+-- we don't accumulate another result list, since it's rare to got empty
+preConcat :: Vec v a => Int -> Int -> [v a] -> (Int, Int)
+{-# INLINE preConcat #-}
+preConcat !nacc !lacc [] = (nacc, lacc)
+preConcat !nacc !lacc (Vec _ _ l:vs')
+    | l <= 0    = preConcat nacc lacc vs'
+    | otherwise = preConcat (nacc+1) (l+lacc) vs'
+
 
 -- | Map a function over a vector and concatenate the results
 concatMap :: Vec v a => (a -> v a) -> v a -> v a
@@ -1416,6 +1470,7 @@ errorOutRange i = throw (IndexOutOfVectorRange i callStack)
 
 -- | Cast between vectors
 castVector :: (Vec v a, Cast a b) => v a -> v b
+{-# INLINE castVector #-}
 castVector = unsafeCoerce#
 
 --------------------------------------------------------------------------------

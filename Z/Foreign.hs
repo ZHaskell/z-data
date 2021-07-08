@@ -93,6 +93,7 @@ module Z.Foreign
   , module Foreign.C.Types
   , module Data.Primitive.Ptr
   , module Z.Data.Array.Unaligned
+  , withMutablePrimArrayContents, withPrimArrayContents
   -- ** Internal helpers
   , hs_std_string_size
   , hs_copy_std_string
@@ -111,7 +112,7 @@ import           Data.Primitive.PrimArray
 import           Foreign.C.Types
 import           GHC.Ptr
 import           GHC.Exts
-import           Z.Data.Array
+import           Z.Data.Array.Base             (withMutablePrimArrayContents, withPrimArrayContents)
 import           Z.Data.Array.Unaligned
 import           Z.Data.Array.UnliftedArray
 import           Z.Data.Vector.Base
@@ -183,6 +184,7 @@ type BAArray# a = ArrayArray#
 clearMBA :: MBA# a
          -> Int  -- ^ in bytes
          -> IO ()
+{-# INLINE clearMBA #-}
 clearMBA mba# len = do
     let mba = (MutableByteArray mba#)
     setByteArray mba 0 len (0 :: Word8)
@@ -209,6 +211,7 @@ withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 withPrimArrayListUnsafe :: [PrimArray a] -> (BAArray# a -> Int -> IO b) -> IO b
+{-# INLINE withPrimArrayListUnsafe #-}
 withPrimArrayListUnsafe pas f = do
     let l = List.length pas
     mla <- unsafeNewUnliftedArray l
@@ -301,7 +304,7 @@ allocPrimUnsafe f = do
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withPrimArraySafe :: (Prim a) => PrimArray a -> (Ptr a -> Int -> IO b) -> IO b
-{-# INLINE withPrimArraySafe #-}
+{-# INLINABLE withPrimArraySafe #-}
 withPrimArraySafe arr f
     | isPrimArrayPinned arr = do
         let siz = sizeofPrimArray arr
@@ -340,7 +343,7 @@ allocPrimArraySafe :: forall a b . Prim a
                     => Int      -- ^ in elements
                     -> (Ptr a -> IO b)
                     -> IO (PrimArray a, b)
-{-# INLINE allocPrimArraySafe #-}
+{-# INLINABLE allocPrimArraySafe #-}
 allocPrimArraySafe len f = do
     mpa <- newAlignedPinnedPrimArray len
     !r <- withMutablePrimArrayContents mpa f
@@ -354,7 +357,7 @@ allocPrimArraySafe len f = do
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withPrimVectorSafe :: forall a b. Prim a => PrimVector a -> (Ptr a -> Int -> IO b) -> IO b
-{-# INLINE withPrimVectorSafe #-}
+{-# INLINABLE withPrimVectorSafe #-}
 withPrimVectorSafe (PrimVector arr s l) f
     | isPrimArrayPinned arr =
         withPrimArrayContents arr $ \ ptr ->
@@ -370,7 +373,7 @@ withPrimVectorSafe (PrimVector arr s l) f
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
 withPrimSafe :: forall a b. Prim a => a -> (Ptr a -> IO b) -> IO (a, b)
-{-# INLINE withPrimSafe #-}
+{-# INLINABLE withPrimSafe #-}
 withPrimSafe v f = do
     buf <- newAlignedPinnedPrimArray 1
     writePrimArray buf 0 v
@@ -380,7 +383,7 @@ withPrimSafe v f = do
 
 -- | like 'withPrimSafe', but don't write initial value.
 allocPrimSafe :: forall a b. Prim a => (Ptr a -> IO b) -> IO (a, b)
-{-# INLINE allocPrimSafe #-}
+{-# INLINABLE allocPrimSafe #-}
 allocPrimSafe f = do
     buf <- newAlignedPinnedPrimArray 1
     !b <- withMutablePrimArrayContents buf $ \ ptr -> f ptr
@@ -391,7 +394,7 @@ allocPrimSafe f = do
 allocPrimVectorSafe :: forall a b . Prim a
                     => Int      -- ^ in elements
                     -> (Ptr a -> IO b) -> IO (PrimVector a, b)
-{-# INLINE allocPrimVectorSafe #-}
+{-# INLINABLE allocPrimVectorSafe #-}
 allocPrimVectorSafe len f = do
     mpa <- newAlignedPinnedPrimArray len
     !r <- withMutablePrimArrayContents mpa f
@@ -402,12 +405,12 @@ allocPrimVectorSafe len f = do
 -- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimVector'.
 allocBytesSafe :: Int      -- ^ in bytes
                -> (Ptr Word8 -> IO b) -> IO (Bytes, b)
-{-# INLINE allocBytesSafe #-}
+{-# INLINABLE allocBytesSafe #-}
 allocBytesSafe = allocPrimVectorSafe
 
 -- | Convert a 'PrimArray' to a pinned one(memory won't moved by GC) if necessary.
 pinPrimArray :: Prim a => PrimArray a -> IO (PrimArray a)
-{-# INLINE pinPrimArray #-}
+{-# INLINABLE pinPrimArray #-}
 pinPrimArray arr
     | isPrimArrayPinned arr = return arr
     | otherwise = do
@@ -419,7 +422,7 @@ pinPrimArray arr
 
 -- | Convert a 'PrimVector' to a pinned one(memory won't moved by GC) if necessary.
 pinPrimVector :: Prim a => PrimVector a -> IO (PrimVector a)
-{-# INLINE pinPrimVector #-}
+{-# INLINABLE pinPrimVector #-}
 pinPrimVector v@(PrimVector pa s l)
     | isPrimArrayPinned pa = return v
     | otherwise = do
@@ -438,7 +441,7 @@ foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
 -- should be given in bytes.
 --
 clearPtr :: Ptr a -> Int -> IO ()
-{-# INLINE clearPtr #-}
+{-# INLINABLE clearPtr #-}
 clearPtr dest nbytes = memset dest 0 (fromIntegral nbytes)
 
 -- | Copy some bytes from a null terminated pointer(without copying the null terminator).
@@ -447,7 +450,7 @@ clearPtr dest nbytes = memset dest 0 (fromIntegral nbytes)
 -- This method is provided if you really need to read 'Bytes', there's no encoding guarantee,
 -- result could be any bytes sequence.
 fromNullTerminated :: Ptr a -> IO Bytes
-{-# INLINE fromNullTerminated #-}
+{-# INLINABLE fromNullTerminated #-}
 fromNullTerminated (Ptr addr#) = do
     len <- fromIntegral <$> c_strlen addr#
     marr <- newPrimArray len
@@ -460,7 +463,7 @@ fromNullTerminated (Ptr addr#) = do
 -- There's no encoding guarantee, result could be any bytes sequence.
 fromPtr :: Ptr a -> Int -- ^ in bytes
         -> IO Bytes
-{-# INLINE fromPtr #-}
+{-# INLINABLE fromPtr #-}
 fromPtr (Ptr addr#) len = do
     marr <- newPrimArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
@@ -473,7 +476,7 @@ fromPtr (Ptr addr#) len = do
 fromPrimPtr :: forall a. Prim a
             => Ptr a -> Int -- ^  in elements
             -> IO (PrimVector a)
-{-# INLINE fromPrimPtr #-}
+{-# INLINABLE fromPrimPtr #-}
 fromPrimPtr (Ptr addr#) len = do
     marr <- newPrimArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
@@ -486,6 +489,7 @@ data StdString
 -- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap bytes,
 -- memory pointed by @std::string*@ will be @delete@ ed.
 fromStdString :: IO (Ptr StdString) -> IO Bytes
+{-# INLINABLE fromStdString #-}
 fromStdString f = bracket f hs_delete_std_string
     (\ q -> do
         siz <- hs_std_string_size q
@@ -498,9 +502,11 @@ foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()
 
 -- | O(n), Convert from 'ByteString'.
 fromByteString :: ByteString -> Bytes
+{-# INLINABLE fromByteString #-}
 fromByteString bs = case toShort bs of
     (SBS ba#) -> PrimVector (PrimArray ba#) 0 (B.length bs)
 
 -- | O(n), Convert tp 'ByteString'.
 toByteString :: Bytes -> ByteString
+{-# INLINABLE toByteString #-}
 toByteString (PrimVector (PrimArray ba#) s l) = B.unsafeTake l . B.unsafeDrop s . fromShort $ SBS ba#

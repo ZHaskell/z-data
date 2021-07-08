@@ -154,7 +154,7 @@ parseValue' = P.parse' (value <* skipSpaces <* P.endOfInput)
 -- carriage pure, and tab.
 skipSpaces :: P.Parser ()
 {-# INLINE skipSpaces #-}
-skipSpaces = P.skipWhile (\ w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09)
+skipSpaces = P.skipWhile (\ w -> w <= 0x20 && (w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09))
 
 -- | JSON 'Value' parser.
 value :: P.Parser Value
@@ -174,12 +174,12 @@ value = do
 
 -- | parse json array with leading SQUARE_LEFT.
 array :: P.Parser (V.Vector Value)
-{-# INLINE array #-}
+{-# INLINABLE array #-}
 array = P.word8 SQUARE_LEFT *> array_
 
 -- | parse json array without leading SQUARE_LEFT.
 array_ :: P.Parser (V.Vector Value)
-{-# INLINABLE array_ #-}
+{-# INLINE array_ #-}
 array_ = do
     skipSpaces
     w <- P.peek
@@ -199,12 +199,12 @@ array_ = do
 
 -- | parse json array with leading 'CURLY_LEFT'.
 object :: P.Parser (V.Vector (T.Text, Value))
-{-# INLINE object #-}
+{-# INLINABLE object #-}
 object = P.word8 CURLY_LEFT *> object_
 
 -- | parse json object without leading 'CURLY_LEFT'.
 object_ :: P.Parser (V.Vector (T.Text, Value))
-{-# INLINABLE object_ #-}
+{-# INLINE object_ #-}
 object_ = do
     skipSpaces
     w <- P.peek
@@ -228,7 +228,7 @@ object_ = do
 --------------------------------------------------------------------------------
 
 string :: P.Parser T.Text
-{-# INLINE string #-}
+{-# INLINABLE string #-}
 string = P.word8 DOUBLE_QUOTE *> string_
 
 string_ :: P.Parser T.Text
@@ -268,20 +268,20 @@ foreign import ccall unsafe decode_json_string :: MBA# Word8 -> BA# Word8 -> Int
 
 -- | Convert IEEE float to scientific notition.
 floatToScientific :: Float -> Scientific
-{-# INLINE floatToScientific #-}
+{-# INLINABLE floatToScientific #-}
 floatToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3_sp (-rf)))
                      | rf == 0   = 0
                      | otherwise = fromFloatingDigits (B.grisu3_sp rf)
 
 -- | Convert IEEE double to scientific notition.
 doubleToScientific :: Double -> Scientific
-{-# INLINE doubleToScientific #-}
+{-# INLINABLE doubleToScientific #-}
 doubleToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3 (-rf)))
                       | rf == 0   = 0
                       | otherwise = fromFloatingDigits (B.grisu3 rf)
 
 fromFloatingDigits :: ([Int], Int) -> Scientific
-{-# INLINE fromFloatingDigits #-}
+{-# INLINABLE fromFloatingDigits #-}
 fromFloatingDigits (digits, e) = go digits 0 0
   where
     -- There's no way a float or double has more digits a 'Int64' can't handle
