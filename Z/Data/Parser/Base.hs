@@ -184,11 +184,10 @@ instance Alternative Parser where
     empty = fail' "Z.Data.Parser.Base(Alternative).empty"
     {-# INLINE empty #-}
     f <|> g = do
-        (r, bss) <- runAndKeepTrack f
+        (r, consumed) <- runAndKeepTrack f
         case r of
             Success x inp   -> Parser (\ _ k s _ -> k s x inp)
-            Failure _ _     -> let !bs = V.concatR bss
-                               in Parser (\ kf k s _ -> runParser g kf k s bs)
+            Failure _ _     -> Parser (\ kf k s _ -> runParser g kf k s consumed)
             _               -> error "Z.Data.Parser.Base: impossible"
     {-# INLINE (<|>) #-}
 
@@ -255,13 +254,13 @@ infixr 0 <?>
 -- Once it's finished, return the final result (always 'Success' or 'Failure') and
 -- all consumed chunks.
 --
-runAndKeepTrack :: Parser a -> Parser (Result ParseError a, [V.Bytes])
+runAndKeepTrack :: Parser a -> Parser (Result ParseError a, V.Bytes)
 {-# INLINE runAndKeepTrack #-}
 runAndKeepTrack (Parser pa) = Parser $ \ _ k0 st0 inp ->
     let go !acc r k (st :: State# ParserState) = case r of
             Partial k'      -> Partial (\ inp' -> go (inp':acc) (k' inp') k st)
-            Success _ inp' -> k st (r, reverse acc) inp'
-            Failure _ inp' -> k st (r, reverse acc) inp'
+            Success _ inp' -> let consumed = V.concatR acc in consumed `seq` k st (r, consumed) inp'
+            Failure _ inp' -> let consumed = V.concatR acc in consumed `seq` k st (r, consumed) inp'
         r0 = runRW# (\ s ->
                 unsafeCoerce# (pa Failure (\ _ r -> Success r) (unsafeCoerce# s) inp))
     in go [inp] r0 k0 st0
@@ -271,11 +270,10 @@ runAndKeepTrack (Parser pa) = Parser $ \ _ k0 st0 inp ->
 match :: Parser a -> Parser (V.Bytes, a)
 {-# INLINE match #-}
 match p = do
-    (r, bss) <- runAndKeepTrack p
+    (r, consumed) <- runAndKeepTrack p
     Parser (\ _ k s _ ->
         case r of
-            Success r' inp'  -> let !consumed = V.dropR (V.length inp') (V.concatR bss)
-                                in k s (consumed , r') inp'
+            Success r' inp'  -> k s (consumed , r') inp'
             Failure err inp' -> Failure err inp'
             Partial _        -> error "Z.Data.Parser.Base.match: impossible")
 
@@ -479,6 +477,9 @@ scan s0 f = scanChunks s0 f'
 -- and each transformed state is passed to successive invocations of
 -- the predicate on each chunk of the input until one chunk got splited to
 -- @Right (V.Bytes, V.Bytes)@ or the input ends.
+--
+-- Note the fields of result triple will not be forced by 'scanChunks', you may need to add `seq` or strict annotation to
+-- avoid thunks and unintentional references to buffer.
 --
 scanChunks :: forall s. s -> (s -> V.Bytes -> Either s (V.Bytes, V.Bytes, s)) -> Parser (V.Bytes, s)
 {-# INLINE scanChunks #-}
@@ -810,7 +811,7 @@ takeRemaining = Parser (\ _ k s inp -> Partial (takeRemainingPartial k s inp))
         let go acc s = \ inp ->
                 if V.null inp
                 then let !r = V.concatR acc in k s r inp
-                else let acc' = inp : acc in Partial (go acc' s)
+                else Partial (go (inp:acc) s)
         in go [want] s0
 
 -- | Take N bytes and validate as UTF8, failed if not UTF8 encoded.

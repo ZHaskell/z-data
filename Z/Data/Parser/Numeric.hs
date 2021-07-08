@@ -402,8 +402,9 @@ scientificallyInternal h = do
                         f = decLoopIntegerFast fracPart
                     in i * (expt 10 flen) + f
         parseE base flen) <|> (parseE (decLoopIntegerFast intPart) 0)
-
-    pure $! if sign /= MINUS then h sci else h (negate sci)
+    -- intentionally lazy return here, we have done the grammar check, and h could potentially be very expensive, e.g. sciToDouble
+    -- retained references are sign and sci, which are already in NF
+    pure (if sign /= MINUS then h sci else h (negate sci))
   where
     {-# INLINE parseE #-}
     parseE c e =
@@ -532,7 +533,9 @@ scientificallyInternal' h = do
                         in i * (expt 10 flen) + f
             parseE base flen
         _ -> parseE (decLoopIntegerFast intPart) 0
-    pure $! if sign /= MINUS then h sci else h (negate sci)
+    -- intentionally lazy return here, we have done the grammar check, and h could potentially be very expensive, e.g. sciToDouble
+    -- retained references are sign and sci, which are already in NF
+    pure (if sign /= MINUS then h sci else h (negate sci))
   where
     {-# INLINE parseE #-}
     parseE !c !e = do
