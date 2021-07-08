@@ -18,29 +18,72 @@ module Z.Data.Parser.Time
     , timeZone
     , utcTime
     , zonedTime
+    -- * internal
+    , fromGregorianValid'
+    , fromGregorianValidInt64
     ) where
 
 import           Control.Applicative   ((<|>))
 import           Data.Fixed            (Fixed (..), Pico)
 import           Data.Int              (Int64)
 import           Data.Maybe            (fromMaybe)
-import           Data.Time.Calendar    (Day, fromGregorianValid)
+import           Data.Time.Calendar    (Day(..), fromGregorianValid)
 import           Data.Time.Clock       (UTCTime (..))
 import           Data.Time.LocalTime   hiding (utc)
 import           Z.Data.ASCII
+import qualified Z.Data.Array          as A
 import           Z.Data.Parser.Base    (Parser)
 import qualified Z.Data.Parser.Base    as P
 import qualified Z.Data.Parser.Numeric as P
 import qualified Z.Data.Vector         as V
+import qualified Z.Data.Text           as T
 
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
+--
+-- Invalid date(leap year rule violation, etc.) will be rejected.
 day :: Parser Day
 {-# INLINE day #-}
-day = "date must be of form [+,-]YYYY-MM-DD" P.<?> do
+day = "Date must be of form [+,-]YYYY-MM-DD" P.<?> do
     y <- (P.integer <* P.word8 HYPHEN)
     m <- (twoDigits <* P.word8 HYPHEN)
     d <- twoDigits
-    maybe (P.fail' "invalid date") return $! fromGregorianValid y m d
+    case fromGregorianValid' y m d of
+        Just d' -> pure d'
+        _ -> P.fail' $ T.concat ["Z.Data.Parser.Time.day: invalid date: ", T.toText y, "-", T.toText m, "-", T.toText d]
+
+-- | Faster 'fromGregorianValid' with 'fromGregorianValidInt64' as the common case path.
+--
+fromGregorianValid' :: Integer -> Int -> Int -> Maybe Day
+{-# INLINE fromGregorianValid' #-}
+fromGregorianValid' y m d
+    | -18000000000000000 < y  && y < 18000000000000000 = fromGregorianValidInt64 (fromIntegral y) m d
+    | otherwise = fromGregorianValid y m d
+
+-- | Faster common case for small years(around -18000000000000000 ~ 18000000000000000).
+--
+fromGregorianValidInt64 :: Int64 -> Int -> Int -> Maybe Day
+{-# INLINABLE fromGregorianValidInt64 #-}
+fromGregorianValidInt64 year month day_ =
+    if (1 <= month && month <= 12) && (1 <= day_ && day_ <= monthLength)
+    then Just . ModifiedJulianDay $! fromIntegral mjd
+    else Nothing
+  where
+    isLeap = (rem year 4 == 0) && ((rem year 400 == 0) || not (rem year 100 == 0))
+    dayOfYear =
+        let k = if month <= 2 then 0 else if isLeap then -1 else -2
+        in ((367 * month - 362) `div` 12) + k + day_
+    mjd =
+        let y = year - 1
+        in (fromIntegral dayOfYear) + (365 * y) + (div y 4) - (div y 100) + (div y 400) - 678576
+    monthLength = A.indexArr (if isLeap then monthListLeap else monthList) (month-1)
+
+monthList :: A.PrimArray Int
+{-# NOINLINE monthList #-}
+monthList = V.packN 12 [ 31 , 28 , 31 , 30 , 31 , 30 , 31 , 31 , 30 , 31 , 30 , 31 ]
+
+monthListLeap :: A.PrimArray Int
+{-# NOINLINE monthListLeap #-}
+monthListLeap = V.packN 12 [ 31 , 29 , 31 , 30 , 31 , 30 , 31 , 31 , 30 , 31 , 30 , 31 ]
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
@@ -60,7 +103,6 @@ timeOfDay = do
     if h < 24 && m < 60 && s < 61
     then return (TimeOfDay h m s)
     else P.fail' "invalid time"
-
 
 -- | Parse a count of seconds, with the integer part being two digits -- long.
 seconds :: Parser Pico

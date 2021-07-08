@@ -7,6 +7,7 @@
 * Add `encodeXXX/encodeXXXLE/encodeXXXBE`(where `XXX` is a primitive type) to `Z.Data.Builder`.
 * Add `check-array-bound` build flag to enable bound check in `Z.Data.Array` module, `Z.Data.Array.Checked` is removed.
 * Add `concatR` to `Z.Data.Vector` and `Z.Data.Text`, which is useful to concat the result of an accumulator style recursive function.
+* Improve date builder and parser by introducing faster common case path.  
 
 ## 0.9.0.0  -- 2021-07-01
 

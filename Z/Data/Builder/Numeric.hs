@@ -464,13 +464,13 @@ countDigits v0
 
 -- | Decimal digit to ASCII digit.
 i2wDec :: (Integral a) => a -> Word8
-{-# INLINE i2wDec #-}
+{-# INLINABLE i2wDec #-}
 {-# SPECIALIZE INLINE i2wDec :: Int -> Word8 #-}
 i2wDec v = DIGIT_0 + fromIntegral v
 
 -- | Hexadecimal digit to ASCII char.
 i2wHex :: (Integral a) => a -> Word8
-{-# INLINE i2wHex #-}
+{-# INLINABLE i2wHex #-}
 {-# SPECIALIZE INLINE i2wHex :: Int -> Word8 #-}
 i2wHex v
     | v <= 9    = DIGIT_0 + fromIntegral v
@@ -478,7 +478,7 @@ i2wHex v
 
 -- | Hexadecimal digit to UPPERCASED ASCII char.
 i2wHexUpper :: (Integral a) => a -> Word8
-{-# INLINE i2wHexUpper #-}
+{-# INLINABLE i2wHexUpper #-}
 {-# SPECIALIZE INLINE i2wHexUpper :: Int -> Word8 #-}
 i2wHexUpper v
     | v <= 9    = DIGIT_0 + fromIntegral v

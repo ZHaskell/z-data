@@ -724,8 +724,8 @@ all f (Text (V.PrimVector arr s l))
 --
 replicate :: Int -> Char -> Text
 {-# INLINE replicate #-}
-replicate 0 _ = empty
-replicate n c = Text (V.create siz (go 0))
+replicate n c | n <= 0 = empty
+              | otherwise = Text (V.create siz (go 0))
   where
     !csiz = encodeCharLength c
     !siz = n * csiz
