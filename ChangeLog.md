@@ -1,5 +1,9 @@
 # Revision history for Z-Data
 
+## 1.0.0.1  -- 2021-07-08
+
+* Fix a regression in `match` parsing combinator where matched chunk is returned instead of precise matched input.
+
 ## 1.0.0.0  -- 2021-07-05
 
 * Clean up various `RULES` and `INLINE` pragmas, improve building time a little.

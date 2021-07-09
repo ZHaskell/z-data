@@ -283,13 +283,15 @@ runAndKeepTrack (Parser pa) = Parser $ \ _ k0 st0 inp ->
 
 -- | Return both the result of a parse and the portion of the input
 -- that was consumed while it was being parsed.
+--
 match :: Parser a -> Parser (V.Bytes, a)
 {-# INLINE match #-}
 match p = do
     (r, consumed) <- runAndKeepTrack p
     Parser (\ _ k s _ ->
         case r of
-            Success r' inp'  -> k s (consumed , r') inp'
+            Success r' inp'  -> let consumed' = V.dropR (V.length inp') consumed
+                                in consumed' `seq` k s (consumed' , r') inp'
             Failure err inp' -> Failure err inp'
             Partial _        -> error "Z.Data.Parser.Base.match: impossible")
 

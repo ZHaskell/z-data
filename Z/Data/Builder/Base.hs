@@ -50,7 +50,7 @@ module Z.Data.Builder.Base
   , charUTF8, string7, char7, word7, string8, char8, word8, word8N, text
   -- * Builder helpers
   , paren, parenWhen, curly, square, angle, quotes, squotes, colon, comma, intercalateVec, intercalateList
-    -- * Specialized primitive parser
+    -- * Specialized primitive builder
   , encodeWord  , encodeWord64, encodeWord32, encodeWord16, encodeWord8
   , encodeInt   , encodeInt64 , encodeInt32 , encodeInt16 , encodeInt8 , encodeDouble, encodeFloat
   , encodeWordLE  , encodeWord64LE , encodeWord32LE , encodeWord16LE
