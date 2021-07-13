@@ -37,17 +37,17 @@ import           Z.Data.JSON.Value              (Value(..))
 --
 -- Don't use chars which need escaped in label.
 kv :: T.Text -> B.Builder () -> B.Builder ()
-{-# INLINABLE kv #-}
+{-# INLINE kv #-}
 l `kv` b = B.quotes (B.text l) >> B.colon >> b
 
 -- | Use @:@ as separator to connect a label(escape the label and add quotes) with field builders.
 kv' :: T.Text -> B.Builder () -> B.Builder ()
-{-# INLINABLE kv' #-}
+{-# INLINE kv' #-}
 l `kv'` b = string l >> B.colon >> b
 
 -- | Encode a 'Value', you can use this function with 'toValue' to get 'encodeJSON' with a small overhead.
 value :: Value -> B.Builder ()
-{-# INLINABLE value #-}
+{-# INLINE value #-}
 value (Object kvs) = object kvs
 value (Array vs) = array vs
 value (String t) = string t
@@ -57,19 +57,19 @@ value (Bool False) = "false"
 value _ = "null"
 
 array :: V.Vector Value -> B.Builder ()
-{-# INLINABLE array #-}
+{-# INLINE array #-}
 array = B.square . B.intercalateVec B.comma value
 
 array' :: (a -> B.Builder ()) -> V.Vector a -> B.Builder ()
-{-# INLINABLE array' #-}
+{-# INLINE array' #-}
 array' f = B.square . B.intercalateVec B.comma f
 
 object :: V.Vector (T.Text, Value) -> B.Builder ()
-{-# INLINABLE object #-}
+{-# INLINE object #-}
 object = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` value v)
 
 object' :: (a -> B.Builder ()) -> V.Vector (T.Text, a) -> B.Builder ()
-{-# INLINABLE object' #-}
+{-# INLINE object' #-}
 object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 
 -- | Escape text into JSON string and add double quotes, escaping rules:
@@ -87,7 +87,7 @@ object' f = B.curly . B.intercalateVec B.comma (\ (k, v) -> k `kv'` f v)
 -- @
 --
 string :: T.Text -> B.Builder ()
-{-# INLINABLE string #-}
+{-# INLINE string #-}
 string = T.escapeTextJSON
 
 --------------------------------------------------------------------------------

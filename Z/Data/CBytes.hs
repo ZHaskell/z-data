@@ -233,26 +233,26 @@ instance T.Print CBytes where
     toUTF8BuilderP _ = T.stringUTF8 . show . unpack
 
 -- | JSON instances check if 'CBytes' is properly UTF8 encoded,
--- if it is, decode/encode it as 'T.Text', otherwise as an object with a base64 field.
+-- if it is, decode/encode it as 'T.Text', otherwise as an object with a @__base64@ field.
 --
 -- @
 -- > encodeText ("hello" :: CBytes)
 -- "\"hello\""
 -- > encodeText ("hello\\NUL" :: CBytes)     -- @\\NUL@ is encoded as C0 80, which is illegal UTF8
--- "{\"base64\":\"aGVsbG/AgA==\"}"
+-- "{\"__base64\":\"aGVsbG/AgA==\"}"
 -- @
 instance JSON.JSON CBytes where
     {-# INLINE fromValue #-}
     fromValue v = JSON.withText "Z.Data.CBytes" (pure . fromText) v
-                <|> JSON.withFlatMapR "Z.Data.CBytes" (\ o -> fromBytes <$> o .: "base64") v
+                <|> JSON.withFlatMapR "Z.Data.CBytes" (\ o -> fromBytes <$> o .: "__base64") v
     {-# INLINE toValue #-}
     toValue cbytes = case toTextMaybe cbytes of
         Just t  -> JSON.toValue t
-        Nothing -> JSON.object $ [ "base64" .= toBytes cbytes ]
+        Nothing -> JSON.object $ [ "__base64" J..= toBytes cbytes ]
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t  -> JSON.encodeJSON t
-        Nothing -> JSON.object' $ "base64" .! toBytes cbytes
+        Nothing -> JSON.object' $ "__base64" .! toBytes cbytes
 
 -- | Concatenate two 'CBytes'.
 append :: CBytes -> CBytes -> CBytes
