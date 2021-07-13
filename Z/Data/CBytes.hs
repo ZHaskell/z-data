@@ -248,7 +248,7 @@ instance JSON.JSON CBytes where
     {-# INLINE toValue #-}
     toValue cbytes = case toTextMaybe cbytes of
         Just t  -> JSON.toValue t
-        Nothing -> JSON.object $ [ "__base64" J..= toBytes cbytes ]
+        Nothing -> JSON.object $ [ "__base64" .= toBytes cbytes ]
     {-# INLINE encodeJSON #-}
     encodeJSON cbytes = case toTextMaybe cbytes of
         Just t  -> JSON.encodeJSON t
