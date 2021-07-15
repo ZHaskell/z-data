@@ -21,7 +21,7 @@ module Z.Data.PrimRef
   , modifyPrimRef
   , Prim(..)
     -- * Unlifted references
-  , UnliftedRef(..)
+  , UnliftedRef(..), UnliftedIORef
   , newUnliftedRef
   , readUnliftedRef
   , writeUnliftedRef
@@ -234,6 +234,9 @@ atomicXorCounter_ (PrimRef (MutableByteArray mba#)) (I# x#) = IO $ \ s1# ->
 -- | A mutable variable in the 'PrimMonad' which can hold an instance of 'PrimUnlifted'.
 --
 newtype UnliftedRef s a = UnliftedRef (MutableUnliftedArray s a)
+
+-- | Type alias for 'UnliftedRef' in IO.
+type UnliftedIORef a =  UnliftedRef RealWorld a
 
 -- | Build a new 'UnliftedRef'
 --

@@ -7,6 +7,7 @@
 * Add `doubleMutableArr` to `Z.Data.Array`, useful in some buffer building logic.
 * Add `prettyJSON'` to `Z.Data.JSON` with custom indentation.
 * Change `CBytes` 's JSON instance to write `__base64` field(instead of `base64` field) when not UTF8 encoded.
+* Add missing type alias `UnliftedIORef` for `UnliftedRef RealWorld`.
 
 ## 1.0.0.1  -- 2021-07-08
 
