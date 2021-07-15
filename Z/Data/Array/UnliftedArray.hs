@@ -38,8 +38,10 @@ that are eligible to be stored.
 module Z.Data.Array.UnliftedArray where
 
 import Control.Monad.Primitive
-import Data.Primitive.PrimArray (PrimArray(..),MutablePrimArray(..))
-import Data.Primitive.ByteArray (ByteArray(..),MutableByteArray(..))
+import Data.Primitive.Array
+import Data.Primitive.ByteArray
+import Data.Primitive.PrimArray
+import Data.Primitive.SmallArray
 import GHC.MVar (MVar(..))
 import GHC.IORef (IORef(..))
 import GHC.STRef (STRef(..))
@@ -52,6 +54,65 @@ class PrimUnlifted a where
     writeUnliftedArray# :: MutableArrayArray# s -> Int# -> a -> State# s -> State# s
     readUnliftedArray# :: MutableArrayArray# s -> Int# -> State# s -> (# State# s, a #)
     indexUnliftedArray# :: ArrayArray# -> Int# -> a
+
+instance PrimUnlifted (UnliftedArray a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (UnliftedArray x) = writeArrayArrayArray# a i x
+    readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, UnliftedArray x #)
+    indexUnliftedArray# a i = UnliftedArray (indexArrayArrayArray# a i)
+
+instance PrimUnlifted (MutableUnliftedArray s a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (MutableUnliftedArray x) =
+        writeMutableArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readMutableArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, MutableUnliftedArray (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = MutableUnliftedArray (unsafeCoerce# (indexArrayArrayArray# a i))
+
+instance PrimUnlifted (Array a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (Array x) =
+        writeArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, Array (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = Array (unsafeCoerce# (indexArrayArrayArray# a i))
+
+instance PrimUnlifted (MutableArray s a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (MutableArray x) =
+        writeMutableArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readMutableArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, MutableArray (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = MutableArray (unsafeCoerce# (indexArrayArrayArray# a i))
+
+instance PrimUnlifted (SmallArray a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (SmallArray x) =
+        writeArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, SmallArray (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = SmallArray (unsafeCoerce# (indexArrayArrayArray# a i))
+
+instance PrimUnlifted (SmallMutableArray s a) where
+    {-# INLINE writeUnliftedArray# #-}
+    {-# INLINE readUnliftedArray# #-}
+    {-# INLINE indexUnliftedArray# #-}
+    writeUnliftedArray# a i (SmallMutableArray x) =
+        writeMutableArrayArrayArray# a i (unsafeCoerce# x)
+    readUnliftedArray# a i s0 = case readMutableArrayArrayArray# a i s0 of
+        (# s1, x #) -> (# s1, SmallMutableArray (unsafeCoerce# x) #)
+    indexUnliftedArray# a i = SmallMutableArray (unsafeCoerce# (indexArrayArrayArray# a i))
 
 instance PrimUnlifted (PrimArray a) where
     {-# INLINE writeUnliftedArray# #-}

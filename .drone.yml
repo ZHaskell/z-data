@@ -2,6 +2,11 @@ kind: pipeline
 name: arm64
 platform: { os: linux, arch: arm64 }
 steps:
+- name: submodules
+  image: alpine/git
+  commands:
+    - git submodule update --init --recursive
+
 - name: Test
   image: buildpack-deps:focal
   commands:
