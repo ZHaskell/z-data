@@ -195,12 +195,12 @@ prettyJSON = JB.prettyValue . toValue
 
 -- | Pretty a 'JSON' data with 'JB.prettyValue\''.
 prettyJSON' :: JSON a
-            => a
-            -> Int   -- ^ indentation per level
+            => Int   -- ^ indentation per level
             -> Int   -- ^ initial indentation
+            -> a
             -> B.Builder ()
 {-# INLINE prettyJSON' #-}
-prettyJSON' x i ii = JB.prettyValue' i ii (toValue x)
+prettyJSON' i ii = JB.prettyValue' i ii . toValue
 
 --------------------------------------------------------------------------------
 
