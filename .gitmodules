@@ -1,9 +1,9 @@
 [submodule "third_party/fastvalidate-utf-8"]
 	path = third_party/fastvalidate-utf-8
-	url = git@github.com:ZHaskell/fastvalidate-utf-8.git
+	url = https://github.com/ZHaskell/fastvalidate-utf-8.git
 [submodule "third_party/utf8rewind"]
 	path = third_party/utf8rewind
-	url = git@github.com:ZHaskell/utf8rewind.git
+	url = https://github.com/ZHaskell/utf8rewind.git
 [submodule "third_party/re2"]
 	path = third_party/re2
 	url = https://github.com/google/re2.git
