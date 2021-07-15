@@ -4,6 +4,7 @@
 [![Linux Build Status](https://github.com/ZHaskell/z-data/workflows/ubuntu-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 [![macOS Build Status](https://github.com/ZHaskell/z-data/workflows/osx-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
 [![Windows Build Status](https://github.com/ZHaskell/z-data/workflows/win-ci/badge.svg)](https://github.com/ZHaskell/z-data/actions)
+[![ARM Build Status](https://drone.acme.com/api/badges/ZHaskell/z-data/status.svg)](https://cloud.drone.io/ZHaskell/z-data)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Z-Haskell/community)
 <a href="https://opencollective.com/zhaskell/donate" target="_blank">
   <img src="https://opencollective.com/zhaskell/donate/button@2x.png?color=blue" width=128 />

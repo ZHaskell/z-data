@@ -30,6 +30,7 @@ module Z.Data.Array
     Arr, MArr
   , A.emptyArr, A.singletonArr, A.doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr
+  , A.doubleMutableArr
   , RealWorld
   -- * Boxed array type
   , A.Array(..)

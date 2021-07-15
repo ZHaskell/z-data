@@ -31,6 +31,7 @@ module Z.Data.Array.Base (
     Arr(..)
   , emptyArr, singletonArr, doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr
+  , doubleMutableArr
   , RealWorld
   -- * Boxed array type
   , Array(..)
@@ -65,6 +66,7 @@ import           Control.Exception              (ArrayException (..), throw)
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.ST
+import           Data.Bits                      (unsafeShiftL)
 import           Data.Kind                      (Type)
 import           Data.Primitive.Array
 import           Data.Primitive.ByteArray
@@ -690,3 +692,12 @@ deleteIndexArr arr s l i = runST $ do
     let i' = i+1
     when (i'<l) $ copyArr marr i arr (i'+s) (l-i')
     unsafeFreezeArr marr
+
+-- | Resize mutable array to @max (given_size) (2 * original_size)@ if orignal array is smaller than @give_size@.
+doubleMutableArr :: (Arr arr a, PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m (MArr arr s a)
+{-# INLINE doubleMutableArr #-}
+doubleMutableArr marr l = do
+    siz <- sizeofMutableArr marr
+    if (siz < l)
+    then resizeMutableArr marr (max (siz `unsafeShiftL` 1) l)
+    else return marr
