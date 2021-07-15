@@ -38,61 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <simdutf8check.h>
 #endif
 
-HsInt ascii_validate(const char* p, HsInt off, HsInt len){
-    const char* q = p + off;
-#if defined(AVX512_IMPLEMENTATION)
-    return (HsInt)validate_ascii_fast_avx512(q, (size_t)len);
-#elif defined(__AVX2__)
-    return (HsInt)validate_ascii_fast_avx(q, (size_t)len);
-#elif defined(__SSSE3__) 
-    return (HsInt)validate_ascii_fast(q, (size_t)len);
-#else
-    return (HsInt)ascii_u64(q, (size_t)len);
-#endif
-}
-// for some reason unknown, on windows we have to supply a seperated version of ascii_validate
-// otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
-HsInt ascii_validate_addr(const char* p, HsInt len){
-#if defined(AVX512_IMPLEMENTATION)
-    return (HsInt)validate_ascii_fast_avx512(p, (size_t)len);
-#elif defined(__AVX2__)
-    return (HsInt)validate_ascii_fast_avx(p, (size_t)len);
-#elif defined(__SSSE3__) 
-    return (HsInt)validate_ascii_fast(p, (size_t)len);
-#else
-    return (HsInt)ascii_u64(p, (size_t)len);
-#endif
-}
-
-HsInt utf8_validate(const char* p, HsInt off, HsInt len){
-    const char* q = p + off;
-#if defined(AVX512_IMPLEMENTATION)
-    return (HsInt)validate_utf8_fast_avx512(q, (size_t)len);
-#elif defined(__AVX2__)
-    return (HsInt)validate_utf8_fast_avx(q, (size_t)len);
-#elif defined(__SSSE3__) 
-    return (HsInt)validate_utf8_fast(q, (size_t)len);
-#else
-    return utf8_validate_slow(q, (size_t)len);
-#endif
-}
-// for some reason unknown, on windows we have to supply a seperated version of utf8_validate
-// otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
-HsInt utf8_validate_addr(const char* p, HsInt len){
-#if defined(AVX512_IMPLEMENTATION)
-    return (HsInt)validate_utf8_fast_avx512(p, (size_t)len);
-#elif defined(__AVX2__)
-    return (HsInt)validate_utf8_fast_avx(p, (size_t)len);
-#elif defined(__SSSE3__) 
-    return (HsInt)validate_utf8_fast(p, (size_t)len);
-#else
-    return utf8_validate_slow(p, (size_t)len);
-#endif
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int ascii_u64(const uint8_t *data, size_t len)
+int ascii_u64(const uint8_t *data, size_t len)
 {
     uint8_t orall = 0;
 
@@ -170,6 +118,62 @@ HsInt utf8_validate_slow(const char* c, size_t len){
     }
     return ((state == UTF8_ACCEPT) ? 2 : 0);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+HsInt ascii_validate(const char* p, HsInt off, HsInt len){
+    const char* q = p + off;
+#if defined(AVX512_IMPLEMENTATION)
+    return (HsInt)validate_ascii_fast_avx512(q, (size_t)len);
+#elif defined(__AVX2__)
+    return (HsInt)validate_ascii_fast_avx(q, (size_t)len);
+#elif defined(__SSSE3__) 
+    return (HsInt)validate_ascii_fast(q, (size_t)len);
+#else
+    return (HsInt)ascii_u64(q, (size_t)len);
+#endif
+}
+// for some reason unknown, on windows we have to supply a seperated version of ascii_validate
+// otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
+HsInt ascii_validate_addr(const char* p, HsInt len){
+#if defined(AVX512_IMPLEMENTATION)
+    return (HsInt)validate_ascii_fast_avx512(p, (size_t)len);
+#elif defined(__AVX2__)
+    return (HsInt)validate_ascii_fast_avx(p, (size_t)len);
+#elif defined(__SSSE3__) 
+    return (HsInt)validate_ascii_fast(p, (size_t)len);
+#else
+    return (HsInt)ascii_u64(p, (size_t)len);
+#endif
+}
+
+HsInt utf8_validate(const char* p, HsInt off, HsInt len){
+    const char* q = p + off;
+#if defined(AVX512_IMPLEMENTATION)
+    return (HsInt)validate_utf8_fast_avx512(q, (size_t)len);
+#elif defined(__AVX2__)
+    return (HsInt)validate_utf8_fast_avx(q, (size_t)len);
+#elif defined(__SSSE3__) 
+    return (HsInt)validate_utf8_fast(q, (size_t)len);
+#else
+    return utf8_validate_slow(q, (size_t)len);
+#endif
+}
+// for some reason unknown, on windows we have to supply a seperated version of utf8_validate
+// otherwise we got segfault if we import the same FFI with different type (Addr# vs ByteArray#)
+HsInt utf8_validate_addr(const char* p, HsInt len){
+#if defined(AVX512_IMPLEMENTATION)
+    return (HsInt)validate_utf8_fast_avx512(p, (size_t)len);
+#elif defined(__AVX2__)
+    return (HsInt)validate_utf8_fast_avx(p, (size_t)len);
+#elif defined(__SSSE3__) 
+    return (HsInt)validate_utf8_fast(p, (size_t)len);
+#else
+    return utf8_validate_slow(p, (size_t)len);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 static inline uint32_t decode_hex(uint32_t c) {
     if (c >= '0' && c <= '9')      return c - '0';
