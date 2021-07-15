@@ -47,7 +47,7 @@ l `kv'` b = string l >> B.colon >> b
 
 -- | Encode a 'Value', you can use this function with 'toValue' to get 'encodeJSON' with a small overhead.
 value :: Value -> B.Builder ()
-{-# INLINE value #-}
+{-# INLINABLE value #-}
 value (Object kvs) = object kvs
 value (Array vs) = array vs
 value (String t) = string t

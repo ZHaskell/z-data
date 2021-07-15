@@ -34,7 +34,7 @@ module Z.Data.JSON
   , decode, decode', decodeText, decodeText'
   , ParseChunks, decodeChunk, decodeChunks
   , encode, encodeChunks, encodeText
-  , prettyJSON, prettyValue
+  , prettyJSON, prettyValue, prettyJSON', prettyValue'
     -- * parse into JSON Value
   , parseValue, parseValue'
   -- * Generic functions

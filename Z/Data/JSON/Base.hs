@@ -20,7 +20,7 @@ module Z.Data.JSON.Base
   , decode, decode', decodeText, decodeText'
   , P.ParseChunks, decodeChunk, decodeChunks
   , encode, encodeChunks, encodeText
-  , prettyJSON, JB.prettyValue
+  , prettyJSON, JB.prettyValue, prettyJSON', JB.prettyValue'
     -- * parse into JSON Value
   , JV.parseValue, JV.parseValue'
   -- * Generic functions
@@ -188,10 +188,19 @@ convertValue :: (JSON a) => Value -> Either ConvertError a
 {-# INLINE convertValue #-}
 convertValue = convert fromValue
 
--- | Directly encode data to JSON bytes.
+-- | Pretty a 'JSON' data with 'JB.prettyValue'.
 prettyJSON :: JSON a => a -> B.Builder ()
 {-# INLINE prettyJSON #-}
 prettyJSON = JB.prettyValue . toValue
+
+-- | Pretty a 'JSON' data with 'JB.prettyValue\''.
+prettyJSON' :: JSON a
+            => Int   -- ^ indentation per level
+            -> Int   -- ^ initial indentation
+            -> a
+            -> B.Builder ()
+{-# INLINE prettyJSON' #-}
+prettyJSON' i ii = JB.prettyValue' i ii . toValue
 
 --------------------------------------------------------------------------------
 

@@ -1,5 +1,14 @@
 # Revision history for Z-Data
 
+## 1.1.0.0  -- 2021-07-15
+
+* Fix building issues on ARM platform.
+* Add more `PrimUnlifed` instances to `Z.Data.Array.UnliftedArray`.
+* Add `doubleMutableArr` to `Z.Data.Array`, useful in some buffer building logic.
+* Add `prettyJSON'` to `Z.Data.JSON` with custom indentation.
+* Change `CBytes` 's JSON instance to write `__base64` field(instead of `base64` field) when not UTF8 encoded.
+* Add missing type alias `UnliftedIORef` for `UnliftedRef RealWorld`.
+
 ## 1.0.0.1  -- 2021-07-08
 
 * Fix a regression in `match` parsing combinator where matched chunk is returned instead of precise matched input.

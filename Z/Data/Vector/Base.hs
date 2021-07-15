@@ -761,14 +761,10 @@ packN n0 = \ ws0 -> runST (do let n = max 4 n0
     -- Keep an eye on its core!
     go :: IPair (MArr (IArray v) s a) -> a -> ST s (IPair (MArr (IArray v) s a))
     go (IPair i marr) !x = do
-        n <- sizeofMutableArr marr
-        if i < n
-        then do writeArr marr i x
-                return (IPair (i+1) marr)
-        else do let !n' = n `unsafeShiftL` 1
-                !marr' <- resizeMutableArr marr n'
-                writeArr marr' i x
-                return (IPair (i+1) marr')
+        let i' = i+1
+        marr' <- doubleMutableArr marr i'
+        writeArr marr' i x
+        return (IPair i' marr')
 
 
 -- | A version of 'replicateM' which works on 'Vec', with specialized rules under 'PrimMonad'.
