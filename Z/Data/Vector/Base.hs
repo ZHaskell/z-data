@@ -44,6 +44,7 @@ module Z.Data.Vector.Base (
   , mapM, mapM_, forM, forM_
   , foldl', ifoldl', foldl1', foldl1Maybe'
   , foldr', ifoldr', foldr1', foldr1Maybe'
+  , shuffle, permutations
     -- ** Special folds
   , concat, concatR, concatMap
   , maximum, minimum, maximumMaybe, minimumMaybe
@@ -116,6 +117,7 @@ import           Prelude                        hiding (concat, concatMap, mapM,
 import           Test.QuickCheck.Arbitrary      (Arbitrary(..), CoArbitrary(..))
 import           Test.QuickCheck.Gen            (chooseInt)
 import           Text.Read                      (Read(..))
+import           System.Random.Stateful         (StatefulGen)
 import           System.IO.Unsafe               (unsafeDupablePerformIO)
 
 import           Z.Data.Array
@@ -139,7 +141,7 @@ class (Arr (IArray v) a) => Vec v a where
     -- | Create a vector by slicing an array(with offset and length).
     fromArr :: IArray v a -> Int -> Int -> v a
 
--- | Change vector types based on same array type, e.g. construct an array from a slice, or vice-versa.
+-- | Change vector types based on same array type, e.g. construct a whole slice from an array.
 arrVec :: (Vec v a, Vec u a, IArray v ~ IArray u) => v a -> u a
 {-# INLINE arrVec #-}
 arrVec bs = let (arr, s, l) = toArr bs in fromArr arr s l
@@ -1006,6 +1008,20 @@ imap' f (Vec arr s l) = create l (go 0)
                     go (i+1) marr
                | otherwise = return ()
 
+-- | Shuffle a vector using  <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm.
+shuffle :: (StatefulGen g m, PrimMonad m, Vec v a) => g -> v a -> m (v a)
+{-# INLINE shuffle #-}
+shuffle g (Vec arr s l) = do
+    marr <- thawArr arr s l
+    shuffleMutableArr g marr 0 l
+    arr' <- unsafeFreezeArr marr
+    pure $! fromArr arr' 0 l
+
+-- | Generate all permutation of a vector.
+permutations :: forall v a. (Vec v a) => v a -> [v a]
+{-# INLINE permutations #-}
+permutations v = packN (length v) <$> List.permutations (unpack v)
+
 --------------------------------------------------------------------------------
 --
 -- Strict folds
@@ -1496,3 +1512,4 @@ foreign import ccall unsafe "hs_memrchr" c_memrchr ::
 
 foreign import ccall unsafe "hs_count_ba" c_count_ba ::
     ByteArray# -> Int -> Int -> Word8 -> IO Int
+

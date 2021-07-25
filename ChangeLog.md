@@ -6,6 +6,7 @@
 * Add `UUID` builders and parsers(both textual binary).
 * Add more `PrimUnlifed` instances to `Z.Data.Array.UnliftedArray`.
 * Add `doubleMutableArr` to `Z.Data.Array`, useful in some buffer building logic.
+* Add `shuffle` and `permutations` to `Z.Data.Vector` and `Z.Data.Text`.
 * Add `prettyJSON'` to `Z.Data.JSON` with custom indentation.
 * Change `CBytes` 's JSON instance to write `__base64` field(instead of `base64` field) when not UTF8 encoded.
 * Add missing type alias `UnliftedIORef` for `UnliftedRef RealWorld`.

@@ -35,6 +35,7 @@ module Z.Data.Text.Base (
   , foldl', ifoldl'
   , foldr', ifoldr'
   , concat, concatR, concatMap
+  , shuffle, permutations
     -- ** Special folds
   , count, all, any
     -- ** Text display width
@@ -122,6 +123,7 @@ module Z.Data.Text.Base (
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.ST
+import           Control.Monad.Primitive
 import           Control.Monad
 import           Data.Bits
 import           Data.Char                 hiding (toLower, toUpper, toTitle)
@@ -145,6 +147,7 @@ import           Z.Data.Text.UTF8Rewind
 import           Z.Data.Vector.Base        (Bytes, PrimVector(..), c_strlen)
 import qualified Z.Data.Vector.Base        as V
 import qualified Z.Data.Vector.Search      as V
+import           System.Random.Stateful    (StatefulGen)
 import           System.IO.Unsafe          (unsafeDupablePerformIO)
 
 import           Prelude                   hiding (concat, concatMap,
@@ -608,6 +611,17 @@ imap' f (Text (V.PrimVector arr s l)) | l == 0 = empty
                 let !siz' = siz `shiftL` 1
                 !marr' <- resizeMutablePrimArray marr siz'
                 go i' j' k' marr'
+
+
+-- | Shuffle a text using  <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm.
+shuffle :: (StatefulGen g m, PrimMonad m) => g -> Text -> m Text
+{-# INLINE shuffle #-}
+shuffle g t = fromVector <$> V.shuffle g (toVector t)
+
+-- | Generate all permutation of a text using <https://en.wikipedia.org/wiki/Heap%27s_algorithm Heap's algorithm>.
+permutations :: Text -> [Text]
+{-# INLINE permutations #-}
+permutations t = fromVector <$> V.permutations (toVector t)
 
 --------------------------------------------------------------------------------
 --

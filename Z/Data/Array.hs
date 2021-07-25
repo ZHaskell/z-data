@@ -29,8 +29,8 @@ module Z.Data.Array
   ( -- * Arr typeclass re-export
     Arr, MArr
   , A.emptyArr, A.singletonArr, A.doubletonArr
-  , modifyIndexArr, insertIndexArr, deleteIndexArr
-  , A.doubleMutableArr
+  , modifyIndexArr, insertIndexArr, deleteIndexArr, swapArr, swapMutableArr
+  , A.doubleMutableArr, shuffleMutableArr
   , RealWorld
   -- * Boxed array type
   , A.Array(..)
@@ -91,11 +91,12 @@ import           Control.Exception              (ArrayException (..), throw)
 import           Control.Monad.Primitive
 import           Data.Primitive.Types
 import           GHC.Stack
-import           Z.Data.Array.Base      (Arr, MArr)
-import qualified Z.Data.Array.Base      as A
+import           System.Random.Stateful         (StatefulGen)  
+import           Z.Data.Array.Base              (Arr, MArr)
+import qualified Z.Data.Array.Base              as A
+import           Control.Monad.ST
 #ifdef CHECK_ARRAY_BOUND
 import           Control.Monad
-import           Control.Monad.ST
 #endif
 
 #ifdef CHECK_ARRAY_BOUND
@@ -501,4 +502,51 @@ deleteIndexArr arr s l i =
         A.unsafeFreezeArr marr
 #else
     A.deleteIndexArr arr s l i
+#endif
+
+-- | Swap two elements under given index and return a new array.
+swapArr :: Arr arr a
+        => arr a
+        -> Int 
+        -> Int
+        -> arr a
+{-# INLINE swapArr #-}
+swapArr arr i j = runST $ do
+    marr <- A.thawArr arr 0 (A.sizeofArr arr)
+    swapMutableArr marr i j
+    A.unsafeFreezeArr marr
+
+-- | Swap two elements under given index, no atomically guarantee is given.
+swapMutableArr :: (PrimMonad m, PrimState m ~ s, Arr arr a)
+               => MArr arr s a
+               -> Int 
+               -> Int
+               -> m ()
+{-# INLINE swapMutableArr #-}
+swapMutableArr marr i j = do
+#ifdef CHECK_ARRAY_BOUND
+    siz <- A.sizeofMutableArr marr
+    check
+        (i>=0 && j>=0 && i<siz && j<siz)
+        (A.swapMutableArr marr i j)
+#else
+    A.swapMutableArr marr i j
+#endif
+
+-- | Shuffle array's elements in slice range.
+--
+-- This function use <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm. 
+shuffleMutableArr :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Arr arr a) => g -> MArr arr s a 
+            -> Int  -- ^ offset
+            -> Int  -- ^ length
+            -> m ()
+{-# INLINE shuffleMutableArr #-}
+shuffleMutableArr g marr s l = 
+#ifdef CHECK_ARRAY_BOUND
+    siz <- A.sizeofMutableArr marr
+    check
+        (s>=0 && l>=0 && (s+l)<=siz)
+        (A.shuffleMutableArr g marr s l)
+#else
+        (A.shuffleMutableArr g marr s l)
 #endif

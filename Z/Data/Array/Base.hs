@@ -30,8 +30,8 @@ module Z.Data.Array.Base (
   -- * Arr typeclass
     Arr(..)
   , emptyArr, singletonArr, doubletonArr
-  , modifyIndexArr, insertIndexArr, deleteIndexArr
-  , doubleMutableArr
+  , modifyIndexArr, insertIndexArr, deleteIndexArr, swapArr, swapMutableArr
+  , doubleMutableArr, shuffleMutableArr
   , RealWorld
   -- * Boxed array type
   , Array(..)
@@ -75,6 +75,7 @@ import           Data.Primitive.Ptr             (copyPtrToMutablePrimArray)
 import           Data.Primitive.SmallArray
 import           Data.Primitive.Types
 import           GHC.Exts
+import           System.Random.Stateful  ( UniformRange(uniformRM), StatefulGen )  
 import           Z.Data.Array.Cast
 import           Z.Data.Array.UnliftedArray
 
@@ -693,6 +694,31 @@ deleteIndexArr arr s l i = runST $ do
     when (i'<l) $ copyArr marr i arr (i'+s) (l-i')
     unsafeFreezeArr marr
 
+-- | Swap two elements under given index and return a new array.
+swapArr :: Arr arr a
+             => arr a
+             -> Int 
+             -> Int
+             -> arr a
+{-# INLINE swapArr #-}
+swapArr arr i j = runST $ do
+    marr <- thawArr arr 0 (sizeofArr arr)
+    swapMutableArr marr i j
+    unsafeFreezeArr marr
+
+-- | Swap two elements under given index, no atomically guarantee is given.
+swapMutableArr :: (PrimMonad m, PrimState m ~ s, Arr arr a)
+             => MArr arr s a
+             -> Int 
+             -> Int
+             -> m ()
+{-# INLINE swapMutableArr #-}
+swapMutableArr marr i j = do
+    x <- readArr marr i
+    y <- readArr marr j
+    writeArr marr i y 
+    writeArr marr j x 
+
 -- | Resize mutable array to @max (given_size) (2 * original_size)@ if orignal array is smaller than @give_size@.
 doubleMutableArr :: (Arr arr a, PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m (MArr arr s a)
 {-# INLINE doubleMutableArr #-}
@@ -701,3 +727,20 @@ doubleMutableArr marr l = do
     if (siz < l)
     then resizeMutableArr marr (max (siz `unsafeShiftL` 1) l)
     else return marr
+
+
+-- | Shuffle array's elements in slice range.
+--
+-- This function use <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm. 
+shuffleMutableArr :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Arr arr a) => g -> MArr arr s a 
+            -> Int  -- ^ offset
+            -> Int  -- ^ length
+            -> m ()
+{-# INLINE shuffleMutableArr #-}
+shuffleMutableArr g marr off n = go (off+n-1)
+  where 
+    go i | i < off+1 = return ()
+         | otherwise = do
+            j <- uniformRM (off, i) g
+            swapMutableArr marr i j 
+            go (i - 1) 

@@ -40,6 +40,7 @@ module Z.Data.Text (
   , foldl', ifoldl'
   , foldr', ifoldr'
   , concat, concatR, concatMap
+  , shuffle, permutations
     -- ** Special folds
   , count, all, any
     -- ** Text display width

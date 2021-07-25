@@ -84,6 +84,7 @@ module Z.Data.Vector (
   , mapM, mapM_, forM, forM_
   , foldl', ifoldl', foldl1', foldl1Maybe'
   , foldr', ifoldr', foldr1', foldr1Maybe'
+  , shuffle, permutations
     -- ** Special folds
   , concat, concatR, concatMap
   , maximum, minimum, maximumMaybe, minimumMaybe
