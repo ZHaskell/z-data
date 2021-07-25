@@ -37,6 +37,7 @@ module Z.Data.Builder.Numeric (
   , i2wDec, i2wHex, i2wHexUpper
   , countDigits
   , c_intWith, hs_intWith
+  , quotRem10
 ) where
 
 import           Control.Monad
@@ -629,7 +630,7 @@ positiveSciToDigits sci =
     then ([0], 0)
     else case c of
 #ifdef INTEGER_GMP
-        (S# i#) -> goI (I# i#) 0 []
+        (S# i#) -> goI (W# (int2Word# i#)) 0 []
 #endif
         _ -> go c 0 []
   where
@@ -642,10 +643,22 @@ positiveSciToDigits sci =
     go i !n ds = case i `quotRemInteger` 10 of
                      (# q, r #) -> let !d = fromIntegral r in go q (n+1) (d:ds)
 #ifdef INTEGER_GMP
-    goI :: Int -> Int -> [Int] -> ([Int], Int)
+    goI :: Word -> Int -> [Int] -> ([Int], Int)
     goI 0 !n ds = let !ne = n + e in (ds, ne)
-    goI i !n ds = case i `quotRem` 10 of (q, !r) -> goI q (n+1) (r:ds)
+    goI i !n ds = case quotRem10 i of (q, r) -> let !d = fromIntegral r in goI q (n+1) (d:ds)
 #endif
+
+-- | A faster `quotRem` by 10.
+quotRem10 :: Word -> (Word, Word)
+{-# INLINE quotRem10 #-}
+quotRem10 (W# w#) =
+    let w'# = dquot10# w#
+    in (W# w'#, W# (w# `minusWord#` (w'# `timesWord#` 10##)))
+  where
+    dquot10# :: Word# -> Word#
+    dquot10# w =
+        let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
+        in rdx `uncheckedShiftRL#` 3#
 
 -- | Worker function to do formatting.
 doFmt :: FFormat
