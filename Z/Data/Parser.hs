@@ -66,6 +66,8 @@ module Z.Data.Parser
   , timeZone
   , utcTime
   , zonedTime
+  -- * UUID
+  , uuid, decodeUUID
     -- * Misc
   , fail', failWithInput, unsafeLiftIO
     -- * Specialized primitive parser
@@ -80,4 +82,5 @@ module Z.Data.Parser
 import           Z.Data.Parser.Base
 import           Z.Data.Parser.Numeric
 import           Z.Data.Parser.Time
+import           Z.Data.Parser.UUID
 import           Prelude hiding (take, takeWhile, decodeFloat)

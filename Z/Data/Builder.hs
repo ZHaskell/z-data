@@ -64,6 +64,8 @@ module Z.Data.Builder
   , utcTime
   , localTime
   , zonedTime
+    -- * UUID
+  , uuid, uuidUpper, encodeUUID
     -- * Specialized primitive builder
   , encodeWord  , encodeWord64, encodeWord32, encodeWord16, encodeWord8
   , encodeInt   , encodeInt64 , encodeInt32 , encodeInt16 , encodeInt8 , encodeDouble, encodeFloat
@@ -76,4 +78,5 @@ module Z.Data.Builder
 import           Z.Data.Builder.Base
 import           Z.Data.Builder.Numeric
 import           Z.Data.Builder.Time
+import           Z.Data.Builder.UUID
 import           Prelude                        ()

@@ -3,6 +3,7 @@
 ## 1.1.0.0  -- 2021-07-15
 
 * Fix building issues on ARM platform.
+* Add `UUID` builders and parsers(both textual binary).
 * Add more `PrimUnlifed` instances to `Z.Data.Array.UnliftedArray`.
 * Add `doubleMutableArr` to `Z.Data.Array`, useful in some buffer building logic.
 * Add `prettyJSON'` to `Z.Data.JSON` with custom indentation.
