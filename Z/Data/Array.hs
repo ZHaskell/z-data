@@ -541,12 +541,12 @@ shuffleMutableArr :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Arr arr a) 
             -> Int  -- ^ length
             -> m ()
 {-# INLINE shuffleMutableArr #-}
-shuffleMutableArr g marr s l = 
+shuffleMutableArr g marr s l = do
 #ifdef CHECK_ARRAY_BOUND
     siz <- A.sizeofMutableArr marr
     check
         (s>=0 && l>=0 && (s+l)<=siz)
         (A.shuffleMutableArr g marr s l)
 #else
-        (A.shuffleMutableArr g marr s l)
+        A.shuffleMutableArr g marr s l
 #endif
