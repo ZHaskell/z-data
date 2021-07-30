@@ -43,7 +43,7 @@ uuid (UUID wh wl) =  do
     B.hex w5
     B.hex w6
 
--- | Write texutal UUID bytes, e.g. @550e8400-e29b-41d4-a716-446655440000@
+-- | Write texutal UUID bytes in UPPERCASE, e.g. @550E8400-E29B-41D4-A716-446655440000@
 uuidUpper :: UUID -> B.Builder ()
 {-# INLINABLE uuidUpper #-}
 uuidUpper (UUID wh wl) =  do
@@ -65,7 +65,7 @@ uuidUpper (UUID wh wl) =  do
     B.hexUpper w6
 
 
--- | Encode binary UUID(two 64-bits word in big-endian), as described in <http://tools.ietf.org/html/rfc4122 RFC 4122>. 
+-- | Encode binary UUID(two 64-bits word in big-endian), as described in <https://datatracker.ietf.org/doc/html/rfc4122 RFC 4122>. 
 encodeUUID :: UUID -> B.Builder ()
 {-# INLINABLE  encodeUUID #-}
 encodeUUID (UUID wh wl) = do 

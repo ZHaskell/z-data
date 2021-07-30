@@ -39,7 +39,7 @@ uuid =  do
 
     pure (UUID w1 w2)
 
--- | Decode binary UUID(two 64-bits word in big-endian), as described in <http://tools.ietf.org/html/rfc4122 RFC 4122>. 
+-- | Decode binary UUID(two 64-bits word in big-endian), as described in <https://datatracker.ietf.org/doc/html/rfc4122 RFC 4122>. 
 decodeUUID :: P.Parser UUID
 {-# INLINABLE  decodeUUID #-}
 decodeUUID = UUID <$> P.decodeWord64BE <*> P.decodeWord64BE
