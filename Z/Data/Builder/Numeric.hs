@@ -63,7 +63,8 @@ import           Test.QuickCheck.Arbitrary           (Arbitrary(..), CoArbitrary
 
 --------------------------------------------------------------------------------
 
-foreign import ccall unsafe "dtoa.h" c_int_dec :: Word64 -> Int -> Int -> Word8 -> MBA# Word8 -> Int -> IO Int
+foreign import ccall unsafe "dtoa.h"
+    c_int_dec :: Word64 -> Int -> Int -> Word8 -> MBA# Word8 -> Int -> IO Int
 
 -- | Integral formatting options.
 --
@@ -143,8 +144,8 @@ c_intWith (IFormat{..}) = \ x ->
     ensureN (max 21 width) (\ (MutablePrimArray mba#) i ->
         if x < 0
         then let !x' = (fromIntegral (complement x) :: Word64) + 1
-             in (c_int_dec x' (-1) width pad mba# i)
-        else c_int_dec (fromIntegral x) (if posSign then 1 else 0) width pad mba# i)
+             in (c_int_dec x' (-1) width pad (MBA# mba#) i)
+        else c_int_dec (fromIntegral x) (if posSign then 1 else 0) width pad (MBA# mba#) i)
   where
     pad = case padding of NoPadding          -> 0
                           RightSpacePadding  -> 1
@@ -764,7 +765,7 @@ grisu3 d = unsafePerformIO $ do
     (MutableByteArray pBuf) <- newByteArray GRISU3_DOUBLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
         allocPrimUnsafe $ \ pE ->
-            c_grisu3 (realToFrac d) pBuf pLen pE
+            c_grisu3 (realToFrac d) (MBA# pBuf) pLen pE
     if success == 0 -- grisu3 fail
     then pure (floatToDigits 10 d)
     else do
@@ -788,7 +789,7 @@ grisu3_sp d = unsafePerformIO $ do
     (MutableByteArray pBuf) <- newByteArray GRISU3_SINGLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
         allocPrimUnsafe $ \ pE ->
-            c_grisu3_sp (realToFrac d) pBuf pLen pE
+            c_grisu3_sp (realToFrac d) (MBA# pBuf) pLen pE
     if success == 0 -- grisu3 fail
     then pure (floatToDigits 10 d)
     else do

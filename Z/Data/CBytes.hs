@@ -192,10 +192,10 @@ instance CoArbitrary CBytes where
 -- | Poke 'CBytes' until a \\NUL terminator(or to the end of the array if there's none).
 peekMBACBytes :: MBA# Word8 -> Int -> IO CBytes
 {-# INLINE peekMBACBytes #-}
-peekMBACBytes mba# i = do
+peekMBACBytes mba@(MBA# mba#) i = do
     b <- getSizeofMutableByteArray (MutableByteArray mba#)
     let rest = b-i
-    l <- c_memchr mba# i 0 rest
+    l <- c_memchr mba i 0 rest
     let l' = if l == -1 then rest else l
     mpa <- newPrimArray (l'+1)
     copyMutablePrimArray mpa 0 (MutablePrimArray mba#) i l'
@@ -207,14 +207,14 @@ peekMBACBytes mba# i = do
 -- | Poke 'CBytes' with \\NUL terminator.
 pokeMBACBytes :: MBA# Word8 -> Int -> CBytes -> IO ()
 {-# INLINE pokeMBACBytes #-}
-pokeMBACBytes mba# i (CBytes pa) = do
+pokeMBACBytes (MBA# mba#) i (CBytes pa) = do
         let l = sizeofPrimArray pa
         copyPrimArray (MutablePrimArray mba# :: MutablePrimArray RealWorld Word8) i pa 0 l
 
 -- | Index a 'CBytes' until a \\NUL terminator(or to the end of the array if there's none).
 indexBACBytes :: BA# Word8 -> Int -> CBytes
 {-# INLINE indexBACBytes #-}
-indexBACBytes ba# i = runST (do
+indexBACBytes (BA# ba#) i = runST (do
     let b = sizeofByteArray (ByteArray ba#)
         rest = b-i
         l = V.c_memchr ba# i 0 rest
@@ -611,9 +611,9 @@ allocCBytesUnsafe n fill | n <= 0 = withPrimUnsafe (0::Word8) fill >>=
                                         \ (_, b) -> return (empty, b)
                          | otherwise = do
     mba@(MutablePrimArray mba#) <- newPrimArray n :: IO (MutablePrimArray RealWorld Word8)
-    a <- fill mba#
-    l <- fromIntegral <$> (c_memchr mba# 0 0 n)
-    let l' = if l == -1 then (n-1) else l
+    a <- fill (MBA# mba#)
+    l <- fromIntegral <$> c_memchr (MBA# mba#) 0 0 n
+    let l' = if l == -1 then n-1 else l
     shrinkMutablePrimArray mba (l'+1)
     writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
@@ -634,8 +634,8 @@ allocCBytes n fill | n <= 0 = fill nullPtr >>= \ a -> return (empty, a)
                    | otherwise = do
     mba@(MutablePrimArray mba#) <- newPinnedPrimArray n :: IO (MutablePrimArray RealWorld Word8)
     a <- withMutablePrimArrayContents mba (fill . castPtr)
-    l <- fromIntegral <$> (c_memchr mba# 0 0 n)
-    let l' = if l == -1 then (n-1) else l
+    l <- fromIntegral <$> c_memchr (MBA# mba#) 0 0 n
+    let l' = if l == -1 then n-1 else l
     shrinkMutablePrimArray mba (l'+1)
     writePrimArray mba l' 0
     bs <- unsafeFreezePrimArray mba
@@ -658,4 +658,5 @@ c_strlen_ptr :: CString -> IO CSize
 c_strlen_ptr (Ptr a#) = V.c_strlen a#
 
 -- HsInt hs_memchr(uint8_t *a, HsInt aoff, uint8_t b, HsInt n);
-foreign import ccall unsafe "hs_memchr" c_memchr :: MBA# Word8 -> Int -> Word8 -> Int -> IO Int
+foreign import ccall unsafe "hs_memchr"
+    c_memchr :: MBA# Word8 -> Int -> Word8 -> Int -> IO Int

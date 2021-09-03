@@ -115,7 +115,9 @@ regex :: HasCallStack => T.Text -> Regex
 {-# NOINLINE regex #-}
 regex t = unsafePerformIO $ do
     (cp, r) <- newCPtrUnsafe (\ mba# ->
-        (withPrimVectorUnsafe (T.getUTF8Bytes t) (hs_re2_compile_pattern_default mba#)))
+        withPrimVectorUnsafe
+            (T.getUTF8Bytes t)
+            (hs_re2_compile_pattern_default (MBA# mba#)))
         p_hs_re2_delete_pattern
 
     when (r == nullPtr) (throwIO (InvalidRegexPattern t callStack))
@@ -130,8 +132,8 @@ regexOpts :: HasCallStack => RegexOpts -> T.Text -> Regex
 {-# NOINLINE regexOpts #-}
 regexOpts RegexOpts{..} t = unsafePerformIO $ do
     (cp, r) <- newCPtrUnsafe ( \ mba# ->
-        (withPrimVectorUnsafe (T.getUTF8Bytes t) $ \ p o l ->
-            hs_re2_compile_pattern mba# p o l
+        withPrimVectorUnsafe (T.getUTF8Bytes t) $ \ p o l ->
+            hs_re2_compile_pattern (MBA# mba#) p o l
                 (fromBool posix_syntax  )
                 (fromBool longest_match )
                 max_mem
@@ -142,7 +144,7 @@ regexOpts RegexOpts{..} t = unsafePerformIO $ do
                 (fromBool case_sensitive)
                 (fromBool perl_classes  )
                 (fromBool word_boundary )
-                (fromBool one_line      )))
+                (fromBool one_line      ))
         p_hs_re2_delete_pattern
 
     when (r == nullPtr) (throwIO (InvalidRegexPattern t callStack))
