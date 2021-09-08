@@ -54,7 +54,7 @@ base64EncodeBuilder :: V.Bytes -> B.Builder ()
 base64EncodeBuilder (V.PrimVector arr s l) =
     B.writeN (base64EncodeLength l) (\ (MutablePrimArray mba#) i -> do
         withPrimArrayUnsafe arr $ \ parr _ ->
-            hs_base64_encode mba# i parr s l)
+            hs_base64_encode (MBA# mba#) i parr s l)
 
 -- | Text version of 'base64Encode'.
 base64EncodeText :: V.Bytes -> T.Text

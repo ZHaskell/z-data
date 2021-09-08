@@ -1,3 +1,6 @@
+#if __GLASGOW_HASKELL__ >= 810
+{-# LANGUAGE UnliftedNewtypes #-}
+#endif
 {-|
 Module      : Z.Foreign
 Description : Use PrimArray \/ PrimVector with FFI
@@ -76,7 +79,11 @@ module Z.Foreign
   , pinPrimArray
   , pinPrimVector
     -- ** Pointer helpers
-  , BA#, MBA#, BAArray#
+#if __GLASGOW_HASKELL__ >= 810
+  , BA# (..), MBA# (..), BAArray# (..)
+#else
+  , BA#, pattern BA#, MBA#, pattern MBA#, BAArray#, pattern BAArray#
+#endif
   , clearMBA
   , clearPtr
   , castPtr
@@ -100,26 +107,28 @@ module Z.Foreign
   , hs_delete_std_string
   ) where
 
-import           Control.Exception          (bracket)
+import           Control.Exception              (bracket)
 import           Control.Monad
 import           Control.Monad.Primitive
+import           Data.ByteString                (ByteString)
+import qualified Data.ByteString                as B
+import           Data.ByteString.Short.Internal (ShortByteString (..),
+                                                 fromShort, toShort)
+import qualified Data.ByteString.Unsafe         as B
+import qualified Data.List                      as List
 import           Data.Primitive
-import           Data.Word
-import qualified Data.List                  as List
-import           Data.Primitive.Ptr
 import           Data.Primitive.ByteArray
 import           Data.Primitive.PrimArray
+import           Data.Primitive.Ptr
+import           Data.Word
 import           Foreign.C.Types
-import           GHC.Ptr
 import           GHC.Exts
-import           Z.Data.Array.Base             (withMutablePrimArrayContents, withPrimArrayContents)
+import           GHC.Ptr
+import           Z.Data.Array.Base              (withMutablePrimArrayContents,
+                                                 withPrimArrayContents)
 import           Z.Data.Array.Unaligned
 import           Z.Data.Array.UnliftedArray
 import           Z.Data.Vector.Base
-import           Data.ByteString            (ByteString)
-import qualified Data.ByteString            as B
-import qualified Data.ByteString.Unsafe     as B
-import           Data.ByteString.Short.Internal (ShortByteString(..), fromShort, toShort)
 
 -- | Type alias for 'ByteArray#'.
 --
@@ -133,7 +142,13 @@ import           Data.ByteString.Short.Internal (ShortByteString(..), fromShort,
 -- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'ByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+#if __GLASGOW_HASKELL__ >= 810
+newtype BA# a = BA# ByteArray#
+#else
 type BA# a = ByteArray#
+pattern BA# :: ByteArray# -> BA# a
+pattern BA# ba = ba
+#endif
 
 -- | Type alias for 'MutableByteArray#' 'RealWorld'.
 --
@@ -144,7 +159,13 @@ type BA# a = ByteArray#
 -- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+#if __GLASGOW_HASKELL__ >= 810
+newtype MBA# a = MBA# (MutableByteArray# RealWorld)
+#else
 type MBA# a = MutableByteArray# RealWorld
+pattern MBA# :: MutableByteArray# RealWorld -> MBA# a
+pattern MBA# mba = mba
+#endif
 
 -- | Type alias for 'ArrayArray#'.
 --
@@ -177,17 +198,21 @@ type MBA# a = MutableByteArray# RealWorld
 -- -- by the type system in this example since ArrayArray is untyped.
 -- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# Int -> Int -> IO CInt
 -- @
---
+#if __GLASGOW_HASKELL__ >= 810
+newtype BAArray# a = BAArray# ArrayArray#
+#else
 type BAArray# a = ArrayArray#
+pattern BAArray# :: ArrayArray# -> BAArray# a
+pattern BAArray# baa = baa
+#endif
 
 -- | Clear 'MBA#' with given length to zero.
 clearMBA :: MBA# a
          -> Int  -- ^ in bytes
          -> IO ()
 {-# INLINE clearMBA #-}
-clearMBA mba# len = do
-    let mba = (MutableByteArray mba#)
-    setByteArray mba 0 len (0 :: Word8)
+clearMBA (MBA# mba#) len =
+    setByteArray (MutableByteArray mba#) 0 len (0 :: Word8)
 
 -- | Pass primitive array to unsafe FFI as pointer.
 --
@@ -199,7 +224,7 @@ clearMBA mba# len = do
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> IO b) -> IO b
 {-# INLINE withPrimArrayUnsafe #-}
-withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofPrimArray pa)
+withPrimArrayUnsafe pa@(PrimArray ba#) f = f (BA# ba#) (sizeofPrimArray pa)
 
 -- | Pass primitive array list to unsafe FFI as @StgArrBytes**@.
 --
@@ -217,7 +242,7 @@ withPrimArrayListUnsafe pas f = do
     mla <- unsafeNewUnliftedArray l
     foldM_ (\ !i pa -> writeUnliftedArray mla i pa >> return (i+1)) 0 pas
     (UnliftedArray la#) <- unsafeFreezeUnliftedArray mla
-    f la# l
+    f (BAArray# la#) l
 
 -- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimArray'.
 --
@@ -226,7 +251,7 @@ allocPrimArrayUnsafe :: forall a b. Prim a => Int -> (MBA# a -> IO b) -> IO (Pri
 {-# INLINE allocPrimArrayUnsafe #-}
 allocPrimArrayUnsafe len f = do
     (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
-    !r <- f mba#
+    !r <- f (MBA# mba#)
     !pa <- unsafeFreezePrimArray mpa
     return (pa, r)
 
@@ -252,7 +277,7 @@ allocPrimVectorUnsafe :: forall a b. Prim a => Int  -- ^ number of elements
 {-# INLINE allocPrimVectorUnsafe #-}
 allocPrimVectorUnsafe len f = do
     (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
-    !r <- f mba#
+    !r <- f (MBA# mba#)
     !pa <- unsafeFreezePrimArray mpa
     let !v = PrimVector pa 0 len
     return (v, r)
@@ -261,10 +286,9 @@ allocPrimVectorUnsafe len f = do
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 allocBytesUnsafe :: Int  -- ^ number of bytes
-                 -> (MBA# a -> IO b) -> IO (Bytes, b)
+                 -> (MBA# Word8 -> IO b) -> IO (Bytes, b)
 {-# INLINE allocBytesUnsafe #-}
 allocBytesUnsafe = allocPrimVectorUnsafe
-
 
 -- | Create an one element primitive array and use it as a pointer to the primitive element.
 --
@@ -278,7 +302,7 @@ withPrimUnsafe :: (Prim a)
 withPrimUnsafe v f = do
     mpa@(MutablePrimArray mba#) <- newPrimArray 1    -- All heap objects are WORD aligned
     writePrimArray mpa 0 v
-    !b <- f mba#                                      -- so no need to do extra alignment
+    !b <- f (MBA# mba#)                              -- so no need to do extra alignment
     !a <- readPrimArray mpa 0
     return (a, b)
 
@@ -289,7 +313,7 @@ allocPrimUnsafe :: (Prim a) => (MBA# a -> IO b) -> IO (a, b)
 {-# INLINE allocPrimUnsafe #-}
 allocPrimUnsafe f = do
     mpa@(MutablePrimArray mba#) <- newPrimArray 1    -- All heap objects are WORD aligned
-    !b <- f mba#                                      -- so no need to do extra alignment
+    !b <- f (MBA# mba#)                              -- so no need to do extra alignment
     !a <- readPrimArray mpa 0
     return (a, b)
 

@@ -139,7 +139,7 @@ withCPtrsUnsafe cptrs f = do
     foldM_ (\ !i (CPtr pa) ->
         writePrimArray mpa i (indexPrimArray pa 0) >> return (i+1)) 0 cptrs
     (PrimArray ba#) <- unsafeFreezePrimArray mpa
-    r <- f ba# len
+    r <- f (BA# ba#) len
     primitive_ (touch# cptrs)
     return r
   where len = length cptrs

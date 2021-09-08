@@ -7,8 +7,8 @@ jobs:
       matrix:
         ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.2', '3.4']
-        avx_flag: ['', '-fuse-avx2']  # vm doesnt support avx512 
-        chenck_array_bound_flag: ['', '-fcheck-array-bound']  # vm doesnt support avx512 
+        avx_flag: ['', '-fuse-avx2']  # vm doesnt support avx512
+        chenck_array_bound_flag: ['', '-fcheck-array-bound']  # vm doesnt support avx512
         exclude:
           # GHC 9+ only works with cabal v3.4+
           - ghc: 9.0
@@ -48,7 +48,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - run: |
-          cabal configure ${{ matrix.avx_flag }} ${{ matrix.chenck_array_bound_flag }} $CONFIG  
+          cabal configure ${{ matrix.avx_flag }} ${{ matrix.chenck_array_bound_flag }} $CONFIG
           cabal build $CONFIG
       - run: |
           cabal test --test-show-details=direct
