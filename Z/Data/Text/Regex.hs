@@ -117,7 +117,7 @@ regex t = unsafePerformIO $ do
     (cp, r) <- newCPtrUnsafe (\ mba# ->
         withPrimVectorUnsafe
             (T.getUTF8Bytes t)
-            (hs_re2_compile_pattern_default (MBA# mba#)))
+            (hs_re2_compile_pattern_default mba#))
         p_hs_re2_delete_pattern
 
     when (r == nullPtr) (throwIO (InvalidRegexPattern t callStack))
@@ -133,7 +133,7 @@ regexOpts :: HasCallStack => RegexOpts -> T.Text -> Regex
 regexOpts RegexOpts{..} t = unsafePerformIO $ do
     (cp, r) <- newCPtrUnsafe ( \ mba# ->
         withPrimVectorUnsafe (T.getUTF8Bytes t) $ \ p o l ->
-            hs_re2_compile_pattern (MBA# mba#) p o l
+            hs_re2_compile_pattern mba# p o l
                 (fromBool posix_syntax  )
                 (fromBool longest_match )
                 max_mem
