@@ -82,8 +82,8 @@ hexEncodeBuilder upper (V.PrimVector arr s l) =
     B.writeN (l `unsafeShiftL` 1) (\ (MutablePrimArray mba#) i -> do
         withPrimArrayUnsafe arr $ \ parr _ ->
             if upper
-            then hs_hex_encode_upper (MBA# mba#) i parr s l
-            else hs_hex_encode (MBA# mba#) i parr s l)
+            then hs_hex_encode_upper mba# i parr s l
+            else hs_hex_encode mba# i parr s l)
 
 -- | Text version of 'hexEncode'.
 hexEncodeText :: Bool   -- ^ uppercase?

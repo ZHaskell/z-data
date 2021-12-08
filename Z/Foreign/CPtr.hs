@@ -118,18 +118,10 @@ withCPtr (CPtr pa@(PrimArray ba#)) f = do
 -- so it may be optimized away, 'withCPtrForever' solves that.
 --
 withCPtrForever :: CPtr a -> (Ptr a -> IO b) -> IO b
-#if MIN_VERSION_base(4,15,0)
 {-# INLINABLE withCPtrForever #-}
 withCPtrForever (CPtr pa@(PrimArray ba#)) f = IO $ \ s ->
     case f (indexPrimArray pa 0) of
         IO action# -> keepAlive# ba# s action#
-#else
-{-# NOINLINE withCPtrForever #-}
-withCPtrForever (CPtr pa@(PrimArray ba#)) f = do
-    r <- f (indexPrimArray pa 0)
-    primitive_ (touch# ba#)
-    return r
-#endif
 
 -- | Pass a list of 'CPtr Foo' as @foo**@. USE THIS FUNCTION WITH UNSAFE FFI ONLY!
 withCPtrsUnsafe :: forall a b. [CPtr a] -> (BA# (Ptr a) -> Int -> IO b) -> IO b
@@ -139,7 +131,7 @@ withCPtrsUnsafe cptrs f = do
     foldM_ (\ !i (CPtr pa) ->
         writePrimArray mpa i (indexPrimArray pa 0) >> return (i+1)) 0 cptrs
     (PrimArray ba#) <- unsafeFreezePrimArray mpa
-    r <- f (BA# ba#) len
+    r <- f ba# len
     primitive_ (touch# cptrs)
     return r
   where len = length cptrs

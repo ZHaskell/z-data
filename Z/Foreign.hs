@@ -1,6 +1,3 @@
-#if __GLASGOW_HASKELL__ >= 810
-{-# LANGUAGE UnliftedNewtypes #-}
-#endif
 {-|
 Module      : Z.Foreign
 Description : Use PrimArray \/ PrimVector with FFI
@@ -79,11 +76,7 @@ module Z.Foreign
   , pinPrimArray
   , pinPrimVector
     -- ** Pointer helpers
-#if __GLASGOW_HASKELL__ >= 810
   , BA# (..), MBA# (..), BAArray# (..)
-#else
-  , BA#, pattern BA#, MBA#, pattern MBA#, BAArray#, pattern BAArray#
-#endif
   , clearMBA
   , clearPtr
   , castPtr
@@ -142,13 +135,9 @@ import           Z.Data.Vector.Base
 -- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'ByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
-#if __GLASGOW_HASKELL__ >= 810
-newtype BA# a = BA# ByteArray#
-#else
 type BA# a = ByteArray#
 pattern BA# :: ByteArray# -> BA# a
 pattern BA# ba = ba
-#endif
 
 -- | Type alias for 'MutableByteArray#' 'RealWorld'.
 --
@@ -159,13 +148,9 @@ pattern BA# ba = ba
 -- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
 --
 -- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
-#if __GLASGOW_HASKELL__ >= 810
-newtype MBA# a = MBA# (MutableByteArray# RealWorld)
-#else
 type MBA# a = MutableByteArray# RealWorld
 pattern MBA# :: MutableByteArray# RealWorld -> MBA# a
 pattern MBA# mba = mba
-#endif
 
 -- | Type alias for 'ArrayArray#'.
 --
@@ -198,13 +183,9 @@ pattern MBA# mba = mba
 -- -- by the type system in this example since ArrayArray is untyped.
 -- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# Int -> Int -> IO CInt
 -- @
-#if __GLASGOW_HASKELL__ >= 810
-newtype BAArray# a = BAArray# ArrayArray#
-#else
 type BAArray# a = ArrayArray#
 pattern BAArray# :: ArrayArray# -> BAArray# a
 pattern BAArray# baa = baa
-#endif
 
 -- | Clear 'MBA#' with given length to zero.
 clearMBA :: MBA# a

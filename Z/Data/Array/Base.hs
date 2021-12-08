@@ -416,11 +416,7 @@ instance Arr SmallArray a where
         copySmallMutableArray marr' 0 marr 0 (sizeofSmallMutableArray marr)
         return marr'
     {-# INLINE resizeMutableArr #-}
-#if MIN_VERSION_base(4,14,0)
     shrinkMutableArr = shrinkSmallMutableArray
-#else
-    shrinkMutableArr _ _ = return ()
-#endif
     {-# INLINE shrinkMutableArr #-}
 
     sameMutableArr (SmallMutableArray smarr1#) (SmallMutableArray smarr2#) =
