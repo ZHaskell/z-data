@@ -20,13 +20,13 @@ import GHC.Exts
 --
 w2c :: Word8 -> Char
 {-# INLINE w2c #-}
-w2c (W8# w#) = C# (chr# (word2Int# w#))
+w2c (W8# w#) = C# (chr# (word2Int# (word8ToWord# w#)))
 
 -- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
 -- silently truncates to 8 bits Chars > @\\255@.
 c2w :: Char -> Word8
 {-# INLINE c2w #-}
-c2w (C# c#) = W8# (int2Word# (ord# c#))
+c2w (C# c#) = W8# (wordToWord8# (int2Word# (ord# c#)))
 
 -- | @\\NUL <= w && w <= \\DEL@
 isASCII :: Word8 -> Bool

@@ -37,6 +37,7 @@ that are eligible to be stored.
 -}
 module Z.Data.Array.UnliftedArray where
 
+import Control.Exception              (ArrayException (..), throw)
 import Control.Monad.Primitive
 import Data.Primitive.Array
 import Data.Primitive.ByteArray
@@ -44,6 +45,7 @@ import Data.Primitive.PrimArray
 import Data.Primitive.SmallArray
 import GHC.MVar (MVar(..))
 import GHC.IORef (IORef(..))
+import GHC.ST
 import GHC.STRef (STRef(..))
 import GHC.Conc (TVar(..))
 import GHC.Exts
@@ -219,8 +221,19 @@ unsafeNewUnliftedArray
     => Int -- ^ size
     -> m (MutableUnliftedArray (PrimState m) a)
 {-# INLINE unsafeNewUnliftedArray #-}
+unsafeNewUnliftedArray 0 = primitive $ \s ->
+    -- GHC 9.2 has a bug: call newArrayArray# with 0# length will hang
+    -- so we unsafeCoerce# empty Array# into ArrayArray# here
+    case newArray# 0# (throw (UndefinedElement "Data.Array.UnliftedArray.uninitialized")) s of
+        (# s', maa# #) -> (# s', MutableUnliftedArray (unsafeCoerce# maa#) #)
 unsafeNewUnliftedArray (I# i#) = primitive $ \s -> case newArrayArray# i# s of
     (# s', maa# #) -> (# s', MutableUnliftedArray maa# #)
+
+emptyUnliftedArray :: PrimUnlifted a => UnliftedArray a
+{-# NOINLINE emptyUnliftedArray #-}
+emptyUnliftedArray = runST (do
+    mua <- unsafeNewUnliftedArray 0
+    unsafeFreezeUnliftedArray mua)
 
 -- | Creates a new 'MutableUnliftedArray' with the specified value as initial
 -- contents. This is slower than 'unsafeNewUnliftedArray', but safer.

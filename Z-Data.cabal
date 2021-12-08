@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            1.2.0.0
+version:            2.0.0.0
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -112,14 +112,6 @@ flag check-array-bound
   default:     False
   manual:      True
 
-flag integer-simple
-  description:
-    Use the [simple integer library](http://hackage.haskell.org/package/integer-simple)
-    instead of [integer-gmp](http://hackage.haskell.org/package/integer-gmp)
-
-  default:     False
-  manual:      True
-
 flag use-avx2
   description:
     Use AVX2 instructions(utf8 validation, base64 codec, etc).
@@ -187,14 +179,13 @@ library
     Z.Foreign.CPtr
 
   build-depends:
-    , base                  >=4.12   && <5.0
+    , base                  >=4.16   && <5.0
     , bytestring            >=0.10.4 && <0.12
     , case-insensitive      ^>=1.2
     , containers            ^>=0.6
     , deepseq               ^>=1.4
-    , ghc-prim              >=0.5.3  && <0.8
     , hashable              ^>=1.3
-    , primitive             >=0.7.1  && <0.7.2
+    , primitive             >=0.7.3  && <0.8
     , QuickCheck            >=2.10
     , random                >=1.2.0  && <1.3
     , scientific            >=0.3.7  && <0.4
@@ -319,14 +310,6 @@ library
         stdc++
         pthread
 
-  if flag(integer-simple)
-    cpp-options:   -DINTEGER_SIMPLE
-    build-depends: integer-simple >=0.1 && <0.5
-
-  else
-    cpp-options:   -DINTEGER_GMP
-    build-depends: integer-gmp >=0.2 && <1.2
-
   if flag(check-array-bound)
     cpp-options:   -DCHECK_ARRAY_BOUND
 
@@ -418,14 +401,6 @@ test-suite Z-Data-Test
     , Z-Data
 
   c-sources:          test/cbits/ffi.c
-
-  if flag(integer-simple)
-    cpp-options:   -DINTEGER_SIMPLE
-    build-depends: integer-simple >=0.1 && <0.5
-
-  else
-    cpp-options:   -DINTEGER_GMP
-    build-depends: integer-gmp >=0.2 && <1.2
 
   if flag(check-array-bound)
     cpp-options:   -DCHECK_ARRAY_BOUND

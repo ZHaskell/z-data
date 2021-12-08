@@ -31,6 +31,16 @@ import           Foreign.C.Types
 #define USE_BSWAP
 -- #define USE_SHIFT
 
+#if defined(USE_BSWAP)
+byteSwap'16# :: Word16# -> Word16#
+{-# INLINE byteSwap'16# #-}
+byteSwap'16# w# = wordToWord16# (byteSwap16# (word16ToWord# w#))
+
+byteSwap'32# :: Word32# -> Word32#
+{-# INLINE byteSwap'32# #-}
+byteSwap'32# w# = wordToWord32# (byteSwap32# (word32ToWord# w#))
+#endif
+
 --------------------------------------------------------------------------------
 
 newtype UnalignedSize a = UnalignedSize { getUnalignedSize :: Int } deriving (Show, Eq, Ord)
@@ -240,13 +250,13 @@ instance Unaligned (BE Word16) where
 -- TODO: find out if arch64 support this
 #if (defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)) && defined(USE_BSWAP)
     {-# INLINE writeWord8ArrayAs# #-}
-    writeWord8ArrayAs# mba# i# (BE (W16# x#)) = writeWord8ArrayAsWord16# mba# i# (byteSwap16# x#)
+    writeWord8ArrayAs# mba# i# (BE (W16# x#)) = writeWord8ArrayAsWord16# mba# i# (byteSwap'16# x#)
     {-# INLINE readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s0 =
         let !(# s1, x# #) = readWord8ArrayAsWord16# mba# i# s0
-        in (# s1, BE (W16# (byteSwap16# x#)) #)
+        in (# s1, BE (W16# (byteSwap'16# x#)) #)
     {-# INLINE indexWord8ArrayAs# #-}
-    indexWord8ArrayAs# ba# i# = BE (W16# (byteSwap16# (indexWord8ArrayAsWord16# ba# i#)))
+    indexWord8ArrayAs# ba# i# = BE (W16# (byteSwap'16# (indexWord8ArrayAsWord16# ba# i#)))
 #else
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W16# x#)) s0# =
@@ -321,13 +331,13 @@ instance Unaligned (BE Word32) where
 -- TODO: find out if arch64 support this
 #if (defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)) && defined(USE_BSWAP)
     {-# INLINE writeWord8ArrayAs# #-}
-    writeWord8ArrayAs# mba# i# (BE (W32# x#)) = writeWord8ArrayAsWord32# mba# i# (byteSwap32# x#)
+    writeWord8ArrayAs# mba# i# (BE (W32# x#)) = writeWord8ArrayAsWord32# mba# i# (byteSwap'32# x#)
     {-# INLINE readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s0 =
         let !(# s1, x# #) = readWord8ArrayAsWord32# mba# i# s0
-        in (# s1, BE (W32# (byteSwap32# x#)) #)
+        in (# s1, BE (W32# (byteSwap'32# x#)) #)
     {-# INLINE indexWord8ArrayAs# #-}
-    indexWord8ArrayAs# ba# i# = BE (W32# (byteSwap32# (indexWord8ArrayAsWord32# ba# i#)))
+    indexWord8ArrayAs# ba# i# = BE (W32# (byteSwap'32# (indexWord8ArrayAsWord32# ba# i#)))
 #else
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (W32# x#)) s0# =
@@ -591,15 +601,15 @@ instance Unaligned (BE Int16) where
 #else
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I16# x#)) =
-        writeWord8ArrayAs# mba# i# (BE (W16# (int2Word# x#)))
+        writeWord8ArrayAs# mba# i# (BE (W16# (int16ToWord16# x#)))
     {-# INLINE readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s0 =
         let !(# s1, BE (W16# x#) #) = readWord8ArrayAs# mba# i# s0
-        in (# s1, BE (I16# (narrow16Int# (word2Int# x#))) #)
+        in (# s1, BE (I16# (word16ToInt16# x#)) #)
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# =
         let !(BE (W16# x#)) = indexWord8ArrayAs# ba# i#
-        in BE (I16# (narrow16Int# (word2Int# x#)))
+        in BE (I16# (word16ToInt16# x#))
 #endif
 
 --------------------------------------------------------------------------------
@@ -642,15 +652,15 @@ instance Unaligned (BE Int32) where
 #else
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (I32# x#)) =
-        writeWord8ArrayAs# mba# i# (BE (W32# (int2Word# x#)))
+        writeWord8ArrayAs# mba# i# (BE (W32# (int32ToWord32# x#)))
     {-# INLINE readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s0 =
         let !(# s1, BE (W32# x#) #) = readWord8ArrayAs# mba# i# s0
-        in (# s1, BE (I32# (narrow32Int# (word2Int# x#))) #)
+        in (# s1, BE (I32# (word32ToInt32# x#)) #)
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# =
         let !(BE (W32# x#)) = indexWord8ArrayAs# ba# i#
-        in BE (I32# (narrow32Int# (word2Int# x#)))
+        in BE (I32# (word32ToInt32# x#))
 #endif
 
 --------------------------------------------------------------------------------
@@ -922,15 +932,15 @@ instance Unaligned (BE Char) where
 #else
     {-# INLINE writeWord8ArrayAs# #-}
     writeWord8ArrayAs# mba# i# (BE (C# x#)) =
-        writeWord8ArrayAs# mba# i# (BE (I32# (ord# x#)))
+        writeWord8ArrayAs# mba# i# (BE (I32# (intToInt32# (ord# x#))))
     {-# INLINE readWord8ArrayAs# #-}
     readWord8ArrayAs# mba# i# s0 =
         let !(# s1, BE (I32# x#) #) = readWord8ArrayAs# mba# i# s0
-        in (# s1, BE (C# (chr# x#)) #)
+        in (# s1, BE (C# (chr# (int32ToInt# x#))) #)
     {-# INLINE indexWord8ArrayAs# #-}
     indexWord8ArrayAs# ba# i# =
         let !(BE (I32# x#)) = indexWord8ArrayAs# ba# i#
-        in BE (C# (chr# x#))
+        in BE (C# (chr# (int32ToInt# x#)))
 #endif
 
 -- | Write a, b in order

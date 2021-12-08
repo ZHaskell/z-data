@@ -1,5 +1,11 @@
 # Revision history for Z-Data
 
+## 2.0.0.0  -- 2021-12-08
+
+* Work only with GHC >= 9.2, use sized primitive types, new integer types.
+* Remove dependencies on `ghc-prim`, `integer-gmp`, use modules exported by `base` instead. 
+* Change `emptyArr` to a `Arr` class method.
+
 ## 1.1.0.0  -- 2021-07-15
 
 * Fix building issues on ARM platform.

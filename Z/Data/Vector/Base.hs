@@ -107,7 +107,6 @@ import qualified Data.Traversable               as T
 import           Foreign.C
 import           GHC.Exts
 import           GHC.Stack
-import           GHC.CString
 import           GHC.Word
 import           Prelude                        hiding (concat, concatMap, mapM, mapM_,
                                                 elem, notElem, null, length, map,
@@ -267,7 +266,7 @@ instance Monoid (Vector a) where
     {-# INLINE mempty #-}
     mempty  = empty
     {-# INLINE mappend #-}
-    mappend = append
+    mappend = (<>)
     {-# INLINE mconcat #-}
     mconcat = concat
 
@@ -505,7 +504,7 @@ instance Prim a => Monoid (PrimVector a) where
     {-# INLINE mempty #-}
     mempty  = empty
     {-# INLINE mappend #-}
-    mappend = append
+    mappend = (<>)
     {-# INLINE mconcat #-}
     mconcat = concat
 

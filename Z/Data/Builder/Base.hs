@@ -65,7 +65,6 @@ import           Data.Bits                          (unsafeShiftL, unsafeShiftR,
 import           Data.Primitive.Ptr                 (copyPtrToMutablePrimArray)
 import           Data.Word
 import           Data.Int
-import           GHC.CString                        (unpackCString#, unpackCStringUtf8#)
 import           GHC.Exts                           hiding (build)
 import           GHC.Stack
 import           Data.Primitive.PrimArray
@@ -139,7 +138,7 @@ instance Monad Builder where
     {-# INLINE (>>=) #-}
     (Builder b) >>= f = Builder (\ k -> b ( \ a -> runBuilder (f a) k))
     {-# INLINE (>>) #-}
-    (>>) = append
+    (>>) = (*>)
 
 instance Semigroup (Builder ()) where
     (<>) = append
@@ -148,7 +147,7 @@ instance Semigroup (Builder ()) where
 instance Monoid (Builder ()) where
     mempty = pure ()
     {-# INLINE mempty #-}
-    mappend = append
+    mappend = (<>)
     {-# INLINE mappend #-}
     mconcat = foldr append (pure ())
     {-# INLINE mconcat #-}

@@ -74,7 +74,7 @@ instance Ord k => Semigroup.Semigroup (FlatMap k v) where
 
 instance Ord k => Monoid.Monoid (FlatMap k v) where
     {-# INLINE mappend #-}
-    mappend = merge
+    mappend = (<>)
     {-# INLINE mempty #-}
     mempty = empty
 

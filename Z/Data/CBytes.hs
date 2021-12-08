@@ -42,7 +42,6 @@ import           Data.Hashable             (Hashable (..))
 import qualified Data.List                 as List
 import           Data.Word
 import           Foreign.C.String
-import           GHC.CString
 import           GHC.Exts
 import           GHC.Ptr
 import           GHC.Stack
@@ -174,7 +173,7 @@ instance Monoid CBytes where
     {-# INLINE mempty #-}
     mempty  = empty
     {-# INLINE mappend #-}
-    mappend = append
+    mappend = (<>)
     {-# INLINE mconcat #-}
     mconcat = concat
 

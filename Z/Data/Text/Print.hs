@@ -67,7 +67,6 @@ import           Data.Functor.Sum
 import           Data.Int
 import           Data.List.NonEmpty             (NonEmpty (..))
 import qualified Data.Monoid                    as Monoid
-import           Data.Proxy                     (Proxy(..))
 import           Data.Ratio                     (Ratio, numerator, denominator)
 import           Data.Tagged                    (Tagged (..))
 import qualified Data.Scientific                as Sci

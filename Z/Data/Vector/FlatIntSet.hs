@@ -60,7 +60,7 @@ instance Semigroup.Semigroup FlatIntSet where
 
 instance Monoid.Monoid FlatIntSet where
     {-# INLINE mappend #-}
-    mappend = merge
+    mappend = (<>)
     {-# INLINE mempty #-}
     mempty = empty
 

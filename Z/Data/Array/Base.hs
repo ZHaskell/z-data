@@ -29,7 +29,7 @@ Some mnemonics:
 module Z.Data.Array.Base (
   -- * Arr typeclass
     Arr(..)
-  , emptyArr, singletonArr, doubletonArr
+  , singletonArr, doubletonArr
   , modifyIndexArr, insertIndexArr, deleteIndexArr, swapArr, swapMutableArr
   , doubleMutableArr, shuffleMutableArr
   , RealWorld
@@ -75,7 +75,7 @@ import           Data.Primitive.Ptr             (copyPtrToMutablePrimArray)
 import           Data.Primitive.SmallArray
 import           Data.Primitive.Types
 import           GHC.Exts
-import           System.Random.Stateful  ( UniformRange(uniformRM), StatefulGen )  
+import           System.Random.Stateful  ( UniformRange(uniformRM), StatefulGen )
 import           Z.Data.Array.Cast
 import           Z.Data.Array.UnliftedArray
 
@@ -105,6 +105,8 @@ class Arr (arr :: Type -> Type) a where
     --
     type MArr arr = (mar :: Type -> Type -> Type) | mar -> arr
 
+    -- | The empty array reference.
+    emptyArr :: Arr arr a => arr a
 
     -- | Make a new array with a given size.
     --
@@ -262,6 +264,8 @@ class Arr (arr :: Type -> Type) a where
 
 instance Arr Array a where
     type MArr Array = MutableArray
+    emptyArr = emptyArray
+    {-# INLINE emptyArr #-}
     newArr n = newArray n uninitialized
     {-# INLINE newArr #-}
     newArrWith = newArray
@@ -347,6 +351,8 @@ instance Arr Array a where
 
 instance Arr SmallArray a where
     type MArr SmallArray = SmallMutableArray
+    emptyArr = emptySmallArray
+    {-# INLINE emptyArr #-}
     newArr n = newSmallArray n uninitialized
     {-# INLINE newArr #-}
     newArrWith = newSmallArray
@@ -437,6 +443,8 @@ instance Arr SmallArray a where
 
 instance Prim a => Arr PrimArray a where
     type MArr PrimArray = MutablePrimArray
+    emptyArr = emptyPrimArray
+    {-# INLINE emptyArr #-}
     newArr = newPrimArray
     {-# INLINE newArr #-}
     newArrWith n x = do
@@ -458,10 +466,7 @@ instance Prim a => Arr PrimArray a where
     {-# INLINE indexArrM #-}
     freezeArr = freezePrimArray
     {-# INLINE freezeArr #-}
-    thawArr arr s l = do
-        marr' <- newPrimArray l
-        copyPrimArray marr' 0 arr s l
-        return marr'
+    thawArr = thawPrimArray
     {-# INLINE thawArr #-}
     unsafeFreezeArr = unsafeFreezePrimArray
     {-# INLINE unsafeFreezeArr #-}
@@ -501,6 +506,8 @@ instance Prim a => Arr PrimArray a where
 
 instance PrimUnlifted a => Arr UnliftedArray a where
     type MArr UnliftedArray = MutableUnliftedArray
+    emptyArr = emptyUnliftedArray
+    {-# INLINE emptyArr #-}
     newArr = unsafeNewUnliftedArray
     {-# INLINE newArr #-}
     newArrWith = newUnliftedArray
@@ -629,12 +636,6 @@ castMutableArray = unsafeCoerce#
 
 --------------------------------------------------------------------------------
 
-emptyArr :: Arr arr a => arr a
-{-# NOINLINE emptyArr #-}
-emptyArr = runST $ do
-    marr <- newArrWith 0 uninitialized
-    unsafeFreezeArr marr
-
 singletonArr :: Arr arr a => a -> arr a
 {-# INLINE singletonArr #-}
 singletonArr x = runST $ do
@@ -697,7 +698,7 @@ deleteIndexArr arr s l i = runST $ do
 -- | Swap two elements under given index and return a new array.
 swapArr :: Arr arr a
              => arr a
-             -> Int 
+             -> Int
              -> Int
              -> arr a
 {-# INLINE swapArr #-}
@@ -709,15 +710,15 @@ swapArr arr i j = runST $ do
 -- | Swap two elements under given index, no atomically guarantee is given.
 swapMutableArr :: (PrimMonad m, PrimState m ~ s, Arr arr a)
              => MArr arr s a
-             -> Int 
+             -> Int
              -> Int
              -> m ()
 {-# INLINE swapMutableArr #-}
 swapMutableArr marr i j = do
     x <- readArr marr i
     y <- readArr marr j
-    writeArr marr i y 
-    writeArr marr j x 
+    writeArr marr i y
+    writeArr marr j x
 
 -- | Resize mutable array to @max (given_size) (2 * original_size)@ if orignal array is smaller than @give_size@.
 doubleMutableArr :: (Arr arr a, PrimMonad m, PrimState m ~ s) => MArr arr s a -> Int -> m (MArr arr s a)
@@ -731,16 +732,16 @@ doubleMutableArr marr l = do
 
 -- | Shuffle array's elements in slice range.
 --
--- This function use <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm. 
-shuffleMutableArr :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Arr arr a) => g -> MArr arr s a 
+-- This function use <https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle Fisher-Yates> algorithm.
+shuffleMutableArr :: (StatefulGen g m, PrimMonad m, PrimState m ~ s, Arr arr a) => g -> MArr arr s a
             -> Int  -- ^ offset
             -> Int  -- ^ length
             -> m ()
 {-# INLINE shuffleMutableArr #-}
 shuffleMutableArr g marr off n = go (off+n-1)
-  where 
+  where
     go i | i < off+1 = return ()
          | otherwise = do
             j <- uniformRM (off, i) g
-            swapMutableArr marr i j 
-            go (i - 1) 
+            swapMutableArr marr i j
+            go (i - 1)

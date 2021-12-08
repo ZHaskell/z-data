@@ -23,9 +23,10 @@ module Z.Data.Generics.Utils
 import GHC.Generics
 import GHC.TypeNats
 import GHC.Exts (Proxy#, proxy#)
+import Data.Kind
 
 -- | type class for calculating product size.
-class KnownNat (PSize f) => ProductSize (f :: * -> *) where
+class KnownNat (PSize f) => ProductSize (f :: Type -> Type) where
     type PSize f :: Nat
 
 instance ProductSize (S1 s a) where
@@ -38,7 +39,7 @@ productSize :: forall f. KnownNat (PSize f) => Proxy# f -> Int
 productSize _ = fromIntegral (natVal' (proxy# :: Proxy# (PSize f)))
 
 
-class KnownNat (SSize f) => SumSize (f :: * -> *) where
+class KnownNat (SSize f) => SumSize (f :: Type -> Type) where
     type SSize f :: Nat
 
 instance SumSize (C1 c a) where

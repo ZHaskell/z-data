@@ -37,13 +37,13 @@ instance {-# INCOHERENT #-} Coercible a b => Cast a b where
 
 instance Cast Int8  Word8 where
     {-# INLINE cast #-}
-    cast (I8# i) = W8# (narrow8Word# (int2Word# i))
+    cast (I8# i) = W8# (int8ToWord8# i)
 instance Cast Int16 Word16 where
     {-# INLINE cast #-}
-    cast (I16# i) = W16# (narrow16Word# (int2Word# i))
+    cast (I16# i) = W16# (int16ToWord16# i)
 instance Cast Int32 Word32 where
     {-# INLINE cast #-}
-    cast (I32# i) = W32# (narrow32Word# (int2Word# i))
+    cast (I32# i) = W32# (int32ToWord32# i)
 instance Cast Int64 Word64 where
     {-# INLINE cast #-}
 #if WORD_SIZE_IN_BITS < 64
@@ -57,13 +57,13 @@ instance Cast Int   Word where
 
 instance Cast Word8  Int8 where
     {-# INLINE cast #-}
-    cast (W8# i) = I8# (narrow8Int# (word2Int# i))
+    cast (W8# i) = I8# (word8ToInt8# i)
 instance Cast Word16 Int16 where
     {-# INLINE cast #-}
-    cast (W16# i) = I16# (narrow16Int# (word2Int# i))
+    cast (W16# i) = I16# (word16ToInt16# i)
 instance Cast Word32 Int32 where
     {-# INLINE cast #-}
-    cast (W32# i) = I32# (narrow32Int# (word2Int# i))
+    cast (W32# i) = I32# (word32ToInt32# i)
 instance Cast Word64 Int64 where
     {-# INLINE cast #-}
 #if WORD_SIZE_IN_BITS < 64

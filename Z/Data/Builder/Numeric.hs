@@ -50,15 +50,12 @@ import qualified Data.Scientific                     as Sci
 import           Data.Word
 import           GHC.Exts
 import           GHC.Float
-import           GHC.Integer
+import           GHC.Num
 import           Z.Data.ASCII
 import           Z.Data.Builder.Base
 import           Z.Data.Builder.Numeric.DigitTable
 import           Z.Foreign
 import           System.IO.Unsafe
-#ifdef INTEGER_GMP
-import           GHC.Integer.GMP.Internals
-#endif
 import           Test.QuickCheck.Arbitrary           (Arbitrary(..), CoArbitrary(..))
 
 --------------------------------------------------------------------------------
@@ -368,9 +365,7 @@ writePositiveDec marr off0 ds = go (off0 + ds - 1)
 -- | Format a 'Integer' into decimal ASCII digits.
 integer :: Integer -> Builder ()
 {-# INLINE integer #-}
-#ifdef INTEGER_GMP
-integer (S# i#) = int (I# i#)
-#endif
+integer (IS i#) = int (I# i#)
 -- Divide and conquer implementation of string conversion
 integer n0
     | n0 < 0    = encodePrim MINUS >> integer' (-n0)
@@ -386,7 +381,7 @@ integer n0
     -- that all fit into a machine word.
     jprinth :: [Integer] -> Builder ()
     jprinth (n:ns) =
-        case n `quotRemInteger` BASE of
+        case n `integerQuotRem#` BASE of
         (# q', r' #) ->
             let q = fromInteger q'
                 r = fromInteger r'
@@ -396,7 +391,7 @@ integer n0
 
     jprintb :: [Integer] -> Builder ()
     jprintb []     = pure ()
-    jprintb (n:ns) = case n `quotRemInteger` BASE of
+    jprintb (n:ns) = case n `integerQuotRem#` BASE of
                         (# q', r' #) ->
                             let q = fromInteger q'
                                 r = fromInteger r'
@@ -422,7 +417,7 @@ integer n0
 
     jsplith :: Integer -> [Integer] -> [Integer]
     jsplith p (n:ns) =
-        case n `quotRemInteger` p of
+        case n `integerQuotRem#` p of
         (# q, r #) ->
             if q > 0 then q : r : jsplitb p ns
                      else     r : jsplitb p ns
@@ -430,7 +425,7 @@ integer n0
 
     jsplitb :: Integer -> [Integer] -> [Integer]
     jsplitb _ []     = []
-    jsplitb p (n:ns) = case n `quotRemInteger` p of
+    jsplitb p (n:ns) = case n `integerQuotRem#` p of
                        (# q, r #) ->
                            q : r : jsplitb p ns
 
@@ -630,9 +625,7 @@ positiveSciToDigits sci =
     if c == 0
     then ([0], 0)
     else case c of
-#ifdef INTEGER_GMP
-        (S# i#) -> goI (W# (int2Word# i#)) 0 []
-#endif
+        (IS i#) -> goI (W# (int2Word# i#)) 0 []
         _ -> go c 0 []
   where
     sci' = Sci.normalize sci
@@ -641,13 +634,11 @@ positiveSciToDigits sci =
 
     go :: Integer -> Int -> [Int] -> ([Int], Int)
     go 0 !n ds = let !ne = n + e in (ds, ne)
-    go i !n ds = case i `quotRemInteger` 10 of
+    go i !n ds = case i `integerQuotRem#` 10 of
                      (# q, r #) -> let !d = fromIntegral r in go q (n+1) (d:ds)
-#ifdef INTEGER_GMP
     goI :: Word -> Int -> [Int] -> ([Int], Int)
     goI 0 !n ds = let !ne = n + e in (ds, ne)
     goI i !n ds = case quotRem10 i of (q, r) -> let !d = fromIntegral r in goI q (n+1) (d:ds)
-#endif
 
 -- | A faster `quotRem` by 10.
 quotRem10 :: Word -> (Word, Word)

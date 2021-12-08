@@ -53,7 +53,7 @@ import qualified Data.Primitive.PrimArray           as A
 import           Data.Int
 import           Data.Word
 import           Data.Bits                          ((.&.))
-import           GHC.Types
+import           GHC.IO
 import           GHC.Exts                           (State#, runRW#, unsafeCoerce#)
 import           Prelude                            hiding (take, takeWhile, decodeFloat)
 import           Z.Data.Array.Unaligned

@@ -137,9 +137,7 @@ import           Data.Int
 import           Data.Word
 import           Foreign.C.Types           (CSize(..))
 import           GHC.Exts
-import           GHC.Types
 import           GHC.Stack
-import           GHC.CString               (unpackCString#, unpackCStringUtf8#)
 import           Z.Data.Array
 import           Z.Data.ASCII              (c2w, pattern DOUBLE_QUOTE)
 import           Z.Data.Text.UTF8Codec

@@ -60,7 +60,7 @@ instance Ord v => Semigroup.Semigroup (FlatSet v) where
 
 instance Ord v => Monoid.Monoid (FlatSet v) where
     {-# INLINE mappend #-}
-    mappend = merge
+    mappend = (<>)
     {-# INLINE mempty #-}
     mempty = empty
 

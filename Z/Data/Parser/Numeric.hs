@@ -41,10 +41,8 @@ import           Data.Bits
 import           Data.Int
 import qualified Data.Scientific        as Sci
 import           Data.Word
-#ifdef INTEGER_GMP
-import           GHC.Integer.GMP.Internals
-#endif
 import           GHC.Exts
+import           GHC.Num
 import           GHC.Float              (expt)
 import           Z.Data.ASCII
 import           Z.Data.Parser.Base     (Parser, (<?>))
@@ -471,8 +469,7 @@ double' = "Z.Data.Parser.Numeric.double'" <?> scientificallyInternal' sciToDoubl
 sciToDouble :: Sci.Scientific -> Double
 {-# INLINABLE sciToDouble #-}
 sciToDouble sci = case c of
-#ifdef INTEGER_GMP
-    (S# i#) | (e >= FASTFLOAT_SMALLEST_POWER && e <= FASTFLOAT_LARGEST_POWER) -> unsafeDupablePerformIO $ do
+    (IS i#) | (e >= FASTFLOAT_SMALLEST_POWER && e <= FASTFLOAT_LARGEST_POWER) -> unsafeDupablePerformIO $ do
         let i = (I# i#)
             s = if i >= 0 then 0 else 1
             i' = fromIntegral $ if i >= 0 then i else (0-i)
@@ -480,7 +477,6 @@ sciToDouble sci = case c of
         if success == 0
         then return $! Sci.toRealFloat sci
         else return $! r
-#endif
     _ -> Sci.toRealFloat sci
   where
     e = Sci.base10Exponent sci

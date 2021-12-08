@@ -41,6 +41,10 @@ encodeChar :: PrimMonad m => MutablePrimArray (PrimState m) Word8 -> Int -> Char
 encodeChar (MutablePrimArray mba#) (I# i#) (C# c#) = primitive (\ s# ->
     let !(# s1#, j# #) = encodeChar# mba# i# c# s# in (# s1#, I# j# #))
 
+writeWord8'# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
+{-# INLINE writeWord8'# #-}
+writeWord8'# mba# i# w# s# = writeWord8Array# mba# i# (wordToWord8# w#) s#
+
 -- | The unboxed version of 'encodeChar'.
 --
 -- This function is marked as @NOINLINE@ to reduce code size, and stop messing up simplifier
@@ -50,37 +54,37 @@ encodeChar# :: MutableByteArray# s -> Int# -> Char# -> State# s -> (# State# s, 
 encodeChar# mba# i# c# = case (int2Word# (ord# c#)) of
     n#
         | isTrue# (n# `leWord#` 0x0000007F##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# n# s#
+            let s1# = writeWord8'# mba# i# n# s#
             in (# s1#, i# +# 1# #)
         | isTrue# (n# `leWord#` 0x000007FF##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xC0## `or#` (n# `uncheckedShiftRL#` 6#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` (n# `and#` 0x3F##)) s1#
+            let s1# = writeWord8'# mba# i# (0xC0## `or#` (n# `uncheckedShiftRL#` 6#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` (n# `and#` 0x3F##)) s1#
             in (# s2#, i# +# 2# #)
         | isTrue# (n# `leWord#` 0x0000D7FF##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
+            let s1# = writeWord8'# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
+                s3# = writeWord8'# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
             in (# s3#, i# +# 3# #)
         | isTrue# (n# `leWord#` 0x0000DFFF##) -> \ s# -> -- write replacement char \U+FFFD
-            let s1# = writeWord8Array# mba# i# 0xEF## s#
-                s2# = writeWord8Array# mba# (i# +# 1#) 0xBF## s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) 0xBD## s2#
+            let s1# = writeWord8'# mba# i# 0xEF## s#
+                s2# = writeWord8'# mba# (i# +# 1#) 0xBF## s1#
+                s3# = writeWord8'# mba# (i# +# 2#) 0xBD## s2#
             in (# s3#, i# +# 3# #)
         | isTrue# (n# `leWord#` 0x0000FFFF##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
+            let s1# = writeWord8'# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
+                s3# = writeWord8'# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
             in (# s3#, i# +# 3# #)
         | isTrue# (n# `leWord#` 0x0010FFFF##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xF0## `or#` (n# `uncheckedShiftRL#` 18#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 12#) `and#` 0x3F##)) s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s2#
-                s4# = writeWord8Array# mba# (i# +# 3#) (0x80## `or#` (n# `and#` 0x3F##)) s3#
+            let s1# = writeWord8'# mba# i# (0xF0## `or#` (n# `uncheckedShiftRL#` 18#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 12#) `and#` 0x3F##)) s1#
+                s3# = writeWord8'# mba# (i# +# 2#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s2#
+                s4# = writeWord8'# mba# (i# +# 3#) (0x80## `or#` (n# `and#` 0x3F##)) s3#
             in (# s4#, i# +# 4# #)
         | otherwise -> \ s# -> -- write replacement char \U+FFFD
-            let s1# = writeWord8Array# mba# i#  0xEF## s#
-                s2# = writeWord8Array# mba# (i# +# 1#) 0xBF## s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) 0xBD## s2#
+            let s1# = writeWord8'# mba# i#  0xEF## s#
+                s2# = writeWord8'# mba# (i# +# 1#) 0xBF## s1#
+                s3# = writeWord8'# mba# (i# +# 2#) 0xBD## s2#
             in (# s3#, i# +# 3# #)
 
 
@@ -99,26 +103,26 @@ encodeCharModifiedUTF8# :: MutableByteArray# s -> Int# -> Char# -> State# s -> (
 encodeCharModifiedUTF8# mba# i# c# = case (int2Word# (ord# c#)) of
     n#
         | isTrue# (n# `eqWord#` 0x00000000##) -> \ s# ->    -- encode \NUL as \xC0 \x80
-            let s1# = writeWord8Array# mba# i# 0xC0## s#
-                s2# = writeWord8Array# mba# (i# +# 1#) 0x80## s1#
+            let s1# = writeWord8'# mba# i# 0xC0## s#
+                s2# = writeWord8'# mba# (i# +# 1#) 0x80## s1#
             in (# s2#, i# +# 2# #)
         | isTrue# (n# `leWord#` 0x0000007F##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# n# s#
+            let s1# = writeWord8'# mba# i# n# s#
             in (# s1#, i# +# 1# #)
         | isTrue# (n# `leWord#` 0x000007FF##) -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xC0## `or#` (n# `uncheckedShiftRL#` 6#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` (n# `and#` 0x3F##)) s1#
+            let s1# = writeWord8'# mba# i# (0xC0## `or#` (n# `uncheckedShiftRL#` 6#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` (n# `and#` 0x3F##)) s1#
             in (# s2#, i# +# 2# #)
         | isTrue# (n# `leWord#` 0x0000FFFF##) -> \ s# ->    -- \xD800 ~ \xDFFF is encoded as normal UTF-8 codepoints
-            let s1# = writeWord8Array# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
+            let s1# = writeWord8'# mba# i# (0xE0## `or#` (n# `uncheckedShiftRL#` 12#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s1#
+                s3# = writeWord8'# mba# (i# +# 2#) (0x80## `or#` (n# `and#` 0x3F##)) s2#
             in (# s3#, i# +# 3# #)
         | otherwise -> \ s# ->
-            let s1# = writeWord8Array# mba# i# (0xF0## `or#` (n# `uncheckedShiftRL#` 18#)) s#
-                s2# = writeWord8Array# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 12#) `and#` 0x3F##)) s1#
-                s3# = writeWord8Array# mba# (i# +# 2#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s2#
-                s4# = writeWord8Array# mba# (i# +# 3#) (0x80## `or#` (n# `and#` 0x3F##)) s3#
+            let s1# = writeWord8'# mba# i# (0xF0## `or#` (n# `uncheckedShiftRL#` 18#)) s#
+                s2# = writeWord8'# mba# (i# +# 1#) (0x80## `or#` ((n# `uncheckedShiftRL#` 12#) `and#` 0x3F##)) s1#
+                s3# = writeWord8'# mba# (i# +# 2#) (0x80## `or#` ((n# `uncheckedShiftRL#` 6#) `and#` 0x3F##)) s2#
+                s4# = writeWord8'# mba# (i# +# 3#) (0x80## `or#` (n# `and#` 0x3F##)) s3#
             in (# s4#, i# +# 4# #)
 
 --------------------------------------------------------------------------------
@@ -148,11 +152,11 @@ decodeChar# :: ByteArray# -> Int# -> (# Char#, Int# #)
 {-# NOINLINE decodeChar# #-} -- This branchy code make GHC impossible to fuse, DON'T inline
 decodeChar# ba# idx# = case indexWord8Array# ba# idx# of
     w1#
-        | isTrue# (w1# `leWord#` 0x7F##) -> (# chr1# w1#, 1# #)
-        | isTrue# (w1# `leWord#` 0xDF##) ->
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0x7F##)) -> (# chr1# w1#, 1# #)
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0xDF##)) ->
             let w2# = indexWord8Array# ba# (idx# +# 1#)
             in (# chr2# w1# w2#, 2# #)
-        | isTrue# (w1# `leWord#` 0xEF##) ->
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0xEF##)) ->
             let w2# = indexWord8Array# ba# (idx# +# 1#)
                 w3# = indexWord8Array# ba# (idx# +# 2#)
             in (# chr3# w1# w2# w3#, 3# #)
@@ -181,9 +185,9 @@ decodeCharLen# :: ByteArray# -> Int# -> Int#
 {-# INLINE decodeCharLen# #-}
 decodeCharLen# ba# idx# = case indexWord8Array# ba# idx# of
     w1#
-        | isTrue# (w1# `leWord#` 0x7F##) -> 1#
-        | isTrue# (w1# `leWord#` 0xDF##) -> 2#
-        | isTrue# (w1# `leWord#` 0xEF##) -> 3#
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0x7F##)) -> 1#
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0xDF##)) -> 2#
+        | isTrue# (w1# `leWord8#` (wordToWord8# 0xEF##)) -> 3#
         | otherwise -> 4#
 
 -- | Decode a 'Char' from bytes in rerverse order.
@@ -256,48 +260,44 @@ decodeCharLenReverse# ba# idx# =
 
 --------------------------------------------------------------------------------
 
-between# :: Word# -> Word# -> Word# -> Bool
-{-# INLINE between# #-}
-between# w# l# h# = isTrue# (w# `geWord#` l#) && isTrue# (w# `leWord#` h#)
-
-isContinueByte# :: Word# -> Bool
+isContinueByte# :: Word8# -> Bool
 {-# INLINE isContinueByte# #-}
-isContinueByte# w# = isTrue# (and# w# 0xC0## `eqWord#` 0x80##)
+isContinueByte# w# = isTrue# (and# (word8ToWord# w#) 0xC0## `eqWord#` 0x80##)
 
-chr1# :: Word# -> Char#
+chr1# :: Word8# -> Char#
 {-# INLINE chr1# #-}
 chr1# x1# = chr# y1#
   where
-    !y1# = word2Int# x1#
+    !y1# = word2Int# (word8ToWord# x1#)
 
-chr2# :: Word# -> Word# -> Char#
+chr2# :: Word8# -> Word8# -> Char#
 {-# INLINE chr2# #-}
 chr2# x1# x2# = chr# (z1# +# z2#)
   where
-    !y1# = word2Int# x1#
-    !y2# = word2Int# x2#
+    !y1# = word2Int# (word8ToWord# x1#)
+    !y2# = word2Int# (word8ToWord# x2#)
     !z1# = uncheckedIShiftL# (y1# -# 0xC0#) 6#
     !z2# = y2# -# 0x80#
 
-chr3# :: Word# -> Word# -> Word# -> Char#
+chr3# :: Word8# -> Word8# -> Word8# -> Char#
 {-# INLINE chr3# #-}
 chr3# x1# x2# x3# = chr# (z1# +# z2# +# z3#)
   where
-    !y1# = word2Int# x1#
-    !y2# = word2Int# x2#
-    !y3# = word2Int# x3#
+    !y1# = word2Int# (word8ToWord# x1#)
+    !y2# = word2Int# (word8ToWord# x2#)
+    !y3# = word2Int# (word8ToWord# x3#)
     !z1# = uncheckedIShiftL# (y1# -# 0xE0#) 12#
     !z2# = uncheckedIShiftL# (y2# -# 0x80#) 6#
     !z3# = y3# -# 0x80#
 
-chr4# :: Word# -> Word# -> Word# -> Word# -> Char#
+chr4# :: Word8# -> Word8# -> Word8# -> Word8# -> Char#
 {-# INLINE chr4# #-}
 chr4# x1# x2# x3# x4# = chr# (z1# +# z2# +# z3# +# z4#)
   where
-    !y1# = word2Int# x1#
-    !y2# = word2Int# x2#
-    !y3# = word2Int# x3#
-    !y4# = word2Int# x4#
+    !y1# = word2Int# (word8ToWord# x1#)
+    !y2# = word2Int# (word8ToWord# x2#)
+    !y3# = word2Int# (word8ToWord# x3#)
+    !y4# = word2Int# (word8ToWord# x4#)
     !z1# = uncheckedIShiftL# (y1# -# 0xF0#) 18#
     !z2# = uncheckedIShiftL# (y2# -# 0x80#) 12#
     !z3# = uncheckedIShiftL# (y3# -# 0x80#) 6#
