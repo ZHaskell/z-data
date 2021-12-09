@@ -26,8 +26,8 @@ jobs:
       - name: Setup Haskell
         uses: haskell/actions/setup@v1
         with:
-          ghc-version: 8.10
-          cabal-version: 3.4
+          ghc-version: 9.2
+          cabal-version: 3.6
 
       - name: Publish package
         run: |
