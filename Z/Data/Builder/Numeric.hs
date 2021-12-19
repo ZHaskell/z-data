@@ -57,6 +57,8 @@ import           Z.Data.Builder.Numeric.DigitTable
 import           Z.Foreign
 import           System.IO.Unsafe
 import           Test.QuickCheck.Arbitrary           (Arbitrary(..), CoArbitrary(..))
+import           Z.MonoList.IntList                  (IntList(..))
+import qualified Z.MonoList.IntList                  as IntList
 
 --------------------------------------------------------------------------------
 
@@ -600,8 +602,8 @@ floatWith fmt decs x
     | isNaN x                   = "NaN"
     | isInfinite x              = if x < 0 then "-Infinity" else "Infinity"
     | x < 0                     = char8 '-' >> doFmt fmt decs (grisu3_sp (-x))
-    | isNegativeZero x          = char8 '-' >> doFmt fmt decs ([0], 0)
-    | x == 0                    = doFmt fmt decs ([0], 0)
+    | isNegativeZero x          = char8 '-' >> doFmt fmt decs (0:+IntEnd, 0)
+    | x == 0                    = doFmt fmt decs (0:+IntEnd, 0)
     | otherwise                 = doFmt fmt decs (grisu3_sp x) -- Grisu only handles strictly positive finite numbers.
 
 -- | Format double-precision float using drisu3 with dragon4 fallback.
@@ -614,35 +616,38 @@ doubleWith fmt decs x
     | isNaN x                   = "NaN"
     | isInfinite x              = if x < 0 then "-Infinity" else "Infinity"
     | x < 0                     = char8 '-' >> doFmt fmt decs (grisu3 (-x))
-    | isNegativeZero x          = char8 '-' >> doFmt fmt decs ([0], 0)
-    | x == 0                    = doFmt fmt decs ([0], 0)
+    | isNegativeZero x          = char8 '-' >> doFmt fmt decs (0:+IntEnd, 0)
+    | x == 0                    = doFmt fmt decs (0:+IntEnd, 0)
     | otherwise                 = doFmt fmt decs (grisu3 x) -- Grisu only handles strictly positive finite numbers.
 
 -- | A faster version of 'Sci.toDecimalDigits' in case of small coefficient.
-positiveSciToDigits :: Sci.Scientific -> ([Int], Int)
+positiveSciToDigits :: Sci.Scientific -> (IntList, Int)
 {-# INLINE positiveSciToDigits #-}
 positiveSciToDigits sci =
     if c == 0
-    then ([0], 0)
+    then (0:+IntEnd, 0)
     else case c of
-        (IS i#) -> goI (W# (int2Word# i#)) 0 []
-        _ -> go c 0 []
+        (IS i#) -> goI (W# (int2Word# i#)) 0 IntEnd
+        _ -> go c 0 IntEnd
   where
     sci' = Sci.normalize sci
     !c = Sci.coefficient sci'
     !e = Sci.base10Exponent sci'
 
-    go :: Integer -> Int -> [Int] -> ([Int], Int)
+    go :: Integer -> Int -> IntList -> (IntList, Int)
     go 0 !n ds = let !ne = n + e in (ds, ne)
     go i !n ds = case i `integerQuotRem#` 10 of
-                     (# q, r #) -> let !d = fromIntegral r in go q (n+1) (d:ds)
-    goI :: Word -> Int -> [Int] -> ([Int], Int)
+                     (# q, r #) -> let !d = fromIntegral r in go q (n+1) (d:+ds)
+    goI :: Word -> Int -> IntList -> (IntList, Int)
     goI 0 !n ds = let !ne = n + e in (ds, ne)
-    goI i !n ds = case quotRem10 i of (q, r) -> let !d = fromIntegral r in goI q (n+1) (d:ds)
+    goI i !n ds = case quotRem10 i of (q, r) -> let !d = fromIntegral r in goI q (n+1) (d:+ds)
 
 -- | A faster `quotRem` by 10.
 quotRem10 :: Word -> (Word, Word)
 {-# INLINE quotRem10 #-}
+#if SIZEOF_HSWORD < 8
+quotRem10 = quotRem 10
+#else
 quotRem10 (W# w#) =
     let w'# = dquot10# w#
     in (W# w'#, W# (w# `minusWord#` (w'# `timesWord#` 10##)))
@@ -651,11 +656,12 @@ quotRem10 (W# w#) =
     dquot10# w =
         let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
         in rdx `uncheckedShiftRL#` 3#
+#endif
 
 -- | Worker function to do formatting.
 doFmt :: FFormat
       -> Maybe Int -- ^ Number of decimal places to render.
-      -> ([Int], Int) -- ^ List of digits and exponent
+      -> (IntList, Int) -- ^ List of digits and exponent
       -> Builder ()
 {-# INLINABLE doFmt #-}
 doFmt format decs (is, e) = case format of
@@ -665,36 +671,35 @@ doFmt format decs (is, e) = case format of
   where
     doFmtExponent = case decs of
         Nothing -> case is of
-            [0]     -> "0.0e0"
-            [i]     -> encodeDigit i >> ".0e" >> int (e-1)
-            (i:is') -> do
+            (0:+IntEnd) -> "0.0e0"
+            (i:+IntEnd) -> encodeDigit i >> ".0e" >> int (e-1)
+            (i:+is')    -> do
                 encodeDigit i
                 encodePrim DOT
                 encodeDigits is'
                 encodePrim LETTER_e
                 int (e-1)
-            []      -> error "doFmt/Exponent: []"
+            IntEnd      -> error "doFmt/Exponent: []"
         Just dec
             | dec <= 0 ->
             -- decimal point as well (ghc trac #15115).
             -- Note that this handles negative precisions as well for consistency
             -- (see ghc trac #15509).
                 case is of
-                    [0] -> "0e0"
+                    0:+IntEnd -> "0e0"
                     _ -> do
-                        let (ei,is') = roundTo 10 1 is
-                            n:_ = if ei > 0 then List.init is' else is'
+                        let (ei,is') = roundTo10 1 is
+                            n:+_ = if ei > 0 then IntList.init is' else is'
                         encodeDigit n
                         encodePrim LETTER_e
                         int (e-1+ei)
         Just dec ->
             let !dec' = max dec 1 in
             case is of
-                [0] -> do
-                    "0." >> encodeZeros dec' >> "e0"
+                0:+IntEnd -> "0." >> encodeZeros dec' >> "e0"
                 _ -> do
-                    let (ei,is') = roundTo 10 (dec'+1) is
-                        (d:ds') = if ei > 0 then List.init is' else is'
+                    let (ei,is') = roundTo10 (dec'+1) is
+                        (d:+ds') = if ei > 0 then IntList.init is' else is'
                     encodeDigit d
                     encodePrim DOT
                     encodeDigits ds'
@@ -711,28 +716,48 @@ doFmt format decs (is, e) = case format of
             let !dec' = max dec 0
             in if e >= 0
                 then do
-                    let (ei,is') = roundTo 10 (dec' + e) is
-                        (ls,rs)  = splitAt (e+ei) is'
+                    let (ei,is') = roundTo10 (dec' + e) is
+                        (ls,rs)  = IntList.splitAt (e+ei) is'
                     mk0 ls
-                    (unless (List.null rs) $ encodePrim DOT >> encodeDigits rs)
+                    (unless (IntList.null rs) $ encodePrim DOT >> encodeDigits rs)
                 else do
-                    let (ei,is') = roundTo 10 dec' (List.replicate (-e) 0 ++ is)
-                        d:ds' = if ei > 0 then is' else 0:is'
+                    let (ei,is') = roundTo10 dec' (IntList.replicate (-e) 0 IntList.++ is)
+                        d:+ds' = if ei > 0 then is' else 0:+is'
                     encodeDigit d
-                    (unless (List.null ds') $ encodePrim DOT >> encodeDigits ds')
+                    (unless (IntList.null ds') $ encodePrim DOT >> encodeDigits ds')
 
     encodeDigit = word8 . i2wDec
 
-    encodeDigits = mapM_ encodeDigit
+    encodeDigits (d:+ds) =  encodeDigit d >> encodeDigits ds
+    encodeDigits _ = pure ()
 
     encodeZeros n = word8N n DIGIT_0
 
-    mk0 [] = encodePrim DIGIT_0
-    mk0 ls = encodeDigits ls
+    mk0 IntEnd = encodePrim DIGIT_0
+    mk0 ls     = encodeDigits ls
 
-    insertDot 0     rs = encodePrim DOT >> mk0 rs
-    insertDot n     [] = encodePrim DIGIT_0 >> insertDot (n-1) []
-    insertDot n (r:rs) = encodeDigit r >> insertDot (n-1) rs
+    insertDot 0      rs = encodePrim DOT >> mk0 rs
+    insertDot n  IntEnd = encodePrim DIGIT_0 >> insertDot (n-1) IntEnd
+    insertDot n (r:+rs) = encodeDigit r >> insertDot (n-1) rs
+
+roundTo10 :: Int -> IntList -> (Int, IntList)
+roundTo10 d is =
+    case f d True is of
+        x@(0,_) -> x
+        (1,xs)  -> (1, 1:+xs)
+        _       -> error "roundTo10: impossible"
+  where
+    b2 = 5
+    f n _ IntEnd    = (0, IntList.replicate n 0)
+    f 0 e (x:+xs) 
+        | x == b2 && e && IntList.all (== 0) xs = (0, IntEnd)   -- Round to even when at exactly half the base
+        | otherwise = (if x >= b2 then 1 else 0, IntEnd)
+    f n _ (i:+xs)
+        | i' == 10 = (1,0:+ds)
+        | otherwise  = (0,i':+ds)
+      where
+        (c,ds) = f (n-1) (even i) xs
+        i'     = c + i
 
 ------------------------------------------------------------------------------
 
@@ -750,21 +775,26 @@ foreign import ccall unsafe "static grisu3" c_grisu3
     -> IO Int
 
 -- | Decimal encoding of a 'Double', note grisu only handles strictly positive finite numbers.
-grisu3 :: Double -> ([Int], Int)
+grisu3 :: Double -> (IntList, Int)
 {-# INLINABLE grisu3 #-}
 grisu3 d = unsafePerformIO $ do
-    (MutableByteArray pBuf) <- newByteArray GRISU3_DOUBLE_BUF_LEN
+    mpa@(MutableByteArray ba#) <- newByteArray GRISU3_DOUBLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
         allocPrimUnsafe $ \ pE ->
-            c_grisu3 (realToFrac d) pBuf pLen pE
+            c_grisu3 (realToFrac d) ba# pLen pE
     if success == 0 -- grisu3 fail
-    then pure (floatToDigits 10 d)
+    then do
+        let (is, e) = floatToDigits 10 d
+        pure (IntList.fromList is, e)
     else do
-        buf <- forM [0..len-1] $ \ i -> do
-            w8 <- readByteArray (MutableByteArray pBuf) i :: IO Word8
-            pure $! fromIntegral w8
-        let !e' = e + len
-        pure (buf, e')
+        is <- go mpa len IntEnd
+        pure (is, e+len)
+  where 
+    go !_   0 acc = return acc
+    go !mpa i acc = do
+        let i' = i - 1
+        w8 <- readByteArray mpa i' :: IO Word8
+        go mpa i' (fromIntegral w8 :+ acc)
 
 foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
     :: Float
@@ -774,21 +804,26 @@ foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
     -> IO Int
 
 -- | Decimal encoding of a 'Float', note grisu3_sp only handles strictly positive finite numbers.
-grisu3_sp :: Float -> ([Int], Int)
+grisu3_sp :: Float -> (IntList, Int)
 {-# INLINABLE grisu3_sp #-}
 grisu3_sp d = unsafePerformIO $ do
-    (MutableByteArray pBuf) <- newByteArray GRISU3_SINGLE_BUF_LEN
+    mpa@(MutableByteArray ba#) <- newByteArray GRISU3_SINGLE_BUF_LEN
     (len, (e, success)) <- allocPrimUnsafe $ \ pLen ->
         allocPrimUnsafe $ \ pE ->
-            c_grisu3_sp (realToFrac d) pBuf pLen pE
+            c_grisu3_sp (realToFrac d) ba# pLen pE
     if success == 0 -- grisu3 fail
-    then pure (floatToDigits 10 d)
+    then do
+        let (is, e) = floatToDigits 10 d
+        pure (IntList.fromList is, e)
     else do
-        buf <- forM [0..len-1] $ \ i -> do
-            w8 <- readByteArray (MutableByteArray pBuf) i :: IO Word8
-            pure $! fromIntegral w8
-        let !e' = e + len
-        pure (buf, e')
+        is <- go mpa len IntEnd
+        pure (is, e+len)
+  where 
+    go !_   0 acc = return acc
+    go !mpa i acc = do
+        let i' = i - 1
+        w8 <- readByteArray mpa i' :: IO Word8
+        go mpa i' (fromIntegral w8 :+ acc)
 
 --------------------------------------------------------------------------------
 
