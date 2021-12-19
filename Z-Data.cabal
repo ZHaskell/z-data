@@ -14,6 +14,7 @@ homepage:           https://github.com/ZHaskell/z-data
 bug-reports:        https://github.com/ZHaskell/z-data/issues
 extra-source-files:
   AUTHORS
+  include/XList.hs
   cbits/bytes.c
   cbits/compute_float_64.c
   cbits/dtoa.c
@@ -175,6 +176,7 @@ library
     Z.Data.Vector.QQ
     Z.Data.Vector.Search
     Z.Data.Vector.Sort
+    Z.MonoList.IntList
     Z.Foreign
     Z.Foreign.CPtr
 
@@ -197,6 +199,7 @@ library
     , uuid-types            >=1.0.4 && <2.0
 
   include-dirs:
+    include
     third_party/fastbase64/include
     third_party/fastvalidate-utf-8/include
     third_party/utf8rewind/include/utf8rewind

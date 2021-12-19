@@ -3,7 +3,8 @@
 
 module Z.Data.Builder.NumericSpec where
 
-import qualified Data.List                as List
+import qualified Data.List                  as List
+import qualified Z.MonoList.IntList    as IntList
 import           Data.Word
 import           Data.Int
 import           GHC.Float
@@ -24,48 +25,48 @@ import           Test.Hspec.QuickCheck
 spec :: Spec
 spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50) $ do
     describe "int roundtrip" $ do
-        prop "int roundtrip" $ \ i ->
+        prop "Word roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Word i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int i)
-        prop "int roundtrip" $ \ i ->
+        prop "Word64 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Word64 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int64 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int64 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Word32 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Word32 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int32 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int32 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Word16 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Word16 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int16 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int16 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Word8 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Word8 i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int8 roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @Int8 i)
-        prop "int roundtrip" $ \ i ->
+        prop "CShort roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CShort i)
-        prop "int roundtrip" $ \ i ->
+        prop "CUShort roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CUShort i)
-        prop "int roundtrip" $ \ i ->
+        prop "CInt roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CInt i)
-        prop "int roundtrip" $ \ i ->
+        prop "CUInt roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CUInt i)
-        prop "int roundtrip" $ \ i ->
+        prop "CLong roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CLong i)
-        prop "int roundtrip" $ \ i ->
+        prop "CULong roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CULong i)
-        prop "int roundtrip" $ \ i ->
+        prop "CLLong roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CLLong i)
-        prop "int roundtrip" $ \ i ->
+        prop "CULLong roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.int @CULLong i)
 
-    describe "int roundtrip" $ do
+    describe "padding int roundtrip" $ do
         let f = B.defaultIFormat{B.width = 100, B.padding = B.ZeroPadding}
-        prop "int roundtrip" $ \ i ->
+        prop "Word roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.intWith @Word f i)
-        prop "int roundtrip" $ \ i ->
+        prop "Int roundtrip" $ \ i ->
             i === (read . T.unpack . B.buildText $ B.intWith @Int f i)
         prop "padding length" $ \ i ->
             100 === (V.length . B.build $ B.intWith @Word f i)
@@ -284,6 +285,8 @@ spec = describe "builder numeric" . modifyMaxSuccess (*50) . modifyMaxSize (*50)
 
     describe "grisu3, grisu3_sp === floatToDigits 10" $ do
         prop "grisu3 === floatToDigits" $ \ (Positive f) ->
-            B.grisu3 f === floatToDigits 10 f
+            let (ds, e) = B.grisu3 f
+            in (IntList.toList ds, e) === floatToDigits 10 f
         prop "grisu3_sp === floatToDigits" $ \ (Positive f) ->
-            B.grisu3_sp f === floatToDigits 10 f
+            let (ds, e) = B.grisu3_sp f
+            in (IntList.toList ds, e) === floatToDigits 10 f

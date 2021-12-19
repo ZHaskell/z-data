@@ -54,6 +54,7 @@ import           Z.Data.Vector.Base         as V
 import           Z.Data.Vector.Extra        as V
 import           Z.Data.Vector.Search       as V
 import           Z.Foreign
+import           Z.MonoList.IntList         (IntList(..))
 import           System.IO.Unsafe           (unsafeDupablePerformIO)
 import           Test.QuickCheck.Arbitrary  (Arbitrary(..))
 import           Test.QuickCheck.Gen        (Gen(..), listOf)
@@ -280,11 +281,11 @@ doubleToScientific rf | rf < 0    = -(fromFloatingDigits (B.grisu3 (-rf)))
                       | rf == 0   = 0
                       | otherwise = fromFloatingDigits (B.grisu3 rf)
 
-fromFloatingDigits :: ([Int], Int) -> Scientific
+fromFloatingDigits :: (IntList, Int) -> Scientific
 {-# INLINABLE fromFloatingDigits #-}
 fromFloatingDigits (digits, e) = go digits 0 0
   where
     -- There's no way a float or double has more digits a 'Int64' can't handle
-    go :: [Int] -> Int64 -> Int -> Scientific
-    go []     !c !n = scientific (fromIntegral c) (e - n)
-    go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
+    go :: IntList -> Int64 -> Int -> Scientific
+    go IntEnd !c !n = scientific (fromIntegral c) (e - n)
+    go (d:+ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
