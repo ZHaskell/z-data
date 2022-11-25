@@ -88,39 +88,39 @@ module Z.Data.Vector.Base (
 
 import           Control.DeepSeq
 import           Control.Exception
-import qualified Control.Monad                  as M
-import           Control.Monad.ST
+import qualified Control.Monad             as M
 import           Control.Monad.Primitive
+import           Control.Monad.ST
 import           Data.Bits
-import           Data.Char                      (ord)
-import qualified Data.Foldable                  as F
-import           Data.Kind                      (Type)
-import           Data.Hashable                  (Hashable(..))
-import           Data.Hashable.Lifted           (Hashable1(..), hashWithSalt1)
-import qualified Data.List                      as List
-import           Data.List.NonEmpty       (NonEmpty ((:|)))
+import qualified Data.CaseInsensitive      as CI
+import           Data.Char                 (ord)
+import qualified Data.Foldable             as F
+import           Data.Hashable             (Hashable (..))
+import           Data.Hashable.Lifted      (Hashable1 (..), hashWithSalt1)
+import           Data.Kind                 (Type)
+import qualified Data.List                 as List
+import           Data.List.NonEmpty        (NonEmpty ((:|)))
 import           Data.Maybe
-import qualified Data.CaseInsensitive           as CI
-import           Data.Primitive
-import           Data.Semigroup                 (Semigroup (..))
-import qualified Data.Traversable               as T
+import           Data.Primitive            hiding (copyPtrToMutablePrimArray)
+import           Data.Semigroup            (Semigroup (..))
+import qualified Data.Traversable          as T
 import           Foreign.C
 import           GHC.Exts
 import           GHC.Stack
 import           GHC.Word
-import           Prelude                        hiding (concat, concatMap, mapM, mapM_,
-                                                elem, notElem, null, length, map,
-                                                foldl, foldl1, foldr, foldr1,
-                                                maximum, minimum, product, sum,
-                                                all, any, replicate, traverse)
-import           Test.QuickCheck.Arbitrary      (Arbitrary(..), CoArbitrary(..))
-import           Test.QuickCheck.Gen            (chooseInt)
-import           Text.Read                      (Read(..))
-import           System.Random.Stateful         (StatefulGen)
-import           System.IO.Unsafe               (unsafeDupablePerformIO)
+import           Prelude                   hiding (all, any, concat, concatMap,
+                                            elem, foldl, foldl1, foldr, foldr1,
+                                            length, map, mapM, mapM_, maximum,
+                                            minimum, notElem, null, product,
+                                            replicate, sum, traverse)
+import           System.IO.Unsafe          (unsafeDupablePerformIO)
+import           System.Random.Stateful    (StatefulGen)
+import           Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
+import           Test.QuickCheck.Gen       (chooseInt)
+import           Text.Read                 (Read (..))
 
 import           Z.Data.Array
-import           Z.Data.ASCII                   (toLower)
+import           Z.Data.ASCII              (toLower)
 
 -- | Typeclass for box and unboxed vectors, which are created by slicing arrays.
 --
@@ -489,7 +489,7 @@ compareBytes (PrimVector (PrimArray baA#) (I# sA#) lA)
     let !(I# n#) = min lA lB
         r = I# (compareByteArrays# baA# sA# baB# sB# n#)
     in case r `compare` 0 of
-        EQ  -> lA `compare` lB
+        EQ -> lA `compare` lB
         x  -> x
 
 instance Prim a => Semigroup (PrimVector a) where
@@ -1511,4 +1511,3 @@ foreign import ccall unsafe "hs_memrchr" c_memrchr ::
 
 foreign import ccall unsafe "hs_count_ba" c_count_ba ::
     ByteArray# -> Int -> Int -> Word8 -> IO Int
-
