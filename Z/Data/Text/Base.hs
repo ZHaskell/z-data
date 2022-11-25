@@ -122,41 +122,41 @@ module Z.Data.Text.Base (
 
 import           Control.DeepSeq
 import           Control.Exception
-import           Control.Monad.ST
-import           Control.Monad.Primitive
 import           Control.Monad
+import           Control.Monad.Primitive
+import           Control.Monad.ST
 import           Data.Bits
-import           Data.Char                 hiding (toLower, toUpper, toTitle)
 import qualified Data.CaseInsensitive      as CI
+import           Data.Char                 hiding (toLower, toTitle, toUpper)
 import           Data.Foldable             (foldlM)
-import           Data.Hashable             (Hashable(..))
-import qualified Data.List                 as List
-import           Data.Primitive.PrimArray
-import           Data.Typeable
+import           Data.Hashable             (Hashable (..))
 import           Data.Int
+import qualified Data.List                 as List
+import           Data.Primitive.PrimArray  hiding (copyPtrToMutablePrimArray)
+import           Data.Typeable
 import           Data.Word
-import           Foreign.C.Types           (CSize(..))
+import           Foreign.C.Types           (CSize (..))
 import           GHC.Exts
 import           GHC.Stack
+import           System.IO.Unsafe          (unsafeDupablePerformIO)
+import           System.Random.Stateful    (StatefulGen)
 import           Z.Data.Array
 import           Z.Data.ASCII              (c2w, pattern DOUBLE_QUOTE)
 import           Z.Data.Text.UTF8Codec
 import           Z.Data.Text.UTF8Rewind
-import           Z.Data.Vector.Base        (Bytes, PrimVector(..), c_strlen)
 import qualified Z.Data.Vector.Base        as V
+import           Z.Data.Vector.Base        (Bytes, PrimVector (..), c_strlen)
 import qualified Z.Data.Vector.Search      as V
-import           System.Random.Stateful    (StatefulGen)
-import           System.IO.Unsafe          (unsafeDupablePerformIO)
 
-import           Prelude                   hiding (concat, concatMap,
-                                                elem, notElem, null, length, map,
-                                                foldl, foldl1, foldr, foldr1,
-                                                maximum, minimum, product, sum,
-                                                all, any, replicate, traverse)
+import           Prelude                   hiding (all, any, concat, concatMap,
+                                            elem, foldl, foldl1, foldr, foldr1,
+                                            length, map, maximum, minimum,
+                                            notElem, null, product, replicate,
+                                            sum, traverse)
 
-import           Test.QuickCheck.Arbitrary (Arbitrary(..), CoArbitrary(..))
-import           Text.Read                 (Read(..))
+import           Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
 import           Text.Collate              hiding (collate)
+import           Text.Read                 (Read (..))
 
 -- | 'Text' represented as UTF-8 encoded 'Bytes'
 --
@@ -750,7 +750,7 @@ replicate n c | n <= 0 = empty
 -- | /O(n*m)/ 'cycleN' a text n times.
 cycleN :: Int -> Text -> Text
 {-# INLINE cycleN #-}
-cycleN 0 _ = empty
+cycleN 0 _        = empty
 cycleN n (Text v) = Text (V.cycleN n v)
 
 --------------------------------------------------------------------------------

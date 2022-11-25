@@ -59,7 +59,7 @@ module Z.Data.Array.QQ
 import           Control.Monad
 import           Data.Bits
 import           Data.Char                 (ord)
-import           Data.Primitive.PrimArray
+import           Data.Primitive.PrimArray hiding (copyPtrToMutablePrimArray)
 import           GHC.Exts
 import           Data.Word
 import           Data.Int
