@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Z-Data
-version:            2.0.0.0
+version:            2.0.0.1
 synopsis:           Array, vector and text
 description:        This package provides array, slice and text operations
 license:            BSD-3-Clause
@@ -302,7 +302,7 @@ library
     cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
   else
     if os(osx)
-      extra-libraries: 
+      extra-libraries:
         c++
         pthread
     else
