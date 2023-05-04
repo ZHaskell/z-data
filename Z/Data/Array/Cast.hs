@@ -25,8 +25,6 @@ import           GHC.IntWord64
 #endif
 import           GHC.Float
 
-
-
 -- | `Cast` between primitive types of the same size.
 --
 class Cast source destination where
@@ -46,11 +44,7 @@ instance Cast Int32 Word32 where
     cast (I32# i) = W32# (int32ToWord32# i)
 instance Cast Int64 Word64 where
     {-# INLINE cast #-}
-#if WORD_SIZE_IN_BITS < 64
-    cast (I64# i) = W64# (int64ToWord64# i)
-#else
-    cast (I64# i) = W64# (int2Word# i)
-#endif
+    cast = int64ToWord64
 instance Cast Int   Word where
     {-# INLINE cast #-}
     cast (I# i) = W# (int2Word# i)
@@ -66,11 +60,7 @@ instance Cast Word32 Int32 where
     cast (W32# i) = I32# (word32ToInt32# i)
 instance Cast Word64 Int64 where
     {-# INLINE cast #-}
-#if WORD_SIZE_IN_BITS < 64
-    cast (W64# i) = I64# (word64ToInt64# i)
-#else
-    cast (W64# i) = I64# (word2Int# i)
-#endif
+    cast = word64ToInt64
 instance Cast Word   Int where
     {-# INLINE cast #-}
     cast (W# w) = I# (word2Int# w)
@@ -100,3 +90,25 @@ instance Cast Double Int64 where
 instance Cast Float Int32 where
     {-# INLINE cast #-}
     cast = cast . castFloatToWord32
+
+int64ToWord64 :: Int64 -> Word64
+#if WORD_SIZE_IN_BITS == 64
+#if __GLASGOW_HASKELL__ >= 904
+int64ToWord64 (I64# i) = W64# (int64ToWord64# i)
+#else
+int64ToWord64 (I64# i) = W64# (int2Word# i)
+#endif
+#else
+int64ToWord64 (I64# i) = W64# (int64ToWord64# i)
+#endif
+
+word64ToInt64 :: Word64 -> Int64
+#if WORD_SIZE_IN_BITS == 64
+#if __GLASGOW_HASKELL__ >= 904
+word64ToInt64 (W64# i) = I64# (word64ToInt64# i)
+#else
+word64ToInt64 (W64# i) = I64# (word2Int# i)
+#endif
+#else
+word64ToInt64 (W64# i) = I64# (word64ToInt64# i)
+#endif
