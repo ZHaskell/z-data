@@ -5,8 +5,8 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ghc: ['9.2', '9.4']
-        cabal: ['3.6']
+        ghc: ['9.2', '9.4', '9.6']
+        cabal: ['3.8']
         avx_flag: ['', '-fuse-avx2']  # vm doesnt support avx512
         chenck_array_bound_flag: ['', '-fcheck-array-bound']  # vm doesnt support avx512
     name: Haskell GHC ${{ matrix.ghc }}

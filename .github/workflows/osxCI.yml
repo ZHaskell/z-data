@@ -5,8 +5,8 @@ jobs:
     runs-on: macOS-latest
     strategy:
       matrix:
-        ghc: ['9.2', '9.4']
-        cabal: ['3.6']
+        ghc: ['9.2', '9.4', '9.6']
+        cabal: ['3.8']
     name: Haskell GHC ${{ matrix.ghc }}
     env:
         CONFIG: "--enable-tests --enable-benchmarks"
