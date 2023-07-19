@@ -1,22 +1,23 @@
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MagicHash           #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnliftedFFITypes    #-}
 
 module Z.ForeignSpec where
 
-import qualified Data.List                  as List
-import qualified Z.Data.CBytes              as CB
-import qualified Z.Data.JSON                as JSON
-import           Z.Foreign
-import qualified Z.Data.Vector.Base         as V
-import qualified Z.Data.Array               as A
+import qualified Data.List                as List
+import           GHC.Exts
+import           System.IO.Unsafe
+import           Test.Hspec
+import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Test.QuickCheck.Property
-import           Test.Hspec
-import           Test.Hspec.QuickCheck
-import           System.IO.Unsafe
+import qualified Z.Data.Array             as A
+import qualified Z.Data.CBytes            as CB
+import qualified Z.Data.JSON              as JSON
+import qualified Z.Data.Vector.Base       as V
+import           Z.Foreign
 
 spec :: Spec
 spec = describe "Foreign" $ do

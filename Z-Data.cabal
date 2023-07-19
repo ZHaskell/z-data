@@ -184,7 +184,7 @@ library
     , case-insensitive      ^>=1.2
     , containers            ^>=0.6
     , deepseq               ^>=1.4
-    , hashable              ^>=1.3
+    , hashable              >=1.3 && < 1.5
     , primitive             >=0.7.3  && <0.8
     , QuickCheck            >=2.10
     , random                >=1.2.0  && <1.3
@@ -366,12 +366,14 @@ test-suite Z-Data-Test
     Z.Data.Array.UnalignedSpec
     Z.Data.Builder.NumericSpec
     Z.Data.Builder.TimeSpec
+    Z.Data.Builder.UUIDSpec
     Z.Data.CBytesSpec
     Z.Data.JSON.BaseSpec
     Z.Data.JSON.ValueSpec
     Z.Data.Parser.BaseSpec
     Z.Data.Parser.NumericSpec
     Z.Data.Parser.TimeSpec
+    Z.Data.Parser.UUIDSpec
     Z.Data.Text.BaseSpec
     Z.Data.Text.ExtraSpec
     Z.Data.Text.PrintSpec
@@ -384,6 +386,7 @@ test-suite Z-Data-Test
     Z.Data.Vector.HexSpec
     Z.Data.Vector.SearchSpec
     Z.Data.Vector.SortSpec
+    Z.Foreign.CPtrSpec
     Z.ForeignSpec
 
   build-depends:

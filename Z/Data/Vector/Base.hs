@@ -95,6 +95,7 @@ import           Data.Bits
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (ord)
 import qualified Data.Foldable             as F
+import           Data.Functor.Classes      (Eq1 (..))
 import           Data.Hashable             (Hashable (..))
 import           Data.Hashable.Lifted      (Hashable1 (..), hashWithSalt1)
 import           Data.Kind                 (Type)
@@ -221,12 +222,16 @@ instance IsList (Vector a) where
 
 instance Eq a => Eq (Vector a) where
     {-# INLINE (==) #-}
-    v1 == v2 = eqVector v1 v2
+    v1 == v2 = eqVector (==) v1 v2
 
-eqVector :: Eq a => Vector a -> Vector a -> Bool
+instance Eq1 Vector where
+    {-# INLINE liftEq #-}
+    liftEq = eqVector
+
+eqVector :: (a -> b -> Bool) -> Vector a -> Vector b -> Bool
 {-# INLINE eqVector #-}
-eqVector (Vector baA sA lA) (Vector baB sB lB)
-    | baA `sameArr` baB =
+eqVector eq (Vector baA sA lA) (Vector baB sB lB)
+    | baA `sameArr'` baB =
         if sA == sB then lA == lB else lA == lB && go sA sB
     | otherwise = lA == lB && go sA sB
   where
@@ -234,7 +239,11 @@ eqVector (Vector baA sA lA) (Vector baB sB lB)
     go !i !j
         | i >= endA = True
         | otherwise =
-            (indexSmallArray baA i == indexSmallArray baB j) && go (i+1) (j+1)
+            (indexSmallArray baA i `eq` indexSmallArray baB j) && go (i+1) (j+1)
+    -- The same implementation as 'sameArr' but with different type signature
+    -- sameArr' :: arr a -> arr b -> Bool
+    sameArr' (SmallArray arr1#) (SmallArray arr2#) = isTrue# (
+        sameSmallMutableArray# (unsafeCoerce# arr1#) (unsafeCoerce# arr2#))
 
 instance Ord a => Ord (Vector a) where
     {-# INLINE compare #-}
