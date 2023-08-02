@@ -20,10 +20,8 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
 
 ## Requirements
 
-* A working haskell compiler system, GHC(>=8.6), cabal-install(>=2.4), here're some options:
-    * Mac users can get them via [homebew](//brew.sh/): `brew install ghc cabal-install`.
-    * Windows users can get them via [chocolatey](//chocolatey.org): `choco install ghc cabal`.
-    * Ubuntu users are recommended to use this [ppa](//launchpad.net/~hvr/+archive/ubuntu/ghc).
+* A working haskell compiler system, GHC(>=9.2), cabal-install(>=3.8), here're some options:
+    * Using [ghcup](https://www.haskell.org/ghcup/) to setup your haskell envrionment.
 * A working C/C++ compiler support C++11, here're some options:
     * Mac users can use the `clang` comes with the [XCode](https://developer.apple.com/xcode/) or [XCode Command Line Tools](https://developer.apple.com/downloads):
         * You can install XCode from app store, or XCode Command Line Tools with `sudo xcode-select --install`.
@@ -39,44 +37,44 @@ This package is part of [ZHaskell](https://z.haskell.world) project, providing b
 > import qualified Z.Data.Array as A
 >
 > -- convert from list
-> let v = V.pack [1..10] :: V.PrimVector Int  
+> let v = V.pack [1..10] :: V.PrimVector Int
 > -- vector combinators works on arrays as well
-> let a = V.pack [1..10] :: A.Array Int   
+> let a = V.pack [1..10] :: A.Array Int
 > -- slicing vector(slice) is O(1)
-> V.take 3 v                              
+> V.take 3 v
 [1,2,3]
 -- slicing array is not O(1)
-> V.drop 3 a                              
+> V.drop 3 a
 fromListN 7 [4,5,6,7,8,9,10]
 >
 > V.intersperse 10 v
 [1,10,2,10,3,10,4,10,5,10,6,10,7,10,8,10,9,10,10]
 >
-> V.mergeSort (V.intersperse 10 v) 
+> V.mergeSort (V.intersperse 10 v)
 [1,2,3,4,5,6,7,8,9,10,10,10,10,10,10,10,10,10,10]
 > -- Generic KMP search on vectors
-> V.indices (V.singleton 10) (V.intersperse 10 v) True   
+> V.indices (V.singleton 10) (V.intersperse 10 v) True
 [1,3,5,7,9,11,13,15,17,18]
 >
 > -- quoter for writing numeric vector literals
-> :set -XQuasiQuotes 
-> :t [V.vecWord|1,2,3,4,5,4,3,2,1|]                     
+> :set -XQuasiQuotes
+> :t [V.vecWord|1,2,3,4,5,4,3,2,1|]
 [V.vecWord|1,2,3,4,5,4,3,2,1|] :: V.PrimVector Word
 >
 > import qualified Z.Data.Builder as B
 > import qualified Z.Data.Text as T
-> :set -XOverloadedStrings 
+> :set -XOverloadedStrings
 >
 > -- Builders can be used with OverloadedStrings
 > B.build $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 [98,117,105,108,100,101,114,115,58,32,48,48,48,51,44,49,46,50,51,52,53,54,55,56]
-> 
+>
 > B.buildText $ "builders: " >> B.hex (3 :: Word16) >> B.comma >> B.double 1.2345678
 "builders: 0003,1.2345678"
 >
 > import qualified Z.Data.JSON as JSON
 > import GHC.Generics
-> 
+>
 > JSON.parseValue "[1,2,3,4,5]"
 ([],Right (Array [Number 1.0,Number 2.0,Number 3.0,Number 4.0,Number 5.0]))
 >
@@ -93,13 +91,13 @@ Object [("foo",Number 1.0e-2)]
 
 ```bash
 # get code
-git clone --recursive git@github.com:ZHaskell/z-data.git 
+git clone --recursive git@github.com:ZHaskell/z-data.git
 cd z-data
 # build
 cabal build
 # test
 cabal test --test-show-details=direct
-# install 
+# install
 cabal install
 # generate document
 cabal haddock
