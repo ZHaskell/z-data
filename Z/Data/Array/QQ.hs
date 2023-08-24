@@ -1,26 +1,44 @@
 {-|
 Module      : Z.Data.Array.QQ
-Description : Extra stuff for PrimArray related literals
-Copyright   : (c) Dong Han, 2017-2018
+#if defined(CN_DOC)
+Description : Quoters for PrimArray literals
+#else
+Description : 更方便的书写 PrimArray 字面量
+#endif
+Copyright   : (c) Dong Han, 2017-2023
 License     : BSD
 Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
+#if defined(CN_DOC)
 This module provides functions for writing 'PrimArray' related literals 'QuasiQuote'.
+#else
+这个模块提供了一些 'QuasiQuote' 用来更加方便的书写数值数组字面量，例如：
+#endif
 
-@
-> :set -XQuasiQuotes
-> :t [arrASCII|asdfg|]
-[arrASCII|asdfg|] :: PrimArray GHC.Word.Word8
-> [arrASCII|asdfg|]
+>>> :set -XQuasiQuotes
+>>> :t [arrASCII|asdfg|]
+[arrASCII|asdfg|] :: PrimArray Word8
+>>> [arrASCII|asdfg|]
 fromListN 5 [97,115,100,102,103]
-> :t [arrI16|1,2,3,4,5|]
-[arrI16|1,2,3,4,5|] :: PrimArray GHC.Int.Int16
-> [arrI16|1,2,3,4,5|]
+>>> :t [arrI16|1,2,3,4,5|]
+[arrI16|1,2,3,4,5|] :: PrimArray Int16
+>>> [arrI16|1,2,3,4,5|]
 fromListN 5 [1,2,3,4,5]
-@
+>>> [arrInt|-10..10|]
+fromListN 21 [-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10]
 
+#ifdef CN_DOC
+和直接使用 'Data.Array.IsList.fromListN' 不同，这个模块的会试图使用 'Addr#' 字面量来表示数组，即
+@ [arrI16|1,2,3|] == int16ArrayFromAddr 3 "\SOH\NUL\STX\NUL\ETX\NUL"# @。
+
+关于 'QuasiQuote' 的更多信息请参考 [GHC 手册相关章节](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/template_haskell.html#template-haskell-quasi-quotation)。
+#else
+This module will try to use 'Addr#' literals to represent arrays, e.g. @ [arrI16|1,2,3|] == int16ArrayFromAddr 3 "\SOH\NUL\STX\NUL\ETX\NUL"# @。
+
+For more info on 'QuasiQuote' please reference [GHC manual](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/template_haskell.html#template-haskell-quasi-quotation).
+#endif
 -}
 
 module Z.Data.Array.QQ
@@ -28,7 +46,7 @@ module Z.Data.Array.QQ
     arrASCII
   , arrW8, arrW16, arrW32, arrW64, arrWord
   , arrI8, arrI16, arrI32, arrI64, arrInt
-   -- * quoter helpers
+   -- * Quoter helpers
   , asciiLiteral
   , utf8Literal
   , arrayLiteral
@@ -59,38 +77,36 @@ module Z.Data.Array.QQ
 import           Control.Monad
 import           Data.Bits
 import           Data.Char                 (ord)
-import           Data.Primitive.PrimArray hiding (copyPtrToMutablePrimArray)
 import           GHC.Exts
 import           Data.Word
 import           Data.Int
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Quote
 import           Z.Data.Array
+import           Z.Data.Utils.Cast
 import           Control.Monad.ST
 
--- $asciiLiteralExample
--- @
--- arrASCII :: QuasiQuoter
--- arrASCII = QuasiQuoter
---     (asciiLiteral $ \ len addr -> [| word8ArrayFromAddr $(len) $(addr) |])
---     ...
---
--- word8ArrayFromAddr :: Int -> Addr# -> PrimArray Word8
--- {-# INLINE word8ArrayFromAddr #-}
--- word8ArrayFromAddr l addr# = runST $ do
---     mba <- newPrimArray (I# l)
---     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
---     unsafeFreezePrimArray mba
--- @
+{-|
+#ifdef CN_DOC
+使用 ASCII 编码构建数组表达式。
+用户提供的函数会接收到字节长度 'Int#' 和 'Addr#' 地址的 'ExpQ' 表达式 ，然后返回一个数组表达式，例如：
+#else
+Construct data with ASCII encoded literals.
+Provide a packing function, return a packing expression, example usage:
+#endif
 
--- | Construct data with ASCII encoded literals.
---
--- Provide a packing function, return a packing expression. Example usage:
---
--- $asciiLiteralExample
-asciiLiteral :: (ExpQ -> ExpQ -> ExpQ) -- ^ Construction function which receive a byte
-                                       --   length 'Int' and a 'Addr#' 'LitE' expression.
-             -> String                 -- ^ Quoter input
+@
+-- [arrASCII|helloworld|] == word8ArrayFromAddr 10 "helloworld"#
+arrASCII :: QuasiQuoter
+arrASCII = QuasiQuoter
+    (asciiLiteral $ \ len addr -> [| word8ArrayFromAddr $(len) $(addr) |])
+    (error "Cannot use arrASCII as a pattern")
+    (error "Cannot use arrASCII as a type")
+    (error "Cannot use arrASCII as a dec")
+@
+-}
+asciiLiteral :: (ExpQ -> ExpQ -> ExpQ) -- ^ User provided construction function
+             -> String                 -- ^ Quoter input(ASCII format)
              -> ExpQ                   -- ^ Final Quoter
 asciiLiteral k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
                        ((LitE . StringPrimL) `fmap` check str)
@@ -104,7 +120,8 @@ asciiLiteral k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
         return (fromIntegral (ord c):cs')
 
 
--- | @[arrASCII|asdfg|] :: PrimArray Word8@
+-- | >>> [arrASCII|asdfg|] :: PrimArray Word8
+-- fromListN 5 [97,115,100,102,103]
 arrASCII :: QuasiQuoter
 arrASCII = QuasiQuoter
     (asciiLiteral $ \ len addr -> [| word8ArrayFromAddr $(len) $(addr) |])
@@ -112,21 +129,34 @@ arrASCII = QuasiQuoter
     (error "Cannot use arrASCII as a type")
     (error "Cannot use arrASCII as a dec")
 
+
+#if defined(CN_DOC)
+#define PACK_ADDR_DOC(T)  \
+-- | 从 GHC 'Addr#' 字面量中打包 @'PrimArray' T@ 类型数组。
+#else
+#define PACK_ADDR_DOC(T)  \
+-- | Pack T array from GHC 'Addr#' literals.
+#endif
+
+PACK_ADDR_DOC(Word8)
 word8ArrayFromAddr :: Int -> Addr# -> PrimArray Word8
 {-# INLINABLE word8ArrayFromAddr #-}
 word8ArrayFromAddr l addr# = runST $ do
-    mba <- newPrimArray l
+    mba <- newMutableArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
-    unsafeFreezePrimArray mba
+    unsafeFreezeMutableArray mba
 
+PACK_ADDR_DOC(Int8)
 int8ArrayFromAddr :: Int -> Addr# -> PrimArray Int8
 {-# INLINE int8ArrayFromAddr #-}
-int8ArrayFromAddr l addr# = castArray (word8ArrayFromAddr l addr#)
+int8ArrayFromAddr l addr# = cast (word8ArrayFromAddr l addr#)
 
 
--- | Construct data with UTF8 encoded literals.
---
--- See 'asciiLiteral'
+#if defined(CN_DOC)
+-- | 把 UTF8 编码的输入构造为 @'PrimArray' 'Word8'@ 表达式，例子请参考 'asciiLiteral'。
+#else
+-- | Construct @'PrimArray' 'Word8'@ with UTF8 literals, See 'asciiLiteral'.
+#endif
 utf8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
 utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
                       ((LitE . StringPrimL) `fmap` check str)
@@ -169,25 +199,61 @@ utf8Literal k str = k (return . LitE  . IntegerL . fromIntegral $ length str)
                 fail $ "character '" ++ [c] ++ "' is have out of range in UTF-8 literal:" ++ str
 
 
--- | Construct data with array literals @e.g. 1,2,3@.
+#if defined(CN_DOC)
+-- | 把数组格式的输入构造为 @'PrimArray' T@ 表达式，@T@ 取决于用户构造函数，例子请参考 'asciiLiteral'。
+#else
+-- | Construct @'PrimArray' T@ with array like literals, See 'asciiLiteral'.
+#endif
 arrayLiteral :: ([Integer] -> Q [Word8])
               -> (ExpQ -> ExpQ -> ExpQ)
               -> String -> ExpQ
 arrayLiteral f k str = do
-    (len, ws) <- parse str
-    k (return . LitE  . IntegerL .fromIntegral $ len) $ (return . LitE . StringPrimL) ws
+    let (len, ws) = parse str
+    when (len == -1) $
+        fail $ "can't parse array literal:" ++ str
+    ws' <- f ws
+    k (return . LitE  . IntegerL .fromIntegral $ len) $ (return . LitE . StringPrimL) ws'
   where
-    parse :: String -> Q (Int, [Word8])
-    parse str' = do
-        case (readList :: ReadS [Integer]) ("[" ++ str' ++ "]") of
-            [(is, "")] -> (length is, ) `fmap` f is
-            _ -> do _ <- fail $ "can't parse vector literal:" ++ str'
-                    return (0, [])
+    parse :: String -> (Int, [Integer])
+    parse "" = (0, [])
+    parse str0 = 
+        case (reads :: ReadS Integer) str0 of
+            [(n0, str1)] ->
+                case lex str1 of 
+                    [("", "")] -> (1, [n0])
+                    [(",", str2)]
+                        | elem ',' str2 -> 
+                            case (readList :: ReadS [Integer]) ("[" ++ str2 ++ "]") of
+                                [(ns, "")] -> (1+length ns, (n0:ns))
+                                _ -> failParse
+                        | otherwise -> 
+                            case (reads :: ReadS Integer) str2 of
+                                [(n1, str3)] -> 
+                                    case lex str3 of
+                                        [("", "")] -> (2, [n0, n1])
+                                        [("..", str4)] ->
+                                            case (reads :: ReadS Integer) str4 of
+                                                [(n2, "")] -> let ns = [n0,n1..n2] in (length ns, ns)
+                                                _ -> failParse
+                                        _ -> failParse
+                                _ -> failParse
+                    [("..", str2)] -> 
+                        case (reads :: ReadS Integer) str2 of
+                            [(n1, "")] -> let ns = [n0..n1] in (length ns, ns) 
+                            _ -> failParse
+
+                    _ -> failParse
+            _ -> failParse
+    failParse = (-1, [])
 
 --------------------------------------------------------------------------------
-
+#if defined(CN_DOC)
 #define ARRAY_LITERAL_DOC(T)  \
--- | Construct 'PrimArray' 'T' with array literals @e.g. 1,2,3@. See 'asciiLiteral'
+-- | 把数组格式的输入构造为 @'PrimArray' T@ 表达式，请参考 'asciiLiteral'。
+#else
+#define ARRAY_LITERAL_DOC(T)  \
+-- | Construct @'PrimArray' T@ with array like literals, See 'asciiLiteral'.
+#endif
 
 ARRAY_LITERAL_DOC(Word8)
 word8Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
@@ -259,16 +325,18 @@ arrW16 = QuasiQuoter
     (error "Cannot use arrW16 as a type")
     (error "Cannot use arrW16 as a dec")
 
+PACK_ADDR_DOC(Word16)
 word16ArrayFromAddr :: Int -> Addr# -> PrimArray Word16
 {-# INLINE word16ArrayFromAddr #-}
 word16ArrayFromAddr l addr# = runST $ do
-    mba <- newArr l
+    mba <- newMutableArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
-    unsafeFreezePrimArray mba
+    unsafeFreezeMutableArray mba
 
+PACK_ADDR_DOC(Int16)
 int16ArrayFromAddr :: Int -> Addr# -> PrimArray Int16
 {-# INLINE int16ArrayFromAddr #-}
-int16ArrayFromAddr l addr# = castArray (word16ArrayFromAddr l addr#)
+int16ArrayFromAddr l addr# = cast (word16ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int16)
 int16Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
@@ -325,16 +393,18 @@ arrW32 = QuasiQuoter
     (error "Cannot use arrW32 as a type")
     (error "Cannot use arrW32 as a dec")
 
+PACK_ADDR_DOC(Word32)
 word32ArrayFromAddr :: Int -> Addr# -> PrimArray Word32
 {-# INLINE word32ArrayFromAddr #-}
 word32ArrayFromAddr l addr# = runST $ do
-    mba <- newArr l
+    mba <- newMutableArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
-    unsafeFreezePrimArray mba
+    unsafeFreezeMutableArray mba
 
+PACK_ADDR_DOC(Int32)
 int32ArrayFromAddr :: Int -> Addr# -> PrimArray Int32
 {-# INLINE int32ArrayFromAddr #-}
-int32ArrayFromAddr l addr# = castArray (word32ArrayFromAddr l addr#)
+int32ArrayFromAddr l addr# = cast (word32ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int32)
 int32Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
@@ -398,16 +468,18 @@ arrW64 = QuasiQuoter
     (error "Cannot use arrW64 as a type")
     (error "Cannot use arrW64 as a dec")
 
+PACK_ADDR_DOC(Word64)
 word64ArrayFromAddr :: Int -> Addr# -> PrimArray Word64
 {-# INLINABLE word64ArrayFromAddr #-}
 word64ArrayFromAddr l addr# = runST $ do
-    mba <- newArr l
+    mba <- newMutableArray l
     copyPtrToMutablePrimArray mba 0 (Ptr addr#) l
-    unsafeFreezePrimArray mba
+    unsafeFreezeMutableArray mba
 
+PACK_ADDR_DOC(Int64)
 int64ArrayFromAddr :: Int -> Addr# -> PrimArray Int64
 {-# INLINE int64ArrayFromAddr #-}
-int64ArrayFromAddr l addr# = castArray (word64ArrayFromAddr l addr#)
+int64ArrayFromAddr l addr# = cast (word64ArrayFromAddr l addr#)
 
 ARRAY_LITERAL_DOC(Int64)
 int64Literal :: (ExpQ -> ExpQ -> ExpQ) -> String -> ExpQ
@@ -443,6 +515,7 @@ arrI64 = QuasiQuoter
 
 --------------------------------------------------------------------------------
 
+PACK_ADDR_DOC(Word)
 wordArrayFromAddr :: Int -> Addr# -> PrimArray Word
 {-# INLINE wordArrayFromAddr #-}
 wordArrayFromAddr l addr# =
@@ -452,6 +525,7 @@ wordArrayFromAddr l addr# =
     unsafeCoerce# (word32ArrayFromAddr l addr#)
 #endif
 
+PACK_ADDR_DOC(Int)
 intArrayFromAddr :: Int -> Addr# -> PrimArray Int
 {-# INLINE intArrayFromAddr #-}
 intArrayFromAddr l addr# =
@@ -479,7 +553,10 @@ intLiteral =
     int32Literal
 #endif
 
--- | @[arrWord|1,2,3,4,5|] :: PrimArray Word@
+-- | >>> :t [arrWord|1,2,3,4,5|]
+-- [arrWord|1,2,3,4,5|] :: PrimArray Word
+-- >>> [arrWord|1,2,3,4,5|]
+-- fromListN 5 [1,2,3,4,5]
 arrWord :: QuasiQuoter
 arrWord = QuasiQuoter
     (wordLiteral $ \ len addr -> [| wordArrayFromAddr $(len) $(addr) |])
@@ -487,12 +564,13 @@ arrWord = QuasiQuoter
     (error "Cannot use arrWord as a type")
     (error "Cannot use arrWord as a dec")
 
--- | @[arrInt|1,2,3,4,5|] :: PrimArray Int@
+-- | >>> :t [arrInt|1,2,3,4,5|]
+-- [arrInt|1,2,3,4,5|] :: PrimArray Int
+-- >>> [arrInt|1,2,3,4,5|]
+-- fromListN 5 [1,2,3,4,5]
 arrInt :: QuasiQuoter
 arrInt = QuasiQuoter
     (intLiteral $ \ len addr -> [| intArrayFromAddr $(len) $(addr) |])
     (error "Cannot use arrInt as a pattern")
     (error "Cannot use arrInt as a type")
     (error "Cannot use arrInt as a dec")
-
---------------------------------------------------------------------------------

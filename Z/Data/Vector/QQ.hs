@@ -1,4 +1,13 @@
 {-|
+#ifdef CN_DOC
+Module      : Z.Data.Vector.QQ
+Description : 更方便的书写 PrimArray 字面量
+Copyright   : (c) Dong Han, 2017-2018
+License     : BSD
+Maintainer  : winterland1989@gmail.com
+Stability   : experimental
+Portability : non-portable
+#else
 Module      : Z.Data.Vector.QQ
 Description : vectors literals using QuasiQuote
 Copyright   : (c) Dong Han, 2017-2018
@@ -8,7 +17,7 @@ Stability   : experimental
 Portability : non-portable
 
 This module provides functions for writing vector literals using 'QuasiQuote' similar to "Z.Data.Array.QQ" module.
-
+#endif
 @
 > :set -XQuasiQuotes
 > :t [vecASCII|asdfg|]
@@ -32,7 +41,7 @@ module Z.Data.Vector.QQ (
 
 import qualified Language.Haskell.TH.Quote      as QQ
 import           Z.Data.Array.QQ                as QQ
-import           Z.Data.Vector.Base
+import           Z.Data.Vector
 
 --------------------------------------------------------------------------------
 -- Quoters

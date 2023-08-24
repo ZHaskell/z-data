@@ -1,0 +1,370 @@
+cabal-version:      2.4
+name:               zbase
+version:            3.0.0.0
+synopsis:           Array, vector and text
+description:        This package provides array, slice and text operations
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Z.Haskell Contributors
+maintainer:         winterland1989@gmail.com
+copyright:          (c) Z.Haskell Contributors
+category:           Data
+build-type:         Custom
+homepage:           https://github.com/ZHaskell/z-data
+bug-reports:        https://github.com/ZHaskell/z-data/issues
+extra-source-files:
+  AUTHORS
+  include/XList.hs
+  cbits/bytes.c
+  cbits/compute_float_64.c
+  cbits/dtoa.c
+  cbits/text.c
+  cbits/text_width.c
+  ChangeLog.md
+  LICENSE
+  README.md
+  -- fastvalidate & fastbase64
+  third_party/fastvalidate-utf-8/include/simdasciicheck.h
+  third_party/fastvalidate-utf-8/include/simdutf8check.h
+  third_party/fastvalidate-utf-8/include/simdasciicheck_avx512.h
+  third_party/fastvalidate-utf-8/include/simdutf8check_avx512.h
+  third_party/fastbase64/include/chromiumbase64.h
+  third_party/fastbase64/include/fastavxbase64.h
+  third_party/fastbase64/src/fastavxbase64.c
+  third_party/fastbase64/src/chromiumbase64.c
+  third_party/fastbase64/src/fastavxbase64.c
+  -- utf8rewind
+  third_party/utf8rewind/include/utf8rewind/utf8rewind.h
+  third_party/utf8rewind/source/internal/base.h
+  third_party/utf8rewind/source/internal/casemapping.c
+  third_party/utf8rewind/source/internal/casemapping.h
+  third_party/utf8rewind/source/internal/codepoint.c
+  third_party/utf8rewind/source/internal/codepoint.h
+  third_party/utf8rewind/source/internal/composition.c
+  third_party/utf8rewind/source/internal/composition.h
+  third_party/utf8rewind/source/internal/database.c
+  third_party/utf8rewind/source/internal/database.h
+  third_party/utf8rewind/source/internal/decomposition.c
+  third_party/utf8rewind/source/internal/decomposition.h
+  third_party/utf8rewind/source/internal/seeking.c
+  third_party/utf8rewind/source/internal/seeking.h
+  third_party/utf8rewind/source/internal/streaming.c
+  third_party/utf8rewind/source/internal/streaming.h
+  third_party/utf8rewind/source/unicodedatabase.c
+  third_party/utf8rewind/source/unicodedatabase.h
+  third_party/utf8rewind/source/utf8rewind.c
+
+custom-setup
+  setup-depends:
+    , base       >=4.5     && <5.0
+    , Cabal      >=2.4.0.0 && <4
+    , directory  >=1.2.3.0
+    , filepath
+
+source-repository head
+  type:     git
+  location: git://github.com/haskell-Z/z-data.git
+
+flag use-avx2
+  description:
+    Use AVX2 instructions(utf8 validation, base64 codec, etc) when building on x86_64 arch.
+  default:     True
+  manual:      True
+
+flag use-avx512
+  description:
+    Use AVX512(AVX512F, AVX512VL, AVX512BW, AVX512VBMI) instructions(utf8 validation, base64 codec, etc) 
+        when building on x86_64 arch.
+  default:     False
+  manual:      True
+
+flag use-neon
+  description:
+    Use ARM neon instructions(utf8 validation, base64 codec, etc) when building on arm arch.
+  default:     True
+  manual:      True
+
+flag build-chinese-doc
+  description:
+    Generate Chinese haddock by switch with CPP flag.
+  default:     False
+  manual:      True
+
+library
+  exposed-modules:
+    Z.Data.Array
+    Z.Data.Array.QQ
+    Z.Data.Array.UnliftedArray
+    Z.Data.Array.UnliftedSmallArray
+    Z.Data.ASCII
+
+    Z.Data.Text
+
+    Z.Data.Utils.Cast
+    Z.Data.Utils.FFI
+    Z.Data.Utils.UTF8Codec
+    Z.Data.Utils.UTF8Rewind
+    Z.Data.Utils.Orphan.Prim
+    Z.Data.Vector
+    Z.Data.Vector.QQ
+    Z.Monad.STE
+    --Z.Data.Encoder
+    --Z.Data.Encoder.Base
+    --Z.Data.Encoder.Numeric
+    --Z.Data.Encoder.Numeric.DigitTable
+    --Z.Data.Encoder.Time
+    --Z.Data.Encoder.UUID
+    ----Z.Data.CBytes
+    --Z.Data.Utils.Generics
+    --Z.Data.Utils.Unaligned
+    ----Z.Data.JSON
+    ----Z.Data.JSON.Base
+    ----Z.Data.JSON.Encoder
+    ----Z.Data.JSON.Converter
+    ----Z.Data.JSON.Value
+    ----
+    ----Z.Data.Decoder
+    --Z.Data.Decoder.Base
+    ----Z.Data.Decoder.Numeric
+    ----Z.Data.Decoder.Time
+    ----Z.Data.Decoder.UUID
+    --Z.Data.Ref.PrimRef
+    --Z.Data.Ref.UnliftedRef
+    ---- Z.Data.Text
+    --Z.Data.Text.Base
+    ----Z.Data.Text.Extra
+    ----Z.Data.Text.Print
+    ----Z.Data.Text.Regex
+    ----Z.Data.Text.Search
+    --Z.Data.Text.UTF8Codec
+    --Z.Data.Text.UTF8Rewind
+    --Z.Data.Vector
+    --Z.Data.Vector.Base64
+    --Z.Data.Vector.Extra
+    ----Z.Data.FlatContainer.FlatPrimSet
+    ----Z.Data.FlatContainer.FlatMap
+    ----Z.Data.FlatContainer.FlatSet
+    --Z.Data.Foreign
+    ----Z.Data.Foreign.CPtr
+    ----Z.Data.Vector.Hex
+    --Z.Data.Vector.QQ
+    --Z.Data.Vector.Search
+    --Z.Data.Vector.Sort
+    --Z.Data.MonoList.IntList
+
+  build-depends:
+    , base                  >=4.16   && <5.0
+    , bytestring            >=0.10.4 && <0.12
+    , case-insensitive      ^>=1.2
+    , containers            ^>=0.6
+    , deepseq               ^>=1.4
+    , hashable              ^>=1.4
+    , primitive             ^>=0.8
+    , QuickCheck            ^>=2.14
+    , quickcheck-instances  ^>=0.3
+    , random                ^>=1.2
+    , scientific            ^>=0.3.7  
+    , tagged                ^>=0.8
+    , template-haskell      >=2.14 && <3.0
+    , text                  >=2.0 && <3.0
+    , time                  ^>=1.9
+    , unordered-containers  ^>=0.2
+    , unicode-collation     >=0.1.3 && <0.2
+    , uuid-types            >=1.0.4 && <2.0
+
+  if flag(build-chinese-doc)
+      cpp-options: -DCN_DOC
+
+  include-dirs:
+    include
+
+    third_party/fastbase64/include
+    third_party/fastvalidate-utf-8/include
+
+    third_party/utf8rewind/include/utf8rewind
+    third_party/utf8rewind/source/internal
+    third_party/utf8rewind/source
+
+    third_party/botan
+    third_party/botan/build/include
+    third_party/botan/build/include/external
+
+  includes:
+    utf8rewind.h
+    chromiumbase64.h
+
+  if arch(x86_64)
+    includes:
+      simdasciicheck.h
+      simdutf8check.h
+
+    if flag(use-avx2)
+        includes:
+          fastavxbase64.h
+
+    if flag(use-avx512)
+        includes:
+          simdasciicheck_avx512.h
+          simdutf8check_avx512.h
+          fastavx512bwbase64.h
+
+  c-sources:
+    cbits/z_bytes.c
+    cbits/z_compute_float_64.c
+    cbits/z_dtoa.c
+    cbits/z_text.c
+    cbits/z_text_width.c
+
+    third_party/fastbase64/src/chromiumbase64.c
+    third_party/utf8rewind/source/internal/casemapping.c
+    third_party/utf8rewind/source/internal/codepoint.c
+    third_party/utf8rewind/source/internal/composition.c
+    third_party/utf8rewind/source/internal/database.c
+    third_party/utf8rewind/source/internal/decomposition.c
+    third_party/utf8rewind/source/internal/seeking.c
+    third_party/utf8rewind/source/internal/streaming.c
+    third_party/utf8rewind/source/unicodedatabase.c
+    third_party/utf8rewind/source/utf8rewind.c
+
+  if arch(x86_64)
+    if flag(use-avx2)
+        c-sources:
+          third_party/fastbase64/src/fastavxbase64.c
+
+    if flag(use-avx512)
+        c-sources:
+          third_party/fastbase64/src/fastavx512bwbase64.c
+
+  cxx-sources:
+    third_party/botan/botan_all.cpp
+
+  default-language:   Haskell2010
+  build-tool-depends: hsc2hs:hsc2hs, cpphs:cpphs >= 1.19
+
+  cc-options:         -std=c11 -Wall -O3 -Wno-pointer-to-int-cast -Wno-unused-function
+  cxx-options:        -std=c++20 -O3 -D_REENTRANT -DBOTAN_IS_BEING_BUILT -fno-stack-protector
+
+  if arch(x86_64)
+    if flag(use-avx512)
+      cc-options:       -march=cannonlake
+      cxx-options:      -march=cannonlake
+    else
+      if flag(use-avx2)
+        cc-options:     -march=haswell
+        cxx-options:    -march=haswell
+      else
+        cc-options:     -msse4.2
+        cxx-options:    -msse4.2
+
+  if os(windows)
+    extra-libraries:
+        stdc++
+        ws2_32
+        crypt32
+    cc-options:      -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
+    cxx-options:     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0600
+                     -ffixed-xmm16 -ffixed-xmm17 -ffixed-xmm18
+                     -ffixed-xmm19 -ffixed-xmm20 -ffixed-xmm21 -ffixed-xmm22
+                     -ffixed-xmm23 -ffixed-xmm24 -ffixed-xmm25 -ffixed-xmm26
+                     -ffixed-xmm27 -ffixed-xmm28 -ffixed-xmm29 -ffixed-xmm30
+                     -ffixed-xmm31
+  else
+    if os(osx)
+      cxx-options:        -stdlib=libc++
+      extra-libraries:
+        c++
+      frameworks:
+        CoreFoundation
+        Security
+    else
+      extra-libraries:
+        stdc++
+
+  ghc-options: -pgmP "cpphs --nomacro --cpp" -Wall
+
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    CApiFFI
+    CPP
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    KindSignatures
+    MagicHash
+    MultiParamTypeClasses
+    MultiWayIf
+    OverloadedStrings
+    PartialTypeSignatures
+    PatternSynonyms
+    PolyKinds
+    QuantifiedConstraints
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
+    TypeOperators
+    UnboxedTuples
+    UnliftedFFITypes
+    UnliftedNewtypes
+    ViewPatterns
+
+test-suite Z-Data-Test
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test/
+  main-is:            Spec.hs
+  ghc-options:        -threaded
+  default-language:   Haskell2010
+  build-tool-depends: hsc2hs:hsc2hs -any, hspec-discover:hspec-discover -any
+  other-modules:
+    Z.Data.Array.UnalignedSpec
+    Z.Data.Encoder.NumericSpec
+    Z.Data.Encoder.TimeSpec
+    Z.Data.CBytesSpec
+    Z.Data.JSON.BaseSpec
+    Z.Data.JSON.ValueSpec
+    Z.Data.Decoder.BaseSpec
+    Z.Data.Decoder.NumericSpec
+    Z.Data.Decoder.TimeSpec
+    Z.Data.Text.BaseSpec
+    Z.Data.Text.ExtraSpec
+    Z.Data.Text.PrintSpec
+    Z.Data.Text.SearchSpec
+    Z.Data.Vector.Base64Spec
+    Z.Data.Vector.BaseSpec
+    Z.Data.Vector.ExtraSpec
+    Z.Data.Vector.FlatMapSpec
+    Z.Data.Vector.FlatSetSpec
+    Z.Data.Vector.HexSpec
+    Z.Data.Vector.SearchSpec
+    Z.Data.Vector.SortSpec
+    Z.ForeignSpec
+
+  build-depends:
+    , base
+    , containers
+    , hashable
+    , hspec                 >=2.5.4
+    , HUnit
+    , primitive
+    , QuickCheck            >=2.10
+    , quickcheck-instances
+    , scientific
+    , time
+    , unordered-containers
+    , Z-Data
+
+  c-sources:          test/cbits/ffi.c

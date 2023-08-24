@@ -1,5 +1,5 @@
 {-|
-Module      : Z.Foreign
+Module      : Z.Data.Foreign
 Description : Use PrimArray \/ PrimVector with FFI
 Copyright   : (c) Dong Han, 2017-2018
 License     : BSD
@@ -12,7 +12,7 @@ Some functions are designed to be used with <https://downloads.haskell.org/ghc/l
 
 GHC runtime is garbaged collected, there're two types of primitive array in GHC, with the objective to minimize overall memory management cost:
 
-  * Small primitive arrays created with 'newPrimArray' are directly allocated on GHC heap, which can be moved
+  * Small primitive arrays created with 'newArray' are directly allocated on GHC heap, which can be moved
     by GHC garbage collector, we call these arrays @unpinned@. Allocating these array is cheap, we only need
     to check heap limit and bump heap pointer just like any other haskell heap objects. But we will pay GC cost
     , which is OK for small arrays.
@@ -54,16 +54,17 @@ will result in segfault.
 
 -}
 
-module Z.Foreign
-  ( -- ** Unsafe FFI
-    withPrimArrayUnsafe
+module Z.Data.Foreign
+  ( -- ** Type helper
+    MBA#, BA#
+    -- ** Unsafe FFI
+  , withPrimArrayUnsafe
+  , withPrimArrayListUnsafe
   , allocPrimArrayUnsafe
   , withPrimVectorUnsafe
   , allocPrimVectorUnsafe
-  , allocBytesUnsafe
   , withPrimUnsafe
   , allocPrimUnsafe
-  , withPrimArrayListUnsafe
     -- ** Safe FFI
   , withPrimArraySafe
   , allocPrimArraySafe
@@ -76,124 +77,39 @@ module Z.Foreign
   , pinPrimArray
   , pinPrimVector
     -- ** Pointer helpers
-  , BA# (..), MBA# (..), BAArray# (..)
-  , clearMBA
+  , clearByteArray
   , clearPtr
   , castPtr
   , fromNullTerminated, fromPtr, fromPrimPtr
+  , indexOffPtr, readOffPtr, writeOffPtr, nullPtr, advancePtr, subtractPtr
   , StdString, fromStdString
-  -- ** convert between bytestring
-  , fromByteString
-  , toByteString
   -- ** re-export
-  , RealWorld
-  , touch
-  , module Data.Primitive.ByteArray
-  , module Data.Primitive.PrimArray
   , module Foreign.C.Types
-  , module Data.Primitive.Ptr
-  , module Z.Data.Array.Unaligned
-  , withMutablePrimArrayContents, withPrimArrayContents
+  , module Z.Data.Utils.Unaligned
+  , module Z.Data.Array
   -- ** Internal helpers
-  , hs_std_string_size
-  , hs_copy_std_string
-  , hs_delete_std_string
+  , z_std_string_size
+  , z_copy_std_string
+  , z_delete_std_string
   ) where
 
-import           Control.Exception              (bracket)
 import           Control.Monad
-import           Control.Monad.Primitive
-import           Data.ByteString                (ByteString)
-import qualified Data.ByteString                as B
-import           Data.ByteString.Short.Internal (ShortByteString (..),
-                                                 fromShort, toShort)
-import qualified Data.ByteString.Unsafe         as B
 import qualified Data.List                      as List
-import           Data.Primitive
-import           Data.Primitive.ByteArray
-import           Data.Primitive.PrimArray
-import           Data.Primitive.Ptr
 import           Data.Word
+import           Data.Primitive.Ptr
 import           Foreign.C.Types
 import           GHC.Exts
+import           GHC.ST
 import           GHC.Ptr
-import           Z.Data.Array.Base              (withMutablePrimArrayContents,
-                                                 withPrimArrayContents)
-import           Z.Data.Array.Unaligned
-import           Z.Data.Array.UnliftedArray
+import           Z.Data.Array                  
+import           Z.Data.Utils.Unaligned
 import           Z.Data.Vector.Base
 
--- | Type alias for 'ByteArray#'.
---
--- Describe a 'ByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
--- extension, At C side you should use a proper const pointer type.
---
--- Don't cast 'BA#' to 'Addr#' since the heap object offset is hard-coded in code generator:
--- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
---
--- In haskell side we use type system to distinguish immutable / mutable arrays, but in C side we can't.
--- So it's users' responsibility to make sure the array content is not mutated (a const pointer type may help).
---
--- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'ByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+-- | Type alias for 'ByteArray#', the type variable 'a' is for tagging pointer type only.
 type BA# a = ByteArray#
-pattern BA# :: ByteArray# -> BA# a
-pattern BA# ba = ba
 
--- | Type alias for 'MutableByteArray#' 'RealWorld'.
---
--- Describe a 'MutableByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
--- extension, At C side you should use a proper pointer type.
---
--- Don't cast 'MBA#' to 'Addr#' since the heap object offset is hard-coded in code generator:
--- <https://github.com/ghc/ghc/blob/master/compiler/GHC/StgToCmm/Foreign.hs#L542 Note [Unlifted boxed arguments to foreign calls]>
---
--- USE THIS TYPE WITH UNSAFE FFI CALL ONLY. A 'MutableByteArray#' COULD BE MOVED BY GC DURING SAFE FFI CALL.
+-- | Type alias for 'MutableByteArray#', the type variable 'a' is for tagging pointer type only.
 type MBA# a = MutableByteArray# RealWorld
-pattern MBA# :: MutableByteArray# RealWorld -> MBA# a
-pattern MBA# mba = mba
-
--- | Type alias for 'ArrayArray#'.
---
--- Describe a array of 'ByteArray#' which we are going to pass across FFI. Use this type with @UnliftedFFITypes@
--- extension, At C side you should use @StgArrBytes**@(>=8.10) or @StgMutArrPtrs*@(<8.10) type from "Rts.h",
--- example code modified from
--- <https://downloads.haskell.org/ghc/latest/docs/html/users_guide/ffi-chap.html#unlifted-ffi-types GHC manual>:
---
--- @
--- \/\/ C source, must include the RTS to make the struct StgArrBytes
--- \/\/ available along with its fields: ptrs and payload.
--- #include "Rts.h"
--- // GHC 8.10 changes the way how ArrayArray# is passed to C, so...
--- #if \_\_GLASGOW_HASKELL\_\_ < 810
--- HsInt sum_first (StgMutArrPtrs *arr, HsInt len) {
---   StgArrBytes **bufs = (StgArrBytes**)arr->payload;
--- #else
--- HsInt sum_first (StgArrBytes **bufs, HsInt len) {
--- #endif
---   int res = 0;
---   for(StgWord ix = 0;ix < len;ix++) {
---      // payload pointer type is StgWord*, cast it before use!
---      res = res + ((HsInt*)(bufs[ix]->payload))[0];
---   }
---   return res;
--- }
---
--- -- Haskell source, all elements in the argument array must be
--- -- either ByteArray\# or MutableByteArray\#. This is not enforced
--- -- by the type system in this example since ArrayArray is untyped.
--- foreign import ccall unsafe "sum_first" sumFirst :: BAArray# Int -> Int -> IO CInt
--- @
-type BAArray# a = ArrayArray#
-pattern BAArray# :: ArrayArray# -> BAArray# a
-pattern BAArray# baa = baa
-
--- | Clear 'MBA#' with given length to zero.
-clearMBA :: MBA# a
-         -> Int  -- ^ in bytes
-         -> IO ()
-{-# INLINE clearMBA #-}
-clearMBA (MBA# mba#) len =
-    setByteArray (MutableByteArray mba#) 0 len (0 :: Word8)
 
 -- | Pass primitive array to unsafe FFI as pointer.
 --
@@ -203,73 +119,74 @@ clearMBA (MBA# mba#) len =
 -- The second 'Int' arguement is the element size not the bytes size.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> IO b) -> IO b
+withPrimArrayUnsafe :: (Prim a) => PrimArray a -> (BA# a -> Int -> r) -> r
 {-# INLINE withPrimArrayUnsafe #-}
-withPrimArrayUnsafe pa@(PrimArray ba#) f = f (BA# ba#) (sizeofPrimArray pa)
+withPrimArrayUnsafe pa@(PrimArray ba#) f = f ba# (sizeofArray pa)
 
 -- | Pass primitive array list to unsafe FFI as @StgArrBytes**@.
 --
 -- Enable 'UnliftedFFITypes' extension in your haskell code, use @StgArrBytes**@(>=8.10)
 -- or @StgMutArrPtrs*@(<8.10) pointer type and @HsInt@
--- to marshall @BAArray#@ and @Int@ arguments on C side, check the example with 'BAArray#'.
+-- to marshall @Array# ByteArray#@ and @Int@ arguments on C side, check the example with 'Array# ByteArray#'.
 --
 -- The second 'Int' arguement is the list size.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-withPrimArrayListUnsafe :: [PrimArray a] -> (BAArray# a -> Int -> IO b) -> IO b
+withPrimArrayListUnsafe :: [PrimArray a] -> (Array# (BA# a) -> Int -> b) -> b
 {-# INLINE withPrimArrayListUnsafe #-}
-withPrimArrayListUnsafe pas f = do
+withPrimArrayListUnsafe pas f =
     let l = List.length pas
-    mla <- unsafeNewUnliftedArray l
-    foldM_ (\ !i pa -> writeUnliftedArray mla i pa >> return (i+1)) 0 pas
-    (UnliftedArray la#) <- unsafeFreezeUnliftedArray mla
-    f (BAArray# la#) l
+    in case runST (do
+        mla <- newArray l
+        foldM_ (\ !i pa -> writeArray mla i pa >> return (i+1)) 0 pas
+        unsafeFreezeArray mla
+    ) of UnliftedArray la# -> f la# l
 
 -- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimArray'.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocPrimArrayUnsafe :: forall a b. Prim a => Int -> (MBA# a -> IO b) -> IO (PrimArray a, b)
+allocPrimArrayUnsafe 
+    :: forall a b. Prim a
+    => Int 
+    -> (MBA# a -> IO b)
+    -> IO (PrimArray a, b)
 {-# INLINE allocPrimArrayUnsafe #-}
 allocPrimArrayUnsafe len f = do
-    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
-    !r <- f (MBA# mba#)
-    !pa <- unsafeFreezePrimArray mpa
+    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newArray len
+    !r <- f mba#
+    !pa <- unsafeFreezeArray mpa
     return (pa, r)
 
 -- | Pass 'PrimVector' to unsafe FFI as pointer
 --
 -- The 'PrimVector' version of 'withPrimArrayUnsafe'.
 --
--- The second 'Int' arguement is the first element offset, the third 'Int' argument is the
--- element length.
---
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 --
-withPrimVectorUnsafe :: (Prim a)
-                     => PrimVector a -> (BA# a -> Int -> Int -> IO b) -> IO b
+withPrimVectorUnsafe
+    :: (Prim a)
+    => PrimVector a
+    -> (BA# a -> Int -> Int -> r) -- ^ array, start offset, end offset
+    -> r
 {-# INLINE withPrimVectorUnsafe #-}
-withPrimVectorUnsafe (PrimVector arr s l) f = withPrimArrayUnsafe arr $ \ ba# _ -> f ba# s l
+withPrimVectorUnsafe (PrimVector arr s e) f =
+    withPrimArrayUnsafe arr $ \ ba# _ -> f ba# s e
 
 -- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocPrimVectorUnsafe :: forall a b. Prim a => Int  -- ^ number of elements
-                      -> (MBA# a -> IO b) -> IO (PrimVector a, b)
+allocPrimVectorUnsafe
+    :: forall a b. Prim a
+    => Int  -- ^ number of elements
+    -> (MBA# a -> IO b)
+    -> IO (PrimVector a, b)
 {-# INLINE allocPrimVectorUnsafe #-}
 allocPrimVectorUnsafe len f = do
-    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newPrimArray len
-    !r <- f (MBA# mba#)
-    !pa <- unsafeFreezePrimArray mpa
+    (mpa@(MutablePrimArray mba#) :: MutablePrimArray RealWorld a) <- newArray len
+    !r <- f mba#
+    !pa <- unsafeFreezeArray mpa
     let !v = PrimVector pa 0 len
     return (v, r)
-
--- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'Bytes'.
---
--- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocBytesUnsafe :: Int  -- ^ number of bytes
-                 -> (MBA# Word8 -> IO b) -> IO (Bytes, b)
-{-# INLINE allocBytesUnsafe #-}
-allocBytesUnsafe = allocPrimVectorUnsafe
 
 -- | Create an one element primitive array and use it as a pointer to the primitive element.
 --
@@ -277,25 +194,31 @@ allocBytesUnsafe = allocPrimVectorUnsafe
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
 --
-withPrimUnsafe :: (Prim a)
-               => a -> (MBA# a -> IO b) -> IO (a, b)
+withPrimUnsafe
+    :: (Prim a)
+    => a            -- ^ initial value 
+    -> (MBA# a -> IO b)
+    -> IO (a, b)
 {-# INLINE withPrimUnsafe #-}
 withPrimUnsafe v f = do
-    mpa@(MutablePrimArray mba#) <- newPrimArray 1    -- All heap objects are WORD aligned
-    writePrimArray mpa 0 v
-    !b <- f (MBA# mba#)                              -- so no need to do extra alignment
-    !a <- readPrimArray mpa 0
+    mpa@(MutablePrimArray mba#) <- newArray 1       -- All heap objects are WORD aligned
+    writeArray mpa 0 v
+    !b <- f mba#                                        -- so no need to do extra alignment
+    !a <- readArray mpa 0
     return (a, b)
 
 -- | like 'withPrimUnsafe', but don't write initial value.
 --
 -- USE THIS FUNCTION WITH UNSAFE FFI CALL ONLY.
-allocPrimUnsafe :: (Prim a) => (MBA# a -> IO b) -> IO (a, b)
+allocPrimUnsafe 
+    :: (Prim a)
+    => (MBA# a -> IO b)
+    -> IO (a, b)
 {-# INLINE allocPrimUnsafe #-}
 allocPrimUnsafe f = do
-    mpa@(MutablePrimArray mba#) <- newPrimArray 1    -- All heap objects are WORD aligned
-    !b <- f (MBA# mba#)                              -- so no need to do extra alignment
-    !a <- readPrimArray mpa 0
+    mpa@(MutablePrimArray mba#) <- newArray 1       -- All heap objects are WORD aligned
+    !b <- f mba#                                    -- so no need to do extra alignment
+    !a <- readArray mpa 0
     return (a, b)
 
 --------------------------------------------------------------------------------
@@ -312,12 +235,12 @@ withPrimArraySafe :: (Prim a) => PrimArray a -> (Ptr a -> Int -> IO b) -> IO b
 {-# INLINABLE withPrimArraySafe #-}
 withPrimArraySafe arr f
     | isPrimArrayPinned arr = do
-        let siz = sizeofPrimArray arr
+        let siz = sizeofArray arr
         withPrimArrayContents arr $ \ ptr -> f ptr siz
     | otherwise = do
-        let siz = sizeofPrimArray arr
+        let siz = sizeofArray arr
         buf <- newPinnedPrimArray siz
-        copyPrimArray buf 0 arr 0 siz
+        copyArray buf 0 arr 0 siz
         withMutablePrimArrayContents buf $ \ ptr -> f ptr siz
 
 -- | Pass primitive array list to safe FFI as pointer.
@@ -335,12 +258,12 @@ withPrimArrayListSafe pas0 f = do
     go ptrs 0 pas0
   where
     go ptrs !_ [] = do
-        pa <- unsafeFreezePrimArray ptrs
+        pa <- unsafeFreezeArray ptrs
         withPrimArraySafe pa f
     go ptrs !i (pa:pas) =
         -- It's important to nest 'withPrimArraySafe' calls to keep all pointers alive
         withPrimArraySafe pa $ \ ppa _ -> do
-            writePrimArray ptrs i ppa
+            writeArray ptrs i ppa
             go ptrs (i+1) pas
 
 -- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
@@ -352,7 +275,7 @@ allocPrimArraySafe :: forall a b . Prim a
 allocPrimArraySafe len f = do
     mpa <- newAlignedPinnedPrimArray len
     !r <- withMutablePrimArrayContents mpa f
-    !pa <- unsafeFreezePrimArray mpa
+    !pa <- unsafeFreezeArray mpa
     return (pa, r)
 
 -- | Pass 'PrimVector' to safe FFI as pointer
@@ -361,15 +284,20 @@ allocPrimArraySafe len f = do
 -- to the first element, thus no offset is provided. After call returned, pointer is no longer valid.
 --
 -- Don't pass a forever loop to this function, see <https://ghc.haskell.org/trac/ghc/ticket/14346 #14346>.
-withPrimVectorSafe :: forall a b. Prim a => PrimVector a -> (Ptr a -> Int -> IO b) -> IO b
+withPrimVectorSafe
+    :: forall a b. Prim a
+    => PrimVector a
+    -> (Ptr a -> Int -> IO b)   -- ^ address, length in elements
+    -> IO b
 {-# INLINABLE withPrimVectorSafe #-}
-withPrimVectorSafe (PrimVector arr s l) f
+withPrimVectorSafe (PrimVector arr s e) f
     | isPrimArrayPinned arr =
         withPrimArrayContents arr $ \ ptr ->
-            let ptr' = ptr `plusPtr` (s * siz) in f ptr' l
+            let ptr' = ptr `plusPtr` (s * siz) in f ptr' (e-s)
     | otherwise = do
+        let l = e-s
         buf <- newPinnedPrimArray l
-        copyPrimArray buf 0 arr s l
+        copyArray buf 0 arr s l
         withMutablePrimArrayContents buf $ \ ptr -> f ptr l
   where
     siz = sizeOf (undefined :: a)
@@ -381,9 +309,9 @@ withPrimSafe :: forall a b. Prim a => a -> (Ptr a -> IO b) -> IO (a, b)
 {-# INLINABLE withPrimSafe #-}
 withPrimSafe v f = do
     buf <- newAlignedPinnedPrimArray 1
-    writePrimArray buf 0 v
+    writeArray buf 0 v
     !b <- withMutablePrimArrayContents buf $ \ ptr -> f ptr
-    !a <- readPrimArray buf 0
+    !a <- readArray buf 0
     return (a, b)
 
 -- | like 'withPrimSafe', but don't write initial value.
@@ -392,51 +320,66 @@ allocPrimSafe :: forall a b. Prim a => (Ptr a -> IO b) -> IO (a, b)
 allocPrimSafe f = do
     buf <- newAlignedPinnedPrimArray 1
     !b <- withMutablePrimArrayContents buf $ \ ptr -> f ptr
-    !a <- readPrimArray buf 0
+    !a <- readArray buf 0
     return (a, b)
 
 -- | Allocate a prim array and pass to FFI as pointer, freeze result into a 'PrimVector'.
 allocPrimVectorSafe :: forall a b . Prim a
-                    => Int      -- ^ in elements
-                    -> (Ptr a -> IO b) -> IO (PrimVector a, b)
+                    => Int      -- ^ size in elements
+                    -> (Ptr a -> IO b)
+                    -> IO (PrimVector a, b)
 {-# INLINABLE allocPrimVectorSafe #-}
 allocPrimVectorSafe len f = do
     mpa <- newAlignedPinnedPrimArray len
     !r <- withMutablePrimArrayContents mpa f
-    !pa <- unsafeFreezePrimArray mpa
+    !pa <- unsafeFreezeArray mpa
     let !v = PrimVector pa 0 len
     return (v, r)
 
 -- | Allocate some bytes and pass to FFI as pointer, freeze result into a 'PrimVector'.
 allocBytesSafe :: Int      -- ^ in bytes
-               -> (Ptr Word8 -> IO b) -> IO (Bytes, b)
+               -> (Ptr Word8 -> IO b) 
+               -> IO (Bytes, b)
 {-# INLINABLE allocBytesSafe #-}
 allocBytesSafe = allocPrimVectorSafe
 
--- | Convert a 'PrimArray' to a pinned one(memory won't moved by GC) if necessary.
-pinPrimArray :: Prim a => PrimArray a -> IO (PrimArray a)
+-- | Convert a 'PrimArray' to a pinned one(memory won't moved by GC), copy if necessary.
+pinPrimArray :: Prim a
+             => PrimArray a 
+             -> IO (PrimArray a)
 {-# INLINABLE pinPrimArray #-}
 pinPrimArray arr
     | isPrimArrayPinned arr = return arr
     | otherwise = do
-        let l = sizeofPrimArray arr
+        let l = sizeofArray arr
         buf <- newPinnedPrimArray l
-        copyPrimArray buf 0 arr 0 l
-        arr' <- unsafeFreezePrimArray buf
+        copyArray buf 0 arr 0 l
+        arr' <- unsafeFreezeArray buf
         return arr'
 
--- | Convert a 'PrimVector' to a pinned one(memory won't moved by GC) if necessary.
+-- | Convert a 'PrimVector' to a pinned one(memory won't moved by GC), copy if necessary.
 pinPrimVector :: Prim a => PrimVector a -> IO (PrimVector a)
 {-# INLINABLE pinPrimVector #-}
 pinPrimVector v@(PrimVector pa s l)
     | isPrimArrayPinned pa = return v
     | otherwise = do
         buf <- newPinnedPrimArray l
-        copyPrimArray buf 0 pa s l
-        pa' <- unsafeFreezePrimArray buf
+        copyArray buf 0 pa s l
+        pa' <- unsafeFreezeArray buf
         return (PrimVector pa' 0 l)
 
 --------------------------------------------------------------------------------
+
+-- | Zero a structure.
+--
+-- The length should be given in bytes.
+--
+clearByteArray :: MBA# a -> IO ()
+{-# INLINABLE clearByteArray #-}
+clearByteArray arr = do
+    let marr = MutablePrimArray arr :: MutablePrimArray RealWorld Word8
+    siz <- sizeofMutableArray marr
+    setArray marr 0 siz 0
 
 foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
 
@@ -458,9 +401,9 @@ fromNullTerminated :: Ptr a -> IO Bytes
 {-# INLINABLE fromNullTerminated #-}
 fromNullTerminated (Ptr addr#) = do
     len <- fromIntegral <$> c_strlen addr#
-    marr <- newPrimArray len
+    marr <- newArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
-    arr <- unsafeFreezePrimArray marr
+    arr <- unsafeFreezeArray marr
     return (PrimVector arr 0 len)
 
 -- | Copy some bytes from a pointer.
@@ -470,9 +413,9 @@ fromPtr :: Ptr a -> Int -- ^ in bytes
         -> IO Bytes
 {-# INLINABLE fromPtr #-}
 fromPtr (Ptr addr#) len = do
-    marr <- newPrimArray len
+    marr <- newArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
-    arr <- unsafeFreezePrimArray marr
+    arr <- unsafeFreezeArray marr
     return (PrimVector arr 0 len)
 
 -- | Copy some bytes from a pointer.
@@ -483,35 +426,25 @@ fromPrimPtr :: forall a. Prim a
             -> IO (PrimVector a)
 {-# INLINABLE fromPrimPtr #-}
 fromPrimPtr (Ptr addr#) len = do
-    marr <- newPrimArray len
+    marr <- newArray len
     copyPtrToMutablePrimArray marr 0 (Ptr addr#) len
-    arr <- unsafeFreezePrimArray marr
+    arr <- unsafeFreezeArray marr
     return (PrimVector arr 0 len)
 
--- | @std::string@ Pointer tag.
+-- | C++ @std::string@ Pointer tag.
 data StdString
 
--- | Run FFI in bracket and marshall @std::string*@ result into Haskell heap bytes,
--- memory pointed by @std::string*@ will be @delete@ ed.
+-- | Run FFI and marshall @std::string*@ result into Haskell heap bytes,
+-- then delete the memory pointed by @std::string*@.
 fromStdString :: IO (Ptr StdString) -> IO Bytes
 {-# INLINABLE fromStdString #-}
-fromStdString f = bracket f hs_delete_std_string
-    (\ q -> do
-        siz <- hs_std_string_size q
-        (bs,_) <- allocBytesUnsafe siz (hs_copy_std_string q siz)
-        return bs)
+fromStdString f = do
+    q <- f 
+    siz <- z_std_string_size q
+    (bs,_) <- allocPrimVectorUnsafe siz (z_copy_std_string q siz)
+    z_delete_std_string q
+    return bs
 
-foreign import ccall unsafe hs_std_string_size :: Ptr StdString -> IO Int
-foreign import ccall unsafe hs_copy_std_string :: Ptr StdString -> Int -> MBA# Word8 -> IO ()
-foreign import ccall unsafe hs_delete_std_string :: Ptr StdString -> IO ()
-
--- | O(n), Convert from 'ByteString'.
-fromByteString :: ByteString -> Bytes
-{-# INLINABLE fromByteString #-}
-fromByteString bs = case toShort bs of
-    (SBS ba#) -> PrimVector (PrimArray ba#) 0 (B.length bs)
-
--- | O(n), Convert tp 'ByteString'.
-toByteString :: Bytes -> ByteString
-{-# INLINABLE toByteString #-}
-toByteString (PrimVector (PrimArray ba#) s l) = B.unsafeTake l . B.unsafeDrop s . fromShort $ SBS ba#
+foreign import ccall unsafe z_std_string_size :: Ptr StdString -> IO Int
+foreign import ccall unsafe z_copy_std_string :: Ptr StdString -> Int -> MBA# Word8 -> IO ()
+foreign import ccall unsafe z_delete_std_string :: Ptr StdString -> IO ()

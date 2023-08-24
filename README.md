@@ -104,3 +104,10 @@ cabal install
 # generate document
 cabal haddock
 ```
+
+## TODO
+
+fix array prim ops 
+fix all slice length -> end
+fix encoder
+fix decoder

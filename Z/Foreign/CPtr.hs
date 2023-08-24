@@ -1,5 +1,5 @@
 {-|
-Module      : Z.Foreign.CPtr
+Module      : Z.Data.Foreign.CPtr
 Description : Lightweight foreign pointer
 Copyright   : (c) Dong Han, 2020
 License     : BSD
@@ -10,7 +10,7 @@ Portability : non-portable
 This module provide a lightweight foreign pointer, support c initializer and finalizer only.
 -}
 
-module Z.Foreign.CPtr (
+module Z.Data.Foreign.CPtr (
   -- * CPtr type
     CPtr, newCPtr', newCPtrUnsafe, newCPtr
   , withCPtr, withCPtrsUnsafe, withCPtrForever, withCPtrs
@@ -29,7 +29,8 @@ import GHC.Ptr
 import GHC.Exts
 import GHC.IO
 import Z.Data.Array                         hiding (newPinnedPrimArray)
-import Z.Foreign
+import Z.Data.Foreign
+import Z.RT
 
 -- | Lightweight foreign pointers.
 newtype CPtr a = CPtr (PrimArray (Ptr a))
@@ -137,7 +138,7 @@ withCPtrsUnsafe cptrs f = do
   where len = length cptrs
 
 -- | Pass a list of 'CPtr Foo' as @foo**@.
-withCPtrs :: forall a b. [CPtr a] -> (Ptr (Ptr a) -> Int -> IO b) -> IO b
+withCPtrs :: forall a b. [CPtr a] -> (Ptr (Ptr a) -> Int -> RT b) -> RT b
 {-# INLINABLE withCPtrs #-}
 withCPtrs cptrs f = do
     mpa <- newPinnedPrimArray @IO @(Ptr a) len

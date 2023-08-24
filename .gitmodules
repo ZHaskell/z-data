@@ -4,9 +4,9 @@
 [submodule "third_party/utf8rewind"]
 	path = third_party/utf8rewind
 	url = https://github.com/ZHaskell/utf8rewind.git
-[submodule "third_party/re2"]
-	path = third_party/re2
-	url = https://github.com/google/re2.git
 [submodule "third_party/fastbase64"]
 	path = third_party/fastbase64
 	url = https://github.com/ZHaskell/fastbase64.git
+[submodule "third_party/botan"]
+	path = third_party/botan
+	url = https://github.com/randombit/botan.git

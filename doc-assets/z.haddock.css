@@ -1,0 +1,456 @@
+/* @group Fundamentals */
+
+* { margin: 0; padding: 0 }
+
+html {
+    width: 100vw;
+    height: 100vh;
+    background: #F0F0F0;
+}
+
+body {
+    background: #fff;
+    color: rgb(78,98,114);
+    text-align: left;
+    min-height: 100%;
+    width: calc(max(640px, 80vw));
+    position: relative;
+    margin: 0 auto;
+    padding: 0;
+    font-size: 15px;
+    font-family: "SF Pro", sans-serif;
+    line-height: 21px;
+    box-shadow: 0 0 24px #d5d5d5;
+}
+
+.utterances{
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+.utterances-frame {
+    padding: 0 32px;
+    margin: 0;
+    box-sizing: border-box;
+}
+.utterances-frame body main{
+    display: flex:
+    flex-direction: row-reverse;
+}
+
+ul, ol {
+  margin: 6px 0 6px 24px;
+}
+
+dl {
+  margin: 10px 0;
+}
+
+dt {
+  font-weight: bold;
+}
+dd {
+  margin-left: 24px;
+}
+
+a { text-decoration: none; }
+a[href]:link { color: rgb(196,69,29); }
+a[href]:visited { color: rgb(171,105,84); }
+a[href]:hover { font-style: italic; }
+
+ 
+h1 { font-size: 18px; line-height: 30px; } 
+h2 { font-size: 17px; line-height: 28px;  }
+h3 { font-size: 16px; line-height: 26px;}
+h4 { font-size: 15px; line-height: 24px; }
+h5 { font-size: 14px; line-height: 21px; }
+
+pre, code, kbd, samp, tt, .src {
+	font-family: "PT Mono", monospace;
+    font-style: normal;
+}
+
+/* @end */
+
+/* @group Common */
+
+ul.links {
+    list-style: none;
+    text-align: left;
+    float: right;
+    display: inline-table;
+    margin: 0 0 0 12px;
+    flex: 1;
+    text-align: right;
+}
+
+ul.links li {
+    display: inline;
+    border-left: 1px solid #d5d5d5; 
+    white-space: nowrap;
+    padding: 0;
+}
+
+ul.links li a {
+  padding: 4px 6px;
+}
+
+.hide { display: none; }
+.show { display: inherit; }
+.clear { clear: both; }
+
+.collapser, .expander {
+    cursor: pointer;
+}
+
+code{
+    background: #e8f3ff;
+    border-radius: 2px;
+    padding: 2px 6px;
+    font-size: 14px;
+}
+code code{
+    padding: 2px 0;
+}
+code.prompt{
+    padding: 0;
+}
+pre {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 6px 0;
+    background: #e8f3ff;
+    overflow: auto;
+    font-size: 14px;
+}
+
+div.src {
+    margin: 4px 0;
+}
+
+.keyword { font-weight: normal; }
+.def { font-weight: bold; }
+
+
+/* @end */
+
+/* @group Page Structure */
+
+#content {
+  margin: 24px 0;
+  min-height: calc(100vh - 140px);
+}
+
+#preferences .dropdown-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    border: none;
+    padding: 12px;
+}
+
+#package-header {
+  background: #5E5184;
+  color: #d5d5d5;
+  padding: 16px 24px;
+  position: relative;
+  text-align: left;
+  vertical-align:middle;
+  display: flex;
+}
+
+#package-header .caption {
+  color: white;
+  max-width: 650px;
+}
+
+#package-header a:link, #package-header a:visited { color: white; }
+/*#package-header a:hover { background: rgb(78,98,114); }*/
+
+#module-header .caption {
+  margin: 24px;
+  font-size: 24px;
+}
+#module-header table.info {
+  float: right;
+  padding: 0 16px;
+  border-left: 1px solid #d5d5d5;
+  max-width: 40%;
+  border-spacing: 0;
+  position: relative;
+  margin-left: 24px;
+  font-size: 14px;
+}
+#module-header table.info th {
+    font-weight: normal;
+	padding: 0 12px 0 0;
+}
+
+#style-menu-holder {
+    display: none;
+}
+
+#style-menu {
+    display: none;
+}
+
+#footer {
+  background: #5E5184;
+  padding: 12px 0;
+  color: #FFF;
+  text-align: center;
+  bottom: 0;
+  width: 100%;
+}
+#footer a{
+    color: #FFF;
+}
+
+
+/* @end */
+
+/* @group Front Matter */
+
+#table-of-contents {
+    margin: 24px;
+}
+#table-of-contents .caption {
+    display: none;
+}
+#table-of-contents ul {
+    list-style: square;
+    margin: 16px;
+}
+#table-of-contents ul ul {
+    margin: 0 0 0 24px;
+}
+#table-of-contents ul ul ul {
+    margin: 0 0 0 32px;
+}
+#table-of-contents ul ul ul ul {
+    margin: 0 0 0 40px;
+}
+#description {
+    min-height: 100px;
+}
+#description .caption {
+  display: none;
+}
+
+#description .doc{
+  margin: 32px;
+}
+
+#description h1 {
+   text-align:center;
+}
+
+#synopsis {
+  display: none;
+}
+
+/* @end */
+
+/* @group Main Content */
+
+#interface {
+   clear:both;
+}
+
+#interface .caption {
+    display: none;
+}
+
+#interface .top { 
+   margin: 32px;
+}
+
+#interface>a>h1, #interface>a>h2, #interface>a>h3, #interface>a>h4 {
+    color: #FFF;
+    font-weight: normal;
+    background: #5E5184;
+}
+#interface>a>h1 {
+    padding: 12px 24px;
+} 
+#interface>a>h2 {
+    padding: 8px 24px;
+}
+#interface>a>h3 {
+    padding: 4px 24px;
+}
+#interface>a>h4 {
+    padding: 2px 24px;
+}
+
+#interface .src .selflink, #interface .src .link {
+  float: right;
+  margin: 0 8px;
+  width: 10px;
+  color: #919191;
+  overflow: hidden;
+}
+#interface table {
+   width: 100%;
+   border-spacing: 2px;
+   border-collapse: collapse;
+   empty-cells: hide;
+}
+#interface td.src {
+  margin: 0;
+  padding: 0;
+  width: 50%;
+}
+#interface td.doc {
+  vertical-align: middle;
+  padding-left: 0;
+}
+
+.subs dl {
+  margin: 0;
+}
+
+.subs dt {
+  float: left;
+  clear: left;
+  display: block;
+  margin: 1px 0;
+}
+
+.subs dd {
+  float: right;
+  width: 90%;
+  display: block;
+  padding-left: 6px;
+  margin-bottom: 6px;
+}
+
+.subs dd.empty {
+  display: none;
+}
+
+.subs dd p {
+  margin: 0;
+}
+
+.subs {
+  margin: 24px 0 24px 24px
+}
+
+div.doc {
+    margin: 4px 0;
+    word-break: break-word;
+}
+p.src {
+    padding: 4px 0;
+    border-bottom: 1px dashed #919191;
+}
+div.doc + p.src{
+    margin-top: 32px;
+}
+.doc.empty {
+  display: none;
+}
+
+
+.warning {
+  color: red;
+}
+
+.arguments .caption {
+  display: none;
+}
+
+.constructors, .fields, .instances, .arguments, .bundled-patterns { margin: 4px 0; }
+.instances.details-toggle-control { display: none; }
+.instances .doc { padding-left: 24px;}
+.instances .subs .src { border: none; padding: 0;}
+.instances summary{ margin: 4px 0; }
+.instances table summary{ display: none; }
+.bundled-patterns .fields ul{ list-style: none; margin: 0; }
+.bundled-patterns .fields .src, .bundled-patterns .fields .doc{
+    display: inline-block;
+    width: 50%;
+}
+.fields ul{ list-style: none; margin: 0 0 0 24px;}
+.fields .caption { display: none; }
+.fields .doc { margin: 0 0; }
+.fields .src, .fields .doc{
+    display: inline-block;
+    width: 50%;
+}
+
+/* this seems bulky to me
+.methods, .constructors {
+  background: #f8f8f8;
+  border: 1px solid #eee;
+}
+*/
+
+/* @end */
+
+/* @group Auxillary Pages */
+
+#alphabet ul {
+	list-style: none;
+	padding: 0;
+	margin: 6px 0 0;
+	text-align: center;
+}
+
+#alphabet li {
+	display: inline;
+	margin: 0 3px;
+}
+
+#alphabet a {
+	font-weight: bold;
+}
+
+#index .caption,
+#module-list .caption { 
+    display: none;
+}
+
+#index table {
+  margin-left: 24px;
+}
+
+#index .src {
+  font-weight: bold;
+}
+#index .alt {
+  font-size: 12px;
+  font-style: italic;
+  padding-left: 24px;
+}
+
+#index td + td {
+  padding-left: 12px;
+}
+
+#module-list {
+  margin-left: 0;
+}
+#module-list ul {
+  list-style: none;
+  margin: 0 0 0 32px;
+}
+
+#module-list li {
+  clear: right;
+}
+
+#module-list .package {
+  float: right;
+}
+#module-list .module {
+  min-width: 320px;
+  display: inline-block;
+}
+#module-list summary{
+    display: none;
+}
+
+/* @end */

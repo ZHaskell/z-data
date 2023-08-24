@@ -7,7 +7,7 @@ Maintainer  : winterland1989@gmail.com
 Stability   : experimental
 Portability : non-portable
 
-ASCII Chars utility.
+ASCII Chars utility, all funcions works on <https://en.wikipedia.org/wiki/ASCII US-ASCII> chars.
 
 -}
 
@@ -57,24 +57,6 @@ toUpper w
   | 97 <= w && w <= 122 = w - 32
   | otherwise           = w
 
--- | @A ~ Z@ => @a ~ z@, @À ~ Ö@ => @à ~ ö@, @Ø ~ Þ@ => @ø ~ þ@
-toLowerLatin :: Word8 -> Word8
-{-# INLINE toLowerLatin #-}
-toLowerLatin w
-  |  65 <= w && w <=  90 ||
-    192 <= w && w <= 214 ||
-    216 <= w && w <= 222 = w + 32
-  | otherwise            = w
-
--- | @a ~ z@ => @A ~ Z@, @à ~ ö@ => @À ~ Ö@, @ø ~ þ@ => @Ø ~ Þ@
-toUpperLatin :: Word8 -> Word8
-{-# INLINE toUpperLatin #-}
-toUpperLatin w
-  | 97  <= w && w <= 122 ||
-    224 <= w && w <= 246 ||
-    248 <= w && w <= 254 = w - 32
-  | otherwise            = w
-
 -- | @ISO-8859-1@ control letter.
 isControl :: Word8 -> Bool
 {-# INLINE isControl #-}
@@ -89,6 +71,11 @@ isSpace w = w == SPACE || w - TAB <= 4 || w == 0xa0
 isDigit :: Word8 -> Bool
 {-# INLINE isDigit #-}
 isDigit w = w - DIGIT_0 <= 9
+
+-- | @a-z A-Z@
+isLetter :: Word8 -> Bool
+{-# INLINE isLetter #-}
+isLetter w = isLower w || isUpper w
 
 -- | @0 ~ 7@
 isOctDigit :: Word8 -> Bool
